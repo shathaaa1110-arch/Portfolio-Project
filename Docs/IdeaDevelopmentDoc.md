@@ -101,16 +101,17 @@ Moving other people's money needs approval from the financial regulator, and tha
 
 ### 3.5 Comparison
 
-| Criterion (1–5) | Drone | Grocery POS | Payouts | **Thouq** |
-| --- | --- | --- | --- | --- |
-| Problem clarity | 4 | 5 | 5 | 4 |
-| Technical feasibility | 2 | 2 | 2 | 4 |
-| Time fit | 1 | 2 | 1 | 4 |
-| Data / partner dependency | 2 | 1 | 1 | 3 |
-| Regulatory risk (5 = low) | 3 | 2 | 1 | 5 |
-| Differentiation | 2 | 2 | 3 | 4 |
-| Team interest | 3 | 3 | 4 | 5 |
-| **Total (max 35)** | **17** | **17** | **17** | **29** |
+| Criterion (1–5)           |  Drone | Grocery POS | Payouts | **Thouq** |
+| ------------------------- | -----: | ----------: | ------: | --------: |
+| Problem clarity           |      4 |           5 |       4 |     **4** |
+| Technical feasibility     |      2 |           3 |       2 |     **3** |
+| Time fit                  |      1 |           3 |       2 |     **3** |
+| Data / partner dependency |      2 |           2 |       1 |     **3** |
+| Regulatory risk (5 = low) |      2 |           4 |       2 |     **4** |
+| Differentiation           |      4 |           2 |       3 |     **4** |
+| Team interest             |      3 |           3 |       4 |     **4** |
+| **Total (max 35)**        | **18** |      **22** |  **18** |    **25** |
+
 
 Each rejected idea failed on a different axis: the drone system on scope and audience, the POS on integration and compliance, the payout layer on licensing and capital. Thouq was the only one whose main obstacles were product problems we could solve ourselves.
 
