@@ -59,35 +59,39 @@ A platform for organizations running multiple drones: location and flight tracki
 - Meaningful testing needs real drones transmitting real data. Without hardware we would build against simulated input and miss the problems that matter.
 - The reachable user base is small, so user research and validation would be nearly impossible.
 
-### 3.2 Grocery Store Management System (POS, Inventory, Payments)
+### 3.2 Grocery inventory and checkout
 
-A cashier, inventory, and payment system for small groceries and supermarkets, similar in spirit to restaurant platforms like Foodics.
+Small neighborhood groceries track stock on paper or not at all. The owner finds out an item is finished when a customer asks for it, so he loses the sale. He also has no idea which items move fastest, so he restocks by guessing. On the other side, a customer drives to the store and comes back without the thing he went for.
 
-**Strengths:** a genuine need among stores still running on paper, a large potential market, and a clear subscription revenue model.
+We looked at two versions of this.
 
-**Why we rejected it:**
+The first one had card payments, barcode scanners, receipt printers and offline mode. We dropped that quickly. Too much for the time we have.
 
-- It depends on hardware we'd need to own and test against: barcode scanners, receipt printers, scales, and cash drawers.
-- Card payments require integration with a certified provider and strict handling of sensitive transaction data — slow, approval-gated work.
-- Retail systems must comply with mandatory e-invoicing rules, including specific invoice formats and integration with the tax authority. A non-compliant system cannot be used by any real store.
-- A grocery carries thousands of SKUs. Without an existing barcode-to-product database, every store would have to enter its full inventory manually before getting any value.
-- A cashier cannot stop selling when the internet drops, so the system must work offline and sync later — significantly harder than an online-only app.
-- Owners resist switching because migration and retraining risk disrupting daily revenue, and established competitors already provide hardware bundles and support lines we cannot match.
+The second version was smaller:
 
-### 3.3 Instant Payout Layer for Delivery and Store Workers
+- A simple checkout screen for the seller. He picks the items, confirms, and the stock count goes down as a result of that sale.
+- A low-stock list and a daily sales summary.
+- A search page for customers: find an item, see which nearby store has it and at what price.
+- Reserve for pickup. Cash on collection. No online payment, no delivery, no hardware.
 
-A service that pays workers their earnings immediately instead of after the platform's settlement cycle, recovering the money when the platform settles.
+The important design decision in this version is that our system is the cashier, not a separate stock book next to it. If the sale does not pass through the system, nothing decrements and the numbers drift within days. That is also what makes the customer-facing page possible at all, because a customer will not trust availability that is a week old.
 
-**Strengths:** addresses real cash-flow pressure, has obvious perceived value, and has a simple fee-based model.
+This version fits our time and it has a real technical core. Selling the last unit of an item from two places in the same second has to be handled inside the database, in one step with a rule that refuses a negative result. Otherwise both sales read the same number, both write zero, and we sold something we do not have.
 
-**Why we rejected it:**
+So we did not drop this idea because it was too hard. We dropped it because of e-invoicing. A business registered for VAT in Saudi Arabia has to follow ZATCA's e-invoicing rules, which include a required invoice format and integration with their platform. A system that issues sales invoices without meeting those rules cannot be used by a store that falls under them. We could demo it, but no real shop could actually run on it, and being usable by a real user was one of our criteria. Cutting features does not remove this.
 
-- Moving other people's money requires authorization from the financial regulator, and the approval timeline extends far beyond this project.
-- The model requires real working capital to front payouts. No amount of good engineering substitutes for money we don't have.
-- It only works if delivery platforms share verified earnings data and agree to settle with us — partnerships we cannot secure as students.
-- Advancing funds against unsettled earnings creates exposure to cancellations, disputes, and fraud, which needs risk models and historical data we don't have.
+[Before submitting: check ZATCA's site for the current VAT registration limit and which integration wave applies. If small groceries fall below the limit, this paragraph has to change, and the reason for dropping the idea becomes the adoption problem below instead.]
 
-The blockers here are regulatory and financial, not technical. Even a well-built system could not legally operate.
+Two other problems we would have had to live with:
+
+- Someone has to enter hundreds of items before the system is useful. Our plan was a shared product list keyed by barcode, so each store only adds its own price and quantity. The first load is still a lot of work.
+- The numbers stay correct only if the owner runs every single sale through the system. That is a habit problem, not a code problem, and we have no control over it.
+
+### 3.3 Instant payouts for delivery workers
+
+Paying delivery and store workers their earnings immediately instead of waiting for the platform's settlement cycle, then collecting when the platform pays.
+
+Moving other people's money needs approval from the financial regulator, and that takes much longer than this project. It also needs real money to front the payouts, which we don't have. And it only works if delivery platforms agree to share earnings data and settle with us. None of these are engineering problems.
 
 ### 3.4 Thouq ✅ Selected
 
