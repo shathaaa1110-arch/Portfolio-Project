@@ -2,7 +2,7 @@
 
 ## Team Formation and Idea Development
 
-**Team:** Asim Alhubaishi, Shatha Alanzi, Fahad Almidaj, Faisal Alhuzali
+**Team:** Asim Alhubaishi, Shatha Alanzi, Fahad Almidaj, Hassan Alhuzali
 **Selected MVP:** Thouq (ذوق) — a group dining decision and booking app
 
 ---
