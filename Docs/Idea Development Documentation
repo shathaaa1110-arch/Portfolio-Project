@@ -1,23 +1,31 @@
-تمام. النسخة المحدثة بالاسم الجديد — واستخدمت **Dhawq** ككتابة إنجليزية، غيّريها إذا تفضلون Thawq أو Zawq.
-
----
-
 # Portfolio Project — Stage 1 Report
+
 ## Team Formation and Idea Development
 
 **Team:** Asim Alhubaishi, Shatha Alanzi, Fahad Almidaj, Faisal Alhuzali
-**Selected MVP:** Dhawq (ذوق) — a group dining decision and booking app
+**Selected MVP:** Thouq (ذوق) — a group dining decision and booking app
+
+---
+
+## Table of Contents
+
+- [1. Team Formation](#1-team-formation)
+- [2. Process Followed](#2-process-followed)
+- [3. Ideas Explored](#3-ideas-explored)
+- [4. Selected MVP: Thouq](#4-selected-mvp-thouq-ذوق)
+- [5. Challenges and Mitigation](#5-challenges-and-mitigation)
+- [6. Outcome](#6-outcome)
 
 ---
 
 ## 1. Team Formation
 
 | Member | Role | Main responsibilities |
-|---|---|---|
+| --- | --- | --- |
 | Shatha Alanzi | Project Manager / Full-stack | Planning, backlog, backend and integration work |
-| Asim Alhubaishi | Frontend Developer | UI, screens, invite-link flow |
-| Fahad Almidaj | Backend Developer | API, database, authentication, suggestion engine |
-| Faisal Alhuzali | UX / QA | Wireframes, user testing, test plans, bug tracking |
+| Asim Alhubaishi | Backend Developer | authentication, suggestion engine |
+| Fahad Almidaj | Backend Developer | API, database |
+| Hassan Alhuzali | QA | Wireframes, user testing, test plans, bug tracking |
 
 Roles define ownership, not boundaries. Everyone reviews code and joins technical decisions.
 
@@ -45,6 +53,7 @@ A platform for organizations running multiple drones: location and flight tracki
 **Strengths:** a real operational need, technically interesting telemetry work, and clear accountability value.
 
 **Why we rejected it:**
+
 - Mature open-source alternatives already cover most of the functionality, and we found no gap we were positioned to fill.
 - The scope is very large — telemetry ingestion, live mapping, asset management, and reporting are each a project on their own.
 - Meaningful testing needs real drones transmitting real data. Without hardware we would build against simulated input and miss the problems that matter.
@@ -57,6 +66,7 @@ A cashier, inventory, and payment system for small groceries and supermarkets, s
 **Strengths:** a genuine need among stores still running on paper, a large potential market, and a clear subscription revenue model.
 
 **Why we rejected it:**
+
 - It depends on hardware we'd need to own and test against: barcode scanners, receipt printers, scales, and cash drawers.
 - Card payments require integration with a certified provider and strict handling of sensitive transaction data — slow, approval-gated work.
 - Retail systems must comply with mandatory e-invoicing rules, including specific invoice formats and integration with the tax authority. A non-compliant system cannot be used by any real store.
@@ -71,6 +81,7 @@ A service that pays workers their earnings immediately instead of after the plat
 **Strengths:** addresses real cash-flow pressure, has obvious perceived value, and has a simple fee-based model.
 
 **Why we rejected it:**
+
 - Moving other people's money requires authorization from the financial regulator, and the approval timeline extends far beyond this project.
 - The model requires real working capital to front payouts. No amount of good engineering substitutes for money we don't have.
 - It only works if delivery platforms share verified earnings data and agree to settle with us — partnerships we cannot secure as students.
@@ -78,7 +89,7 @@ A service that pays workers their earnings immediately instead of after the plat
 
 The blockers here are regulatory and financial, not technical. Even a well-built system could not legally operate.
 
-### 3.4 Dhawq ✅ Selected
+### 3.4 Thouq ✅ Selected
 
 **Strengths:** a frequent, recognizable problem; an MVP deliverable without hardware, payments, or licensing; easy to test with real groups; and a clear expansion path into dishes, bookings, and restaurant partnerships.
 
@@ -86,8 +97,8 @@ The blockers here are regulatory and financial, not technical. Even a well-built
 
 ### 3.5 Comparison
 
-| Criterion (1–5) | Drone | Grocery POS | Payouts | **Dhawq** |
-|---|---|---|---|---|
+| Criterion (1–5) | Drone | Grocery POS | Payouts | **Thouq** |
+| --- | --- | --- | --- | --- |
 | Problem clarity | 4 | 5 | 5 | 4 |
 | Technical feasibility | 2 | 2 | 2 | 4 |
 | Time fit | 1 | 2 | 1 | 4 |
@@ -97,26 +108,24 @@ The blockers here are regulatory and financial, not technical. Even a well-built
 | Team interest | 3 | 3 | 4 | 5 |
 | **Total (max 35)** | **17** | **17** | **17** | **29** |
 
-Each rejected idea failed on a different axis: the drone system on scope and audience, the POS on integration and compliance, the payout layer on licensing and capital. Dhawq was the only one whose main obstacles were product problems we could solve ourselves.
-
-*(عدّلوا الدرجات إذا تقييمكم اختلف.)*
+Each rejected idea failed on a different axis: the drone system on scope and audience, the POS on integration and compliance, the payout layer on licensing and capital. Thouq was the only one whose main obstacles were product problems we could solve ourselves.
 
 ---
 
-## 4. Selected MVP: Dhawq (ذوق)
+## 4. Selected MVP: Thouq (ذوق)
 
 ### 4.1 Summary
 
 Deciding where a group eats is a problem everyone recognizes. Someone suggests a place, two people object, several stay silent, and the decision either collapses or defaults to whoever pushed hardest. The information needed to decide well — who's coming, what they can't eat, what they can spend, where they're coming from — sits scattered across a chat thread and never gets assembled.
 
-Dhawq assembles it. One person creates an outing and shares an invite link. Each participant adds their preferences in seconds without installing anything. Dhawq combines those inputs into ranked restaurant suggestions that respect the group's hard constraints and balance its soft ones. The group votes, confirms, and the outing ends in a real reservation rather than an unresolved conversation.
+Thouq assembles it. One person creates an outing and shares an invite link. Each participant adds their preferences in seconds without installing anything. Thouq combines those inputs into ranked restaurant suggestions that respect the group's hard constraints and balance its soft ones. The group votes, confirms, and the outing ends in a real reservation rather than an unresolved conversation.
 
 ### 4.2 Scope
 
 **Phase 1 — MVP:**
 
 | # | Feature |
-|---|---|
+| --- | --- |
 | 1 | Create an outing: date, time, area, occasion type, group size |
 | 2 | Invite link that participants can join and answer without a heavy signup |
 | 3 | Preference capture: cuisine, budget range, dietary restrictions and allergies, seating needs |
@@ -131,7 +140,7 @@ Dhawq assembles it. One person creates an outing and shares an invite link. Each
 
 ### 4.3 Why It Isn't Easily Replaceable
 
-A single-purpose voting tool can be replaced by a poll in any chat app. Dhawq's position rests on three things:
+A single-purpose voting tool can be replaced by a poll in any chat app. Thouq's position rests on three things:
 
 1. **It owns the whole decision.** Map and review apps help one person search; chat apps help a group talk. Neither turns scattered group constraints into a decision and then into a booking.
 2. **Preference data compounds.** Every completed outing teaches the system about individuals and about how groups behave together — data a competitor starting from zero cannot copy.
@@ -157,7 +166,7 @@ Group dining is frequent and socially central in our market, and occasion types 
 ## 5. Challenges and Mitigation
 
 | Challenge | Mitigation |
-|---|---|
+| --- | --- |
 | Restaurant data source | Start with a curated dataset for one city or district, then move to an API or partner-supplied data |
 | Fair preference aggregation | Separate hard filters from weighted soft preferences, and show why each option was suggested |
 | Participation drop-off | Keep the join flow short, require no installation to answer, and produce useful suggestions from partial responses |
@@ -170,5 +179,3 @@ Group dining is frequent and socially central in our market, and occasion types 
 ## 6. Outcome
 
 Stage 1 produced a defined MVP with documented reasoning, a feature set split into deliverable and deferred phases, identified risks with mitigations, and an aligned team with clear roles. The team is ready to move into the planning phase.
-
----
