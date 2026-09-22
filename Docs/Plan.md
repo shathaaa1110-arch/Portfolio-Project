@@ -7,7 +7,7 @@ A group meal decision app. Participants join a shared session, enter their prefe
 ## Objectives
 
 1. The user is not overwhelmed when ordering meals.
-2. Filtering by budget and cuisine type.
+2. Deliver personalized restaurant recommendations tailored to the user’s budget and cuisine preferences.
 3. Speeding up the group's decision.
 
 > To be reframed as S.M.A.R.T objectives.
@@ -37,7 +37,7 @@ A group meal decision app. Participants join a shared session, enter their prefe
 |---|---|
 | Shatha | Project Manager, UI/UX |
 | Asem | API |
-| Hassan | Database, QA |
+| Hassan | Database, Quality Assurance |
 | Fahad | Front-End (React Native) |
 
 ---
