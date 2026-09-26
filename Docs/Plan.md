@@ -249,16 +249,7 @@ gantt
 | Participation | A majority of joined participants submit their preferences |
 | Decision speed | Measurably faster than the group's usual chat-based process, across five tested groups |
 
----
 
-## 10. Open Items
-
-- Confirm the official project start and submission dates and update the timeline accordingly.
-- Decide the restaurant data source: curated dataset or external API, and the target district in Riyadh.
-- Define the scoring formula for ranking, and the tie-breaking rule when scores are equal.
-- Establish a baseline for decision time before development starts — without it, "faster" cannot be proven.
-- Decide what happens when no restaurant satisfies all strict exclusions.
-_To be defined._
 
 —-
 <img width="4284" height="4284" alt="IMG_1946" src="https://github.com/user-attachments/assets/59bba1de-b775-4752-8c91-4ef83a17a5ad" />
