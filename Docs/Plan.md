@@ -122,8 +122,6 @@ Saudi Arabia has roughly 70,000 restaurants, around 18,000 of them in Riyadh. Th
 - AI-based personalization
 - Publishing to the app stores
 
-> The last group is deliberately named **Won't Have**, not "Would Have". In MoSCoW it records what the team has agreed *not* to build in this release, which is what makes it useful as a defence against scope creep. Reservations and AI stay here for the MVP; both remain on the product roadmap for later phases.
-
 ---
 
 ## 7. Risks and Mitigation
