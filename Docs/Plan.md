@@ -35,7 +35,7 @@ A group meal decision app. Participants join a shared session, enter their prefe
 
 | Name | Role |
 |---|---|
-| Shatha | Project Manager, UI/UX |
+| Shatha | Project Manager,Front-End (React Native), UI/UX |
 | Asem | API |
 | Hassan | Database, Quality Assurance |
 | Fahad | Front-End (React Native) |
