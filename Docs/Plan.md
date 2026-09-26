@@ -130,7 +130,8 @@ Saudi Arabia has roughly 70,000 restaurants, around 18,000 of them in Riyadh. Th
 
 | Risk | Likelihood | Impact | Mitigation | Owner |
 | --- | --- | --- | --- | --- |
-| Restaurant data is hard to source, incomplete, or outdated | High | High | Start with a manually curated dataset for one district of Riyadh; prepare it during the documentation phase, not during development | Hassan |
+| Restaurant data is hard to source or incomplete | Medium | High | A team member has access to structured restaurant data through an industry internship, which reduces the collection effort. In parallel, a manually curated dataset of 50–100 restaurants in one Riyadh district is prepared as a fallback | Hassan |
+| Data usage rights are not cleared | Medium | High | Obtain written permission before any company-sourced data enters the repository, limited to non-confidential fields (name, location, cuisine type, price range). No customer, sales, or transaction data is used. If permission is not granted in time, the curated dataset is used instead | Shatha |
 | Recommendation engine produces poor results when preferences conflict | Medium | High | Separate strict exclusions from weighted scoring; write test cases for conflict scenarios before building; display the reason per recommendation so bad output is visible immediately | Asem |
 | Limited experience with parts of the stack | High | Medium | Choose tools most of the team already knows, allocate learning time in the documentation phase, and pair with the more experienced member | Asem |
 | Front-end and API integration problems | Medium | Medium | Agree and document the API contract before implementation; build screens against mock data until endpoints are ready | Shatha / Fahad |
