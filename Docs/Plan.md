@@ -3,7 +3,9 @@
 **A group meal decision app.** Participants join a shared session with a code, enter their preferences and constraints, and Thouq recommends three restaurants for the group to vote on.
 
 **Team:** Shatha Alanzi, Asem Alhubaishi, Hassan Alhuzali, Fahad Almidaj
-**Stack:** React Native (mobile), REST API, relational database
+
+**Stack:** React Native (mobile),Fast API, PostgreSQL
+
 **Status:** Stage 2 — Project Charter
 
 ---
