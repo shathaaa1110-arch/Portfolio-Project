@@ -253,4 +253,3 @@ gantt
 
 
 —-
-<img width="4284" height="4284" alt="IMG_1946" src="https://github.com/user-attachments/assets/59bba1de-b775-4752-8c91-4ef83a17a5ad" />
