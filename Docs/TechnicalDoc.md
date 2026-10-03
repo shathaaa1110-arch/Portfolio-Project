@@ -116,3 +116,114 @@ Out of scope for the first version.
 - Payment options for an outing (splitting the bill, a draw, or one person covering it). Planned for a later version.
 - Processing payments or transferring money through the app.
 - Filtering restaurants by allergens or guaranteeing that a restaurant is safe.
+
+---
+
+## 1. System architecture
+ 
+Thouq follows a client-server architecture with three layers: a mobile app, a REST API, and a relational database. External services are used only for sending the login code and for push notifications.
+ 
+```mermaid
+flowchart TB
+    App["Thouq app<br/>React Native, Expo"]
+ 
+    subgraph Server["API server · Python, FastAPI"]
+        GW["REST API<br/>one entry point, checks token and role"]
+        GRP["Group and outing<br/>service"]
+        PREF["Preference<br/>service"]
+        VOTE["Voting<br/>service"]
+        PLAN["Plan<br/>service"]
+        AUTH["Auth<br/>service"]
+        REC["Recommendation<br/>engine"]
+    end
+ 
+    PUSH["Expo push service<br/>notifies devices"]
+    DB[("PostgreSQL")]
+    SMS["OTP provider<br/>SMS"]
+ 
+    App -->|"HTTPS / JSON"| GW
+    GW --> GRP
+    GW --> PREF
+    GW --> VOTE
+    GW --> PLAN
+    GW --> AUTH
+    PLAN --> REC
+    GRP -->|"send notification"| PUSH
+    GRP --> DB
+    PREF --> DB
+    VOTE -->|"SQL"| DB
+    REC --> DB
+    AUTH --> DB
+    AUTH -->|"send and check code"| SMS
+ 
+    classDef client fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef service fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    classDef data fill:#FAEEDA,stroke:#854F0B,color:#412402
+    classDef external fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A,stroke-dasharray: 4 3
+ 
+    class App client
+    class GW,GRP,PREF,VOTE,PLAN,AUTH,REC service
+    class DB data
+    class PUSH,SMS external
+    style Server fill:#F7FCFA,stroke:#0F6E56,color:#04342C
+```
+ 
+Read the diagram from top to bottom: the app sends every request to the REST API, the API passes it to one service, and the services use the database and the two external services.
+ 
+- Colours mark the layers: purple for the client, green for the API server, amber for the data layer, and grey with a dashed border for external services.
+- Every arrow is a request, and the label says what travels.
+- The services are modules of one application, not separately deployed servers.
+- All services read and write PostgreSQL. The plan service does so through the recommendation engine and directly when it saves the plan.
+- The auth service is the only one that calls the OTP provider.
+- The group and outing service sends a notification when a new outing starts; the plan service does the same when the plan is updated.
+- The app also opens the winning restaurant's location in Google Maps from a saved link, without going through the server.
+### Components
+ 
+| Component | Layer | Technology | Responsibility |
+|---|---|---|---|
+| Thouq app | Client | React Native with Expo | All screens; sends requests to the API and shows the results. Holds no shared data and makes no decisions. Opens the winning restaurant's location in Google Maps from a saved link |
+| REST API | API server | Python, FastAPI | The only entry point. Checks the token and the user's role, then passes the request to the right service |
+| Auth service | API server | Python | Sign-up, login codes, tokens for registered users, and temporary tokens for guests. The only code that talks to the OTP provider |
+| Group and outing service | API server | Python | Creating groups and outings, invite codes, joining as a member or guest, attendance, removing people, and the outing's status |
+| Preference service | API server | Python | Saved preferences and allergies on the account, and the copy edited for one outing |
+| Plan service | API server | Python | Generating the plan on the organizer's request, storing it, excluding and restoring restaurants |
+| Recommendation engine | API server | Python | Called by the plan service. Filters and ranks restaurants for an outing and returns a short list with a reason for each place |
+| Voting service | API server | Python | Casting and changing votes, closing voting, handling ties, and confirming the winner |
+| Database | Data | PostgreSQL | Users, groups, outings, preferences, plans, votes, and the restaurants table |
+| OTP provider | External | Chosen before final testing (candidates: Twilio, Authentica) | Sends the verification code by SMS and checks it |
+| Push notifications | External | Expo push notification service | Attendance and plan notifications. The back-end sends the message and the recipients' device tokens to Expo, which delivers it to Android and iOS devices |
+ 
+The restaurants table is filled once from the team's dataset by an import script. The app does not call any external restaurant service at run time.
+ 
+### Data flow
+ 
+The app never talks to the database or to the OTP provider directly. Every request goes to the REST API as JSON over HTTPS, and the back-end is the only component that reads and writes the database. The single exception is opening a map link, which needs no data from the server.
+ 
+**Example: generating the plan**
+ 
+1. The organizer taps "Generate plan". The app sends the request to the REST API with the organizer's token.
+2. The API checks the token, confirms that this user is the organizer of this outing, and passes the request to the plan service.
+3. The plan service calls the recommendation engine, which loads the participants' preferences from PostgreSQL.
+4. The engine queries the restaurants table, filters and ranks the places, and returns a short list with a reason for each place.
+5. The plan service saves the list as the outing's plan and returns it to the app.
+6. The other participants' apps receive the plan the next time they ask the API for the outing's state.
+**Live updates:** the app asks the API for the current state of the outing every few seconds while a participant is on the plan or voting screen. This keeps the plan and the vote counts up to date without a permanent connection.
+ 
+**Joining:** every outing has a short invite code, and the invite link carries that code. If the app is installed, the link opens it on the join screen; otherwise the person opens the app and types the code. A registered user joins as a member. A guest enters a name only and receives a temporary token that is valid for that outing, which the API accepts for entering preferences, viewing the plan, and voting.
+ 
+**Notifications:**
+ 
+1. After login, the app asks the user for permission, obtains a device token from Expo, and sends it to the API, which stores it with the user.
+2. When an event needs a notification, such as the organizer starting a new outing or the plan being updated, the responsible service collects the tokens of the members concerned and sends one request to the Expo push service.
+3. Expo delivers the notification to each device, even if the app is closed. Tapping it opens the app on the relevant outing.
+The same information also appears as a card inside the app, so a member who has turned notifications off, or missed one, still sees it when they open the app.
+ 
+### Scalability and efficiency
+ 
+- **Separate layers:** the app, the API, and the database can each be changed or moved to a larger server without rewriting the others.
+- **Replaceable parts:** the recommendation engine is called only by the plan service, and the OTP provider only by the auth service, so either can be improved or swapped without changing the app or the other services.
+- **Filtering in the database:** restaurants are filtered with SQL queries on indexed columns, so the back-end never loads the full table into memory.
+- **Local restaurant data:** suggestions do not depend on a call to an external service, which keeps response time short and predictable.
+- **Stored plans:** a plan is generated once per outing and saved, not recalculated every time a participant opens it.
+---
+ 
