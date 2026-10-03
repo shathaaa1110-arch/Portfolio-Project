@@ -5,4 +5,4 @@ Portfolio Project · Stage 3
 | | |
 |---|---|
 | Project | Thouq (ذوق), a group dining planner |
-| Team |  |
+| Team | Shatha Alanzi, Asim Alhubaishi, Hassan Alhuzali, Fahad Almidaj |
