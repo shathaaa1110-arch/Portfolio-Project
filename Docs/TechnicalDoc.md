@@ -198,7 +198,7 @@ Read the diagram from top to bottom: the app sends every request to the REST API
 | Recommendation engine | API server | Python | Called by the plan service. Filters and ranks restaurants for an outing and returns a short list with a reason for each place |
 | Voting service | API server | Python | Casting and changing votes, closing voting, handling ties, and confirming the winner |
 | Database | Data | PostgreSQL | Users, groups, outings, preferences, plans, votes, and the restaurants table |
-| OTP provider | External | Chosen before final testing (candidates: Twilio, Authentica) | Sends the verification code by SMS and checks it |
+| OTP provider | External | Chosen before final testing (candidates: Twilio, Authenticate) | Sends the verification code by SMS and checks it |
 | Push notifications | External | Expo push notification service | Attendance and plan notifications. The back-end sends the message and the recipients' device tokens to Expo, which delivers it to Android and iOS devices |
 
 The restaurants table is filled once from the team's dataset by an import script. The app does not call any external restaurant service at run time.
