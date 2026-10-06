@@ -12,6 +12,7 @@ Portfolio Project · Stage 3
 0. [User stories and mockups](#0-user-stories-and-mockups)
 1. [System architecture](#1-system-architecture)
 2. [Components, classes, and database design](#2-components-classes-and-database-design)
+3. [Sequence diagrams](#3-sequence-diagrams)
 
 ---
 
@@ -818,3 +819,136 @@ Green screens form the guest path and are the ones available in the web version;
 - **Token storage.** The app keeps the user's token, or a guest's temporary token, on the device and sends it with every request.
 - **Notifications.** Tapping a push notification opens the app on the outing it refers to. The attendance request also appears as a card on Home.
 - **Location.** Group screens never ask for the user's location; distances are measured from the meeting area. The app asks for location permission only when the user opens the personal recommendation.
+
+---
+ 
+## 3. Sequence diagrams
+ 
+Three use cases are shown. Together they pass through every part of the architecture: logging in is the only one that uses the OTP provider, creating and joining a session shows the guest path and the rules for joining, and voting through to the result is the core of the product, including the tie-break.
+ 
+The diagrams are high level. The lifelines are the main parts from section 1: the user, the app, the API server, PostgreSQL, and the OTP provider where it takes part. The services inside the API server are not drawn separately. Solid arrows are requests, dashed arrows are responses, and the lines between the app and the API server name the endpoint the app calls. Each diagram includes one failure path.
+ 
+### 3.1 Sign up and log in with a verification code
+ 
+Stories 1 and 2.
+ 
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant A as App
+    participant API as API server
+    participant O as OTP provider
+    participant DB as PostgreSQL
+ 
+    U->>A: Enter name and phone number
+    A->>API: POST /auth/otp/request
+    API->>O: Send a code to the phone
+    O-->>U: SMS with the code
+    API-->>A: 204 No Content
+    U->>A: Enter the code
+    A->>API: POST /auth/otp/verify
+    API->>O: Check the code
+    alt Code is correct
+        O-->>API: Valid
+        API->>DB: Find the user or create one
+        DB-->>API: User
+        API-->>A: 200 token and user
+        A-->>U: Taste preferences (first time) or Home
+    else Code is wrong or expired
+        O-->>API: Invalid
+        API-->>A: 401 Unauthorized
+        A-->>U: Show the error and allow a retry
+    end
+```
+ 
+- The app never talks to the OTP provider. Only the API server does, so the provider's key stays on the server.
+- The provider checks the code, so the API server never stores one.
+- Signing up and logging in are the same exchange. The only difference is whether the user row already exists.
+### 3.2 Create a session and join it as a guest
+ 
+Stories 4, 5, and 7.
+ 
+```mermaid
+sequenceDiagram
+    actor O as Organizer
+    actor G as Guest
+    participant A as App or web
+    participant API as API server
+    participant DB as PostgreSQL
+ 
+    O->>A: Enter session name, time, and area
+    A->>API: POST /outings
+    API->>DB: Insert outing (status invite, new code) and organizer as participant
+    API-->>A: 201 outing with its invite code
+    A-->>O: Waiting room with the code
+    O-->>G: Shares the code or link (outside the app)
+ 
+    G->>A: Open the link or type the code
+    A->>API: GET /outings/by-code/{code}
+    API->>DB: Find the open outing with this code
+    API-->>A: 200 session name and organizer
+    G->>A: Enter a name and tap Join
+    A->>API: POST /outings/{id}/join
+    API->>DB: Read the stage and the participant count
+    alt Stage is invite or preferences, and fewer than 8 people
+        API->>DB: Insert participant with the guest name
+        API-->>A: 201 participant and temporary token
+        A-->>G: Waiting room
+    else Outing is full or voting has started
+        API-->>A: 409 Conflict
+        A-->>G: Show why joining is not possible
+    end
+ 
+    loop Every few seconds
+        A->>API: GET /outings/{id}
+        API-->>A: 200 current stage and participants
+    end
+```
+ 
+- The guest first asks which session the code belongs to, sees its name, and only then joins.
+- The API server checks the stage and the number of people before adding anyone. A full session, or one where voting has started, answers with 409.
+- A registered user joins in the same way, sending their token instead of a name. No temporary token is issued, and when the outing belongs to a group the user also becomes a member.
+- The loop at the end is how the organizer's screen learns that someone joined: the app asks for the outing's state every few seconds.
+### 3.3 Vote, settle a tie, and announce the result
+ 
+Stories 12 to 15.
+ 
+```mermaid
+sequenceDiagram
+    actor P as Participants
+    participant A as App or web
+    participant API as API server
+    participant DB as PostgreSQL
+ 
+    loop For each suggested restaurant
+        P->>A: Swipe right (like) or left (pass)
+        A->>API: PUT /outings/{id}/votes/{plan_item_id}
+        API->>DB: Insert or update the vote
+        API-->>A: 200 OK
+    end
+ 
+    Note over API,DB: Last answer in, or organizer ends voting
+    API->>DB: Count the likes for each suggestion
+ 
+    alt One suggestion has the most likes
+        API->>DB: Mark the winner, set stage to result
+    else The top suggestions are tied
+        API->>DB: Set stage to tiebreak with a deadline 30 seconds ahead
+        A->>API: GET /outings/{id}
+        API-->>A: 200 tied places and the deadline
+        P->>A: Pick one of the tied places
+        A->>API: POST /outings/{id}/tiebreak-vote
+        API->>DB: Insert the final vote
+        Note over API,DB: All voted, or deadline passed
+        API->>DB: Winner by final votes, else by best rank. Set stage to result
+    end
+ 
+    A->>API: GET /outings/{id}
+    API-->>A: 200 stage result, winner, and consensus
+    A-->>P: Winner screen
+```
+ 
+- Each answer is sent as it is given, so nothing is lost if the app closes.
+- Nothing runs in the background. The result is settled inside the request that brings the last answer, or the organizer's request to end voting.
+- In a tie, the stage becomes `tiebreak` with a deadline. The API server checks the deadline whenever any app asks for the outing's state, and falls back to the best-ranked place if the final votes do not decide.
+ 
