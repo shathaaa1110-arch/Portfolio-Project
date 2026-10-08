@@ -951,4 +951,795 @@ sequenceDiagram
 - Each answer is sent as it is given, so nothing is lost if the app closes.
 - Nothing runs in the background. The result is settled inside the request that brings the last answer, or the organizer's request to end voting.
 - In a tie, the stage becomes `tiebreak` with a deadline. The API server checks the deadline whenever any app asks for the outing's state, and falls back to the best-ranked place if the final votes do not decide.
- 
+
+## 4. API Specifications
+
+Thouq follows a client-server architecture (see Section 1). This section specifies the external APIs the back-end depends on, and the full internal REST API exposed by the FastAPI server to the Thouq app.
+
+### 4.1 Conventions
+
+| Property       | Specification                                     |
+| -------------- | -------------------------------------------------- |
+| Protocol       | HTTPS                                               |
+| Data format    | JSON                                                |
+| API style      | REST                                                |
+| Backend        | Python, FastAPI                                     |
+| Database       | PostgreSQL                                          |
+| Authentication | Bearer token (registered user) or guest token (one outing only) |
+| Base path      | `/api/v1`                                           |
+| IDs            | UUID for every table except `restaurants`, which keeps the dataset's integer ids |
+
+Every endpoint below is written as `METHOD /path` relative to the base path. "Requires: Authorization" means the request must carry a valid Bearer or guest token; where only one type is accepted, it is stated explicitly. Request and response bodies are JSON. Error responses follow the shape in Section 4.8.
+
+### 4.2 External APIs
+
+#### 4.2.1 OTP provider (SMS)
+
+Used only by the auth service, to send and implicitly confirm the verification code described in Section 0. The provider is chosen before final testing (candidates: Twilio, Authentica). For the MVP the backend uses a mock sender that logs the code instead of calling a real provider, so the rest of the auth flow can be built and tested without an SMS account. Switching to a real provider later changes only the sending function; code generation, storage, and verification stay the same.
+
+```
+App  --HTTPS-->  FastAPI  --HTTPS-->  OTP provider
+```
+
+The app never calls the OTP provider directly, so its credentials stay on the server.
+
+#### 4.2.2 Maps
+
+The app opens a restaurant's `maps_url` (stored on the `restaurants` row) directly in Google Maps. This needs no server request; the backend does not call a maps API at runtime.
+
+#### 4.2.3 Restaurant data
+
+As described in Section 1, the restaurants table is filled once by an offline import script from the team's dataset. No external restaurant API is called while the app is running. This keeps the recommendation and voting flow independent of a third party's availability, rate limits, or pricing.
+
+### 4.3 Authentication API
+
+| # | Method | Path | Story |
+| - | ------ | ---- | ----- |
+| 1 | POST | `/auth/signup` | 1 |
+| 2 | POST | `/auth/verify` | 2 |
+| 3 | POST | `/auth/resend-code` | 2 |
+| 4 | POST | `/auth/push-token` | 25 |
+
+#### Sign up
+
+```http
+POST /auth/signup
+```
+
+Creates the account and sends a verification code. Does not return a token; the account is not usable until the code is verified.
+
+Request
+```json
+{ "name": "string", "phone": "string" }
+```
+
+Response `201`
+```json
+{ "user_id": "uuid", "message": "verification code sent" }
+```
+
+Response `409` — phone already registered
+```json
+{ "error": { "code": "PHONE_ALREADY_REGISTERED", "message": "This phone number is already registered." } }
+```
+
+#### Verify code
+
+```http
+POST /auth/verify
+```
+
+Checks the code against the `otp_codes` table (code, not yet used, not expired), marks it used, and returns a token for the matching user.
+
+Request
+```json
+{ "phone": "string", "code": "string" }
+```
+
+Response `200`
+```json
+{ "token": "jwt", "user_id": "uuid", "name": "string" }
+```
+
+Response `401` — wrong or expired code
+```json
+{ "error": { "code": "INVALID_OR_EXPIRED_CODE", "message": "This code is invalid or has expired." } }
+```
+
+#### Resend code
+
+```http
+POST /auth/resend-code
+```
+
+Issues a new code for a phone that already has an account. Rate-limited to one new code per 60 seconds per phone, to prevent abuse of the SMS provider.
+
+Request
+```json
+{ "phone": "string" }
+```
+
+Response `200`
+```json
+{ "message": "new code sent" }
+```
+
+Response `404` — phone not registered
+```json
+{ "error": { "code": "PHONE_NOT_REGISTERED", "message": "No account found for this phone number." } }
+```
+
+Response `429` — too soon
+```json
+{ "error": { "code": "RATE_LIMITED", "message": "Please wait before requesting another code." } }
+```
+
+#### Register push token
+
+```http
+POST /auth/push-token
+```
+Requires: Authorization (registered user)
+
+Stores the Expo device token used for push notifications (Section 1, Notifications).
+
+Request
+```json
+{ "push_token": "string" }
+```
+
+Response `200`
+```json
+{ "message": "push token updated" }
+```
+
+### 4.4 Groups API
+
+| # | Method | Path | Story |
+| - | ------ | ---- | ----- |
+| 5 | POST | `/groups` | 16 |
+| 6 | GET | `/groups` | 17 |
+| 7 | GET | `/groups/{group_id}` | 17, 20 |
+| 8 | POST | `/groups/{group_id}/outings` | 18, 19 |
+| 9 | DELETE | `/groups/{group_id}/members/{user_id}` | 24 |
+
+#### Create group
+
+```http
+POST /groups
+```
+Requires: Authorization
+
+Creates the group, adds the caller as organizer and member, and starts its first outing in one call (Key decision: "Creating a group starts its first outing automatically").
+
+Request
+```json
+{ "name": "string", "starts_at": "timestamptz", "district": "string" }
+```
+
+Response `201`
+```json
+{ "group_id": "uuid", "outing_id": "uuid", "invite_code": "string", "status": "invite" }
+```
+
+#### List my groups
+
+```http
+GET /groups
+```
+Requires: Authorization
+
+Response `200`
+```json
+{
+  "groups": [
+    {
+      "group_id": "uuid",
+      "name": "string",
+      "member_count": 5,
+      "latest_outing": { "outing_id": "uuid", "status": "result", "starts_at": "timestamptz" }
+    }
+  ]
+}
+```
+
+#### Group details
+
+```http
+GET /groups/{group_id}
+```
+Requires: Authorization, caller must be a member
+
+Response `200`
+```json
+{
+  "group_id": "uuid",
+  "name": "string",
+  "organizer_id": "uuid",
+  "members": [ { "user_id": "uuid", "name": "string", "joined_at": "timestamptz" } ],
+  "outings": [ { "outing_id": "uuid", "name": "string", "status": "result", "starts_at": "timestamptz" } ]
+}
+```
+
+Response `403`
+```json
+{ "error": { "code": "NOT_A_GROUP_MEMBER", "message": "You are not a member of this group." } }
+```
+
+#### Start a new outing in a group
+
+```http
+POST /groups/{group_id}/outings
+```
+Requires: Authorization, caller must be the group's organizer
+
+Creates a new outing under the group, adds every member as a participant with `attendance = pending` (the organizer is `confirmed` immediately), and sends an attendance-request push notification to the other members.
+
+Request
+```json
+{ "name": "string", "starts_at": "timestamptz", "district": "string" }
+```
+
+Response `201`
+```json
+{ "outing_id": "uuid", "invite_code": "string", "status": "invite", "pending_participants": 4 }
+```
+
+Response `403`
+```json
+{ "error": { "code": "ORGANIZER_ONLY", "message": "Only the organizer can start a new outing." } }
+```
+
+#### Remove a group member
+
+```http
+DELETE /groups/{group_id}/members/{user_id}
+```
+Requires: Authorization, caller must be the organizer
+
+Removes the member permanently from the group. Does not affect their rows in past outings.
+
+Response `200`
+```json
+{ "message": "member removed from group" }
+```
+
+### 4.5 Outings API
+
+| # | Method | Path | Story |
+| -- | ------ | ---- | ----- |
+| 10 | POST | `/outings/session` | 4, 5 |
+| 11 | POST | `/outings/{invite_code}/join` | 6 |
+| 12 | POST | `/outings/{invite_code}/join-guest` | 7 |
+| 13 | GET | `/outings/{outing_id}` | 10, 20 |
+| 14 | POST | `/outings/{outing_id}/attendance` | 19 |
+| 15 | POST | `/outings/{outing_id}/start-preferences` | 10 |
+| 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 |
+| 17 | DELETE | `/outings/{outing_id}/participants/{participant_id}` | 24 |
+
+#### Create a one-off session
+
+```http
+POST /outings/session
+```
+Requires: Authorization
+
+Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant.
+
+Request
+```json
+{ "name": "string", "starts_at": "timestamptz", "district": "string" }
+```
+
+Response `201`
+```json
+{ "outing_id": "uuid", "invite_code": "string", "status": "invite" }
+```
+
+Internally, this endpoint and group creation (4.4) share the same outing-creation logic; only the presence of a `group_id` differs. See Section 6, Technical Justifications.
+
+#### Join with an invite code
+
+```http
+POST /outings/{invite_code}/join
+```
+Requires: Authorization
+
+Joining is accepted only while the outing's status is `invite` or `preferences`, and only while it has fewer than 8 participants. If the outing belongs to a group, the caller is also added to `group_members` if not already a member. The caller's saved preferences, if any, are copied into a new row scoped to this outing.
+
+Response `200`
+```json
+{ "outing_id": "uuid", "status": "invite" }
+```
+
+Response `409`
+```json
+{ "error": { "code": "OUTING_FULL", "message": "This outing already has 8 participants." } }
+```
+or
+```json
+{ "error": { "code": "JOINING_CLOSED", "message": "Voting has already started for this outing." } }
+```
+
+#### Join as a guest
+
+```http
+POST /outings/{invite_code}/join-guest
+```
+Requires: nothing (this is the one endpoint with no token; a guest has none yet)
+
+Same checks as joining above. Creates a participant row with no `user_id` and issues a temporary guest token, valid for this outing only, accepted by every endpoint a guest needs (preferences, voting, viewing the plan and the result).
+
+Request
+```json
+{ "guest_name": "string" }
+```
+
+Response `201`
+```json
+{ "outing_id": "uuid", "participant_id": "uuid", "guest_token": "jwt", "status": "invite" }
+```
+
+#### Outing state (polling)
+
+```http
+GET /outings/{outing_id}
+```
+Requires: Authorization (Bearer or guest)
+
+Returns the outing's full current state. The app calls this every few seconds while any outing screen is open; the screen shown is decided by `status` (Section 3, Front-end components — Interactions). The same endpoint also drives the tie-break countdown: the client compares `tiebreak_ends_at` to the current time.
+
+Response `200`
+```json
+{
+  "outing_id": "uuid",
+  "name": "string",
+  "status": "invite",
+  "starts_at": "timestamptz",
+  "district": "string",
+  "invite_code": "string",
+  "tiebreak_ends_at": "timestamptz | null",
+  "participants": [
+    {
+      "participant_id": "uuid",
+      "name": "string",
+      "attendance": "confirmed",
+      "preferences_done": false,
+      "is_organizer": true
+    }
+  ]
+}
+```
+
+#### Confirm or decline attendance
+
+```http
+POST /outings/{outing_id}/attendance
+```
+Requires: Authorization
+
+Request
+```json
+{ "attendance": "confirmed" }
+```
+`attendance` is `confirmed` or `declined`.
+
+Response `200`
+```json
+{ "participant_id": "uuid", "attendance": "confirmed" }
+```
+
+Response `403`
+```json
+{ "error": { "code": "NOT_A_PARTICIPANT", "message": "You are not part of this outing." } }
+```
+
+#### Start the preferences stage
+
+```http
+POST /outings/{outing_id}/start-preferences
+```
+Requires: Authorization, caller must be the organizer
+
+Moves `status` from `invite` to `preferences`.
+
+Response `200`
+```json
+{ "outing_id": "uuid", "status": "preferences" }
+```
+
+Response `403`
+```json
+{ "error": { "code": "ORGANIZER_ONLY", "message": "Only the organizer can start this stage." } }
+```
+
+Response `409`
+```json
+{ "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing is not in the invite stage." } }
+```
+
+#### Start voting early
+
+```http
+POST /outings/{outing_id}/start-voting
+```
+Requires: Authorization, caller must be the organizer
+
+Generates the plan immediately, without waiting for every participant to mark their preferences ready. Participants who are not ready are excluded from the plan's calculation but can still vote once it exists. Moves `status` to `voting`.
+
+Response `200`
+```json
+{ "outing_id": "uuid", "status": "voting" }
+```
+
+#### Remove a participant from an outing
+
+```http
+DELETE /outings/{outing_id}/participants/{participant_id}
+```
+Requires: Authorization, caller must be the organizer
+
+Response `200`
+```json
+{ "message": "participant removed" }
+```
+
+### 4.6 Preferences API
+
+| #  | Method | Path | Story |
+| -- | ------ | ---- | ----- |
+| 18 | GET | `/users/me/preferences` | 3 |
+| 19 | PUT | `/users/me/preferences` | 3 |
+| 20 | PUT | `/outings/{outing_id}/preferences` | 8, 9 |
+| 21 | POST | `/outings/{outing_id}/preferences/ready` | 11 |
+
+`preferences` rows belong either to an account (`user_id` set) or to one outing's participant (`participant_id` set), never both, matching the database rule in Section 2.
+
+#### Get saved preferences
+
+```http
+GET /users/me/preferences
+```
+Requires: Authorization
+
+Response `200`
+```json
+{
+  "liked_cuisines": ["italian", "japanese"],
+  "allergies": ["peanuts"],
+  "budget_min": 50,
+  "budget_max": 150,
+  "max_distance_km": 10,
+  "seating_needs": "family seating"
+}
+```
+If nothing is saved yet, the same shape is returned with empty/`null` fields.
+
+#### Save preferences
+
+```http
+PUT /users/me/preferences
+```
+Requires: Authorization
+
+Creates the row on first use, updates it afterwards (`user_id` is unique).
+
+Request: same shape as the response above.
+
+Response `200`
+```json
+{ "message": "preferences saved" }
+```
+
+#### Edit preferences for one outing
+
+```http
+PUT /outings/{outing_id}/preferences
+```
+Requires: Authorization (Bearer or guest)
+
+Edits the copy scoped to this outing only; the account's saved defaults are never touched. Rejected once the outing has moved past the preferences stage.
+
+Request: same shape as above.
+
+Response `200`
+```json
+{ "message": "outing preferences updated" }
+```
+
+Response `409`
+```json
+{ "error": { "code": "PREFERENCES_LOCKED", "message": "Preferences can no longer be changed for this outing." } }
+```
+
+#### Mark preferences ready
+
+```http
+POST /outings/{outing_id}/preferences/ready
+```
+Requires: Authorization (Bearer or guest)
+
+Sets `preferences_done = true` for the caller's participant row. If every confirmed participant is now ready, this call triggers plan generation (`Outing.generatePlan()`) and moves the outing to `voting`.
+
+Response `200` — others still pending
+```json
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": false }
+```
+
+Response `200` — last one, plan generated
+```json
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "voting" }
+```
+
+### 4.7 Plan and Restaurants API
+
+| #  | Method | Path | Story |
+| -- | ------ | ---- | ----- |
+| 22 | GET | `/outings/{outing_id}/plan` | 11 |
+| 23 | GET | `/restaurants/{restaurant_id}` | 21, 26 |
+| 24 | GET | `/restaurants` | 22 |
+| 25 | POST | `/recommendations/personal` | 23, 31 |
+
+#### Get an outing's plan
+
+```http
+GET /outings/{outing_id}/plan
+```
+Requires: Authorization
+
+Returns the suggested restaurants in rank order, with the group's combined allergy warning (no names attached, as decided in Section 0).
+
+Response `200`
+```json
+{
+  "outing_id": "uuid",
+  "allergy_warning": ["peanuts", "shellfish"],
+  "plan_items": [
+    {
+      "plan_item_id": "uuid",
+      "rank": 1,
+      "match_score": 87,
+      "reason": "string",
+      "restaurant": {
+        "id": 101,
+        "name_ar": "string",
+        "cuisines": ["italian"],
+        "district": "string",
+        "price_tier": 3,
+        "rating": 4.6,
+        "distance_km": 2.3
+      }
+    }
+  ]
+}
+```
+`distance_km` is computed at request time from the outing's `district` centre; it is not stored.
+
+#### Restaurant details
+
+```http
+GET /restaurants/{restaurant_id}
+```
+Requires: Authorization
+
+Optional query parameter `outing_id` adds this outing's `reason` for the restaurant, when it was part of that outing's plan.
+
+Response `200`
+```json
+{
+  "id": 101,
+  "name_ar": "string",
+  "name_en": "string",
+  "cuisines": ["italian"],
+  "district": "string",
+  "price_tier": 3,
+  "rating": 4.6,
+  "opening_hours": {},
+  "summary": "string",
+  "maps_url": "string",
+  "reason": "string | null"
+}
+```
+
+#### Browse and search restaurants
+
+```http
+GET /restaurants?search=&cuisine=&district=
+```
+Requires: Authorization
+
+A plain filtered query against `restaurants`; it does not call the recommendation engine.
+
+Response `200`
+```json
+{
+  "restaurants": [
+    { "id": 101, "name_ar": "string", "cuisines": ["italian"], "price_tier": 3, "rating": 4.6 }
+  ]
+}
+```
+
+#### Personal recommendation
+
+```http
+POST /recommendations/personal
+```
+Requires: Authorization
+
+Calls the recommendation engine with the caller's saved preferences and this request's inputs. Returns a result without storing it (`User.viewSuggestions()`).
+
+Request
+```json
+{ "mood": "something_new", "budget_max": 150, "max_distance_km": 10 }
+```
+
+Response `200`
+```json
+{
+  "restaurants": [
+    { "id": 101, "name_ar": "string", "match_score": 91, "reason": "string" }
+  ]
+}
+```
+
+### 4.8 Voting API
+
+| #  | Method | Path | Story |
+| -- | ------ | ---- | ----- |
+| 26 | POST | `/outings/{outing_id}/votes` | 12 |
+| 27 | POST | `/outings/{outing_id}/end-voting` | 13 |
+| 28 | POST | `/outings/{outing_id}/tiebreak-vote` | 14 |
+| 29 | GET | `/outings/{outing_id}/result` | 15 |
+
+#### Cast a vote
+
+```http
+POST /outings/{outing_id}/votes
+```
+Requires: Authorization (Bearer or guest)
+
+Accepted only while `status = voting`, for a plan item that belongs to this outing. Upserts the row (unique on participant, plan item, and `is_tiebreak = false`), so changing an answer updates it rather than creating a duplicate. Once every participant has voted on every card, this call triggers `settleResult()`.
+
+Request
+```json
+{ "plan_item_id": "uuid", "liked": true }
+```
+
+Response `200`
+```json
+{ "plan_item_id": "uuid", "liked": true, "voting_complete": false }
+```
+
+#### End voting early
+
+```http
+POST /outings/{outing_id}/end-voting
+```
+Requires: Authorization, caller must be the organizer
+
+Settles the result with the votes collected so far.
+
+Response `200`
+```json
+{ "outing_id": "uuid", "status": "result" }
+```
+`status` is `"tiebreak"` instead when the top plan items are tied.
+
+#### Cast a tie-break vote
+
+```http
+POST /outings/{outing_id}/tiebreak-vote
+```
+Requires: Authorization (Bearer or guest)
+
+Accepted only while `status = tiebreak`, before `tiebreak_ends_at`, for one of the tied plan items, once per participant (`is_tiebreak = true`). The result is not revealed by this call; it stays hidden until the tie-break ends, as decided in Section 0.
+
+Request
+```json
+{ "plan_item_id": "uuid" }
+```
+
+Response `200`
+```json
+{ "recorded": true }
+```
+
+#### Get the result
+
+```http
+GET /outings/{outing_id}/result
+```
+Requires: Authorization
+
+Response `200`
+```json
+{
+  "outing_id": "uuid",
+  "winner": { "restaurant_id": 101, "name_ar": "string", "maps_url": "string" },
+  "consensus_percentage": 71,
+  "total_votes": 7
+}
+```
+
+Response `409` — not decided yet
+```json
+{ "error": { "code": "RESULT_NOT_READY", "message": "Voting has not finished for this outing." } }
+```
+
+### 4.9 Error format and status codes
+
+Every error response has the same shape:
+
+```json
+{ "error": { "code": "SOME_ERROR_CODE", "message": "A human-readable explanation." } }
+```
+
+| Status | Meaning                        |
+| ------ | ------------------------------- |
+| 200    | Request successful              |
+| 201    | Resource created                |
+| 400    | Invalid request                 |
+| 401    | Authentication required or invalid |
+| 403    | Not allowed for this user        |
+| 404    | Resource not found               |
+| 409    | Conflict with the current state  |
+| 422    | Validation error                 |
+| 429    | Too many requests                |
+| 500    | Internal server error            |
+
+### 4.10 Story coverage
+
+Every Must Have and Should Have story (Section 0) maps to at least one endpoint above:
+
+| Story | Endpoint(s) |
+| ----- | ----------- |
+| 1 | `POST /auth/signup` |
+| 2 | `POST /auth/verify`, `POST /auth/resend-code` |
+| 3 | `GET/PUT /users/me/preferences` |
+| 4 | `POST /outings/session` |
+| 5 | `invite_code` returned by outing/group creation |
+| 6 | `POST /outings/{code}/join` |
+| 7 | `POST /outings/{code}/join-guest` |
+| 8 | `PUT /outings/{id}/preferences` |
+| 9 | `PUT /outings/{id}/preferences` (guest token) |
+| 10 | `POST /outings/{id}/start-preferences`, `POST /outings/{id}/start-voting` |
+| 11 | `POST /outings/{id}/preferences/ready`, `GET /outings/{id}/plan` |
+| 12 | `POST /outings/{id}/votes` |
+| 13 | `POST /outings/{id}/end-voting` |
+| 14 | `POST /outings/{id}/tiebreak-vote` |
+| 15 | `GET /outings/{id}/result` |
+| 16 | `POST /groups` |
+| 17 | `GET /groups`, `GET /groups/{id}` |
+| 18 | `POST /groups/{id}/outings` |
+| 19 | `POST /outings/{id}/attendance`, push notification on outing creation |
+| 20 | `GET /groups/{id}`, `GET /outings/{id}` (participant list) |
+| 21 | `GET /restaurants/{id}` (`reason` field) |
+| 22 | `GET /restaurants?search=` |
+| 23 | `POST /recommendations/personal` |
+| 24 | `DELETE /outings/{id}/participants/{pid}`, `DELETE /groups/{id}/members/{uid}` |
+| 25 | `POST /auth/push-token`; notifications sent by the group/outing, plan, and voting services |
+| 26 | `maps_url` field on `restaurants` and on the result |
+| 31 | `mood` input on `POST /recommendations/personal` |
+
+### 4.11 API architecture
+
+```
+React Native / Expo app (mobile + web guest path)
+            │
+            │ HTTPS / JSON, Bearer or guest token
+            ▼
+                 FastAPI (single entry point)
+   ┌───────────────────────────────────────────┐
+   │ Auth · Group & Outing · Preference ·       │
+   │ Plan · Voting                              │
+   └───────────────┬─────────────────┬──────────┘
+                    │                 │
+                    ▼                 ▼
+             PostgreSQL        External services
+       users, groups,          OTP provider (SMS)
+       outings, participants,
+       preferences, restaurants,
+       plan_items, votes
+```
+
+This mirrors the system architecture in Section 1: the app has one entry point, every service owns its own responsibility, and the only external dependency at runtime is the OTP provider. 
