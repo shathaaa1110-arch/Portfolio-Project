@@ -13,6 +13,9 @@ Portfolio Project · Stage 3
 1. [System architecture](#1-system-architecture)
 2. [Components, classes, and database design](#2-components-classes-and-database-design)
 3. [Sequence diagrams](#3-sequence-diagrams)
+4. [API Specifications](#4-api-specifications)
+5. [Source control management](#5-source-control-management)
+6. [Quality assurance](#6-quality-assurance)
 
 ---
 
@@ -1743,3 +1746,720 @@ React Native / Expo app (mobile + web guest path)
 ```
 
 This mirrors the system architecture in Section 1: the app has one entry point, every service owns its own responsibility, and the only external dependency at runtime is the OTP provider. 
+
+---
+
+## 5. Source control management
+
+This section documents the branching strategy, commit practices, code review process, and pull request workflow for the Thouq project. The strategy is adapted from the Gitflow model to fit the team's four-week development window and four-member team.
+
+### 5.1 Repository and branch protection
+
+The project lives in a single GitHub repository: `Portfolio-Project`. Branch protection rules are configured before the first sprint begins.
+
+| Setting | `main` | `develop` |
+| --- | --- | --- |
+| Require pull request before merging | Yes | Yes |
+| Required reviewers | 1 (from outside the author's area) | 1 |
+| Require status checks to pass | Yes (when CI is added) | Yes (when CI is added) |
+| Allow force push | No | No |
+| Allow deletion | No | No |
+
+### 5.2 Branching strategy
+
+The project uses two permanent branches and three types of supporting branches.
+
+#### Permanent branches
+
+```mermaid
+gitGraph
+    commit id: "init"
+    commit id: "hotfix-v0.0.2"
+    branch release
+    branch hotfix
+    branch develop
+    commit id: "setup"
+    branch feature/auth
+    commit id: "signup"
+    commit id: "verify"
+    checkout develop
+    merge feature/auth id: "merge auth"
+    branch feature/session
+    commit id: "create-session"
+    commit id: "join-flow"
+    checkout release
+    commit id: "release v0.0.3"
+    merge develop id: "release merge"
+    checkout develop
+    merge feature/session id: "merge session"
+    checkout hotfix
+    commit id: "hotfix-0.0.2"
+    merge develop id: "hotfix merge"
+    checkout main
+    merge develop id: "v0.1.0" tag: "v0.1.0"
+```
+
+| Branch | Purpose | Lifetime | Deploys to |
+| --- | --- | --- | --- |
+| `main` | Production-ready code. Every merge into `main` represents a release and is tagged with a version number | Permanent | Production |
+| `develop` | Integration branch for the next release. Contains the latest completed features | Permanent | Staging |
+
+#### Supporting branches
+
+| Branch type | Naming convention | Branches from | Merges into | Purpose |
+| --- | --- | --- | --- | --- |
+| Feature | `feature/<short-name>` (e.g., `feature/auth`, `feature/voting`) | `develop` | `develop` | Develop one user story or a small group of related stories |
+| Release | `release-<version>` (e.g., `release-0.1.0`) | `develop` | `main` and `develop` | Prepare a release: final bug fixes, version bump, documentation updates. No new features |
+| Hotfix | `hotfix-<version>` (e.g., `hotfix-0.1.1`) | `main` | `main` and `develop` | Fix a critical bug found in production without waiting for the next release |
+
+#### Branch rules
+
+- Feature branches are short-lived: ideally one to three days, never longer than one sprint (two weeks).
+- Merges always use `--no-ff` (no fast-forward) to preserve the history that a feature existed as a group of commits.
+- A feature branch is deleted after it is merged.
+- Release branches are created when `develop` is ready for a release candidate. The version number is assigned on the release branch.
+- Hotfix branches are created from `main` (from the tag of the current production version) and merged into both `main` and `develop`.
+- Tags follow semantic versioning: `v<major>.<minor>.<patch>` (e.g., `v0.1.0`, `v0.1.1`).
+
+### 5.3 Commit practices
+
+| Practice | Rule |
+| --- | --- |
+| Commit frequency | At least once per working session. Small, focused commits that each do one thing |
+| Commit message format | Imperative mood, present tense, max 72 characters for the subject line. Example: `Add verification code endpoint` |
+| Message body | Optional, but required when the change is not obvious from the subject. Explains *why*, not *what* |
+| Atomic commits | Each commit compiles and passes existing tests. No commits that break the build |
+| Sensitive data | Never commit API keys, tokens, or credentials. Use environment variables and `.env` files listed in `.gitignore` |
+
+Example commit messages:
+
+```
+Add OTP verification endpoint
+
+The endpoint checks the code against the otp_codes table,
+marks it as used, and returns a JWT for the matching user.
+Covers story 2.
+```
+
+```
+Fix participant count check on join
+
+The previous query counted declined participants toward
+the 8-person limit. Now only confirmed and pending
+participants are counted.
+```
+
+### 5.4 Code review and pull requests
+
+Every change reaches `develop` or `main` through a pull request (PR). Direct pushes to protected branches are blocked.
+
+#### Pull request checklist
+
+| # | Check | Responsibility |
+| --- | --- | --- |
+| 1 | PR title describes the change clearly | Author |
+| 2 | PR description links to the user story or issue on the board | Author |
+| 3 | The branch is up to date with its target (`develop` or `main`) | Author |
+| 4 | All existing tests pass | Author (verified by CI when available) |
+| 5 | New code has tests where applicable | Author |
+| 6 | At least one reviewer from outside the author's area has approved | Reviewer |
+| 7 | Review comments are resolved or addressed | Author |
+| 8 | The merge uses `--no-ff` | Author or GitHub merge settings |
+
+#### Review guidelines
+
+- **Scope:** review the logic, not just the formatting. Check that the change matches the user story, handles errors, and does not break existing behaviour.
+- **Timeliness:** reviews are completed within one working day. A PR left open for more than two days is raised at the next sync.
+- **Tone:** comments are constructive and specific. Suggest an alternative when pointing out a problem.
+- **Cross-area reviews:** the reviewer should be from a different area than the author (e.g., a back-end PR is reviewed by the front-end or QA member), as stated in the Project Charter under Accountability.
+
+#### Review assignment
+
+| Author's area | Reviewer |
+| --- | --- |
+| Front-end (Shatha, Fahad) | Asem or Hassan |
+| Back-end / API (Asem) | Shatha, Fahad, or Hassan |
+| Database / QA (Hassan) | Asem or Shatha |
+
+### 5.5 Merge strategy
+
+```mermaid
+flowchart LR
+    A["Feature branch"] -->|PR + review| B["develop"]
+    B -->|Release branch + PR| C["main"]
+    C -->|Tag| D["v0.1.0"]
+    C -->|Hotfix branch + PR| B
+```
+
+1. **Feature → develop:** author creates a PR, at least one reviewer approves, CI passes (when available), and the merge uses `--no-ff`. The feature branch is deleted.
+2. **develop → main (release):** a release branch is created from `develop`, final fixes are made, the version number is bumped, and the release branch is merged into both `main` (tagged) and `develop`. The release branch is deleted.
+3. **main → develop (hotfix):** a hotfix branch is created from `main`, the fix is made, the patch version is bumped, and the hotfix branch is merged into both `main` (tagged) and `develop`. The hotfix branch is deleted.
+
+### 5.6 Sprint workflow example
+
+This is how the branching strategy maps to a typical sprint:
+
+```
+Sprint 1 — Foundation (weeks 7–8)
+
+Day 1:
+  git checkout -b feature/db-schema develop
+  # Hassan: create tables, seed restaurant data
+  # commit, push, open PR
+
+Day 2:
+  # Asem reviews and approves the PR
+  git checkout develop
+  git merge --no-ff feature/db-schema
+  git branch -d feature/db-schema
+
+  git checkout -b feature/auth develop
+  # Asem: sign-up and verify endpoints
+
+Day 3–4:
+  git checkout -b feature/session-create develop
+  # Asem: session creation and invite code
+  # Meanwhile, Fahad works on feature/join-screen
+
+Day 5:
+  # PRs for auth and session-create are reviewed and merged
+  # Fahad rebases feature/join-screen on develop
+
+End of sprint:
+  git checkout -b release-0.1.0 develop
+  # bump version, fix any issues found
+  git checkout main
+  git merge --no-ff release-0.1.0
+  git tag -a v0.1.0 -m "Sprint 1: foundation"
+  git checkout develop
+  git merge --no-ff release-0.1.0
+  git branch -d release-0.1.0
+```
+
+### 5.7 Conflict resolution
+
+| Situation | Action |
+| --- | --- |
+| Merge conflict on a PR | The author resolves the conflict locally, pushes the resolution, and notifies the reviewer |
+| Two features touching the same file | The team coordinates during the daily check-in; one feature merges first, the second rebases |
+| Disagreement on an approach | The area owner decides (API owner for cross-area technical decisions, PM for scope); the reasoning is written on the PR |
+
+---
+
+## 6. Quality assurance
+
+This section defines the testing strategy, the tools and methods used, the test plan for each API endpoint, and the deployment pipeline for staging and production. Hassan Alhuzali owns QA; every team member writes tests for their own code.
+
+### 6.1 Testing strategy
+
+Thouq uses three levels of testing, each serving a different purpose:
+
+| Level | What it tests | Scope | Speed | When it runs | Owner |
+| --- | --- | --- | --- | --- | --- |
+| Unit tests | Individual functions, classes, and methods in isolation | Narrow: one function or one class | Fast (seconds) | On every commit, in CI | Each developer for their own code |
+| Integration tests | Interactions between services, and between the API and the database | Medium: two or more components together | Moderate (seconds to minutes) | On every PR, in CI | Each developer; Hassan reviews |
+| End-to-end (E2E) tests | Complete user workflows from the API entry point to the database and back | Broad: full request-response cycle | Slower (minutes) | On staging before a release, and during sprint review | Hassan |
+
+```mermaid
+flowchart TD
+    subgraph Testing["Testing pyramid"]
+        direction TB
+        E2E["E2E tests<br/>5–10 critical journeys<br/>curl against staging"]
+        INT["Integration tests<br/>API + database<br/>pytest + test database"]
+        UNIT["Unit tests<br/>functions and classes<br/>pytest"]
+    end
+
+    UNIT --- INT --- E2E
+
+    style UNIT fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style INT fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style E2E fill:#FAEEDA,stroke:#854F0B,color:#412402
+```
+
+The testing pyramid is intentional: many fast unit tests at the base, fewer integration tests in the middle, and a small set of targeted E2E tests at the top. This keeps the feedback loop fast for developers while still catching issues at the system boundaries.
+
+### 6.2 Unit tests
+
+Unit tests verify individual functions and methods in isolation. They use mocks or stubs for external dependencies (database, OTP provider) so they run without infrastructure.
+
+**Framework:** pytest (Python, back-end)
+
+**What is tested:**
+
+| Component | Examples |
+| --- | --- |
+| Recommendation engine | Filters correctly by budget ceiling, excludes restaurants outside the distance limit, scores cuisine matches, returns the correct number of results, handles conflicting preferences |
+| Auth service | Generates a valid token, rejects an expired code, rejects a reused code, rate-limits resend requests |
+| Voting service | Counts likes correctly, detects a tie, resolves a tie by rank when the timer expires, prevents duplicate votes |
+| Preference service | Copies saved preferences to an outing, rejects edits after voting starts |
+| Outing service | Rejects joining when the outing is full (8 participants), rejects joining after voting starts, validates status transitions |
+
+**Naming convention:** `test_<function>_<scenario>_<expected>`, for example:
+
+```python
+def test_recommend_excludes_over_budget():
+    """A restaurant with spend_low above the group's lowest budget_max is excluded."""
+
+def test_settle_result_tie_falls_back_to_rank():
+    """When tie-break votes are also tied, the item with the best rank wins."""
+
+def test_join_outing_full_returns_409():
+    """Joining an outing with 8 participants returns 409 OUTING_FULL."""
+```
+
+**Coverage target:** all Must Have stories (1–20) have at least one unit test for the happy path and one for the primary failure path.
+
+### 6.3 Integration tests
+
+Integration tests verify that two or more components work together correctly. They run against a real PostgreSQL test database (seeded with known data) and call the FastAPI endpoints directly.
+
+**Framework:** pytest with FastAPI's `TestClient` and a test database
+
+**What is tested:**
+
+| Test area | What it checks |
+| --- | --- |
+| Auth flow | Sign up → verify → receive token → use token on a protected endpoint |
+| Session creation | Create outing → invite code is unique → join with the code → participant count increments |
+| Preference flow | Save preferences → join outing → preferences are copied → edit for outing → account defaults unchanged |
+| Plan generation | All participants ready → plan is generated → correct number of plan items → outing status moves to `voting` |
+| Voting flow | Cast votes → all voted → result settled → winner marked → consensus percentage correct |
+| Guest flow | Join as guest → receive guest token → enter preferences → vote → see result |
+| Error handling | Wrong token → 401, wrong role → 403, invalid state transition → 409 |
+
+**Database setup:** each test run starts with a clean database seeded by a fixture script. The seed data includes a fixed set of restaurants (a subset of the Riyadh dataset), a test user, and a test group.
+
+### 6.4 End-to-end tests with curl
+
+End-to-end tests validate the complete user journey from the API's perspective, using `curl` as the testing tool. Each test is a shell script that calls the API endpoints in sequence, checks the HTTP status codes and response bodies, and fails on the first unexpected result.
+
+**Tool:** curl (command-line HTTP client)
+
+**Why curl:** it requires no additional dependencies, works on every developer's machine and in CI, and tests the API exactly as the app will call it — over HTTP with JSON bodies. It also makes the tests readable and easy to share with the team.
+
+#### 6.4.1 E2E test scripts
+
+Each script covers one critical user journey end to end:
+
+**Test 1 — Sign up, log in, and save preferences**
+
+```bash
+#!/bin/bash
+set -e
+BASE_URL="http://localhost:8000/api/v1"
+
+echo "=== Test 1: Sign up, log in, save preferences ==="
+
+# 1. Sign up
+SIGNUP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test User", "phone": "+966500000001"}')
+HTTP_CODE=$(echo "$SIGNUP" | tail -1)
+BODY=$(echo "$SIGNUP" | head -1)
+[ "$HTTP_CODE" = "201" ] || { echo "FAIL: signup expected 201, got $HTTP_CODE"; exit 1; }
+USER_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['user_id'])")
+echo "  signup: OK (user_id=$USER_ID)"
+
+# 2. Verify code (mock OTP returns a fixed code in test mode)
+VERIFY=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/auth/verify" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+966500000001", "code": "1234"}')
+HTTP_CODE=$(echo "$VERIFY" | tail -1)
+BODY=$(echo "$VERIFY" | head -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: verify expected 200, got $HTTP_CODE"; exit 1; }
+TOKEN=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+echo "  verify: OK (token received)"
+
+# 3. Save preferences
+PREFS=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/users/me/preferences" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"liked_cuisines": ["italian", "japanese"], "allergies": ["peanuts"], "budget_min": 50, "budget_max": 150, "max_distance_km": 10, "seating_needs": ""}')
+HTTP_CODE=$(echo "$PREFS" | tail -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: save prefs expected 200, got $HTTP_CODE"; exit 1; }
+echo "  save preferences: OK"
+
+# 4. Verify preferences were saved
+GET_PREFS=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/users/me/preferences" \
+  -H "Authorization: Bearer $TOKEN")
+HTTP_CODE=$(echo "$GET_PREFS" | tail -1)
+BODY=$(echo "$GET_PREFS" | head -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: get prefs expected 200, got $HTTP_CODE"; exit 1; }
+CUISINES=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['liked_cuisines'])")
+echo "  get preferences: OK (cuisines=$CUISINES)"
+
+echo "=== Test 1 PASSED ==="
+```
+
+**Test 2 — Create session, join as guest, and collect preferences**
+
+```bash
+#!/bin/bash
+set -e
+BASE_URL="http://localhost:8000/api/v1"
+
+echo "=== Test 2: Create session, join as guest, collect preferences ==="
+
+# 1. Organizer logs in (assumes test user exists)
+VERIFY=$(curl -s -X POST "$BASE_URL/auth/verify" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+966500000001", "code": "1234"}')
+ORG_TOKEN=$(echo "$VERIFY" | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+
+# 2. Create a session
+SESSION=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/session" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ORG_TOKEN" \
+  -d '{"name": "Thursday dinner", "starts_at": "2026-10-22T19:00:00+03:00", "district": "Al Olaya"}')
+HTTP_CODE=$(echo "$SESSION" | tail -1)
+BODY=$(echo "$SESSION" | head -1)
+[ "$HTTP_CODE" = "201" ] || { echo "FAIL: create session expected 201, got $HTTP_CODE"; exit 1; }
+OUTING_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['outing_id'])")
+INVITE_CODE=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['invite_code'])")
+echo "  create session: OK (code=$INVITE_CODE)"
+
+# 3. Guest joins
+GUEST=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/$INVITE_CODE/join-guest" \
+  -H "Content-Type: application/json" \
+  -d '{"guest_name": "Guest Ahmed"}')
+HTTP_CODE=$(echo "$GUEST" | tail -1)
+BODY=$(echo "$GUEST" | head -1)
+[ "$HTTP_CODE" = "201" ] || { echo "FAIL: join guest expected 201, got $HTTP_CODE"; exit 1; }
+GUEST_TOKEN=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['guest_token'])")
+echo "  guest join: OK"
+
+# 4. Guest enters preferences
+GPREFS=$(curl -s -w "\n%{http_code}" -X PUT "$BASE_URL/outings/$OUTING_ID/preferences" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $GUEST_TOKEN" \
+  -d '{"liked_cuisines": ["saudi", "lebanese"], "allergies": [], "budget_min": 30, "budget_max": 100, "max_distance_km": 5, "seating_needs": ""}')
+HTTP_CODE=$(echo "$GPREFS" | tail -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: guest prefs expected 200, got $HTTP_CODE"; exit 1; }
+echo "  guest preferences: OK"
+
+# 5. Check outing state shows two participants
+STATE=$(curl -s -X GET "$BASE_URL/outings/$OUTING_ID" \
+  -H "Authorization: Bearer $ORG_TOKEN")
+PCOUNT=$(echo "$STATE" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['participants']))")
+[ "$PCOUNT" = "2" ] || { echo "FAIL: expected 2 participants, got $PCOUNT"; exit 1; }
+echo "  outing state: OK (participants=$PCOUNT)"
+
+echo "=== Test 2 PASSED ==="
+```
+
+**Test 3 — Full decision flow: preferences → plan → vote → result**
+
+```bash
+#!/bin/bash
+set -e
+BASE_URL="http://localhost:8000/api/v1"
+
+echo "=== Test 3: Full decision flow ==="
+
+# Setup: create session with organizer and guest (reuse from Test 2 setup)
+# ... (session creation and join steps) ...
+
+# 1. Organizer starts preferences stage
+START_PREFS=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/$OUTING_ID/start-preferences" \
+  -H "Authorization: Bearer $ORG_TOKEN")
+HTTP_CODE=$(echo "$START_PREFS" | tail -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: start-preferences expected 200, got $HTTP_CODE"; exit 1; }
+echo "  start preferences: OK"
+
+# 2. Both mark ready
+curl -s -X POST "$BASE_URL/outings/$OUTING_ID/preferences/ready" \
+  -H "Authorization: Bearer $ORG_TOKEN" > /dev/null
+READY=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/$OUTING_ID/preferences/ready" \
+  -H "Authorization: Bearer $GUEST_TOKEN")
+HTTP_CODE=$(echo "$READY" | tail -1)
+BODY=$(echo "$READY" | head -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: mark ready expected 200, got $HTTP_CODE"; exit 1; }
+ALL_READY=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('all_ready', False))")
+echo "  all ready: $ALL_READY"
+
+# 3. Get the plan
+PLAN=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/outings/$OUTING_ID/plan" \
+  -H "Authorization: Bearer $ORG_TOKEN")
+HTTP_CODE=$(echo "$PLAN" | tail -1)
+BODY=$(echo "$PLAN" | head -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: get plan expected 200, got $HTTP_CODE"; exit 1; }
+ITEM_COUNT=$(echo "$BODY" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['plan_items']))")
+echo "  plan generated: OK ($ITEM_COUNT items)"
+
+# 4. Extract plan item IDs and vote
+ITEM1=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['plan_items'][0]['plan_item_id'])")
+
+# Organizer votes like on first item
+curl -s -X POST "$BASE_URL/outings/$OUTING_ID/votes" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ORG_TOKEN" \
+  -d "{\"plan_item_id\": \"$ITEM1\", \"liked\": true}" > /dev/null
+
+# Guest votes like on first item
+curl -s -X POST "$BASE_URL/outings/$OUTING_ID/votes" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $GUEST_TOKEN" \
+  -d "{\"plan_item_id\": \"$ITEM1\", \"liked\": true}" > /dev/null
+
+# (Vote on remaining items similarly...)
+
+# 5. Organizer ends voting
+END=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/$OUTING_ID/end-voting" \
+  -H "Authorization: Bearer $ORG_TOKEN")
+HTTP_CODE=$(echo "$END" | tail -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: end-voting expected 200, got $HTTP_CODE"; exit 1; }
+echo "  end voting: OK"
+
+# 6. Get the result
+RESULT=$(curl -s -w "\n%{http_code}" -X GET "$BASE_URL/outings/$OUTING_ID/result" \
+  -H "Authorization: Bearer $ORG_TOKEN")
+HTTP_CODE=$(echo "$RESULT" | tail -1)
+BODY=$(echo "$RESULT" | head -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: get result expected 200, got $HTTP_CODE"; exit 1; }
+WINNER=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['winner']['name_ar'])")
+CONSENSUS=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['consensus_percentage'])")
+echo "  result: OK (winner=$WINNER, consensus=$CONSENSUS%)"
+
+echo "=== Test 3 PASSED ==="
+```
+
+**Test 4 — Outing full: join rejected at 8 participants**
+
+```bash
+#!/bin/bash
+set -e
+BASE_URL="http://localhost:8000/api/v1"
+
+echo "=== Test 4: Join rejected when outing is full ==="
+
+# Setup: create session and add 7 guests (organizer + 7 = 8)
+# ... (session creation) ...
+
+for i in $(seq 1 7); do
+  GUEST_JOIN=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/$INVITE_CODE/join-guest" \
+    -H "Content-Type: application/json" \
+    -d "{\"guest_name\": \"Guest $i\"}")
+  HTTP_CODE=$(echo "$GUEST_JOIN" | tail -1)
+  [ "$HTTP_CODE" = "201" ] || { echo "FAIL: guest $i join expected 201, got $HTTP_CODE"; exit 1; }
+done
+echo "  7 guests joined (total 8): OK"
+
+# 9th person tries to join
+REJECT=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/$INVITE_CODE/join-guest" \
+  -H "Content-Type: application/json" \
+  -d '{"guest_name": "Guest 8"}')
+HTTP_CODE=$(echo "$REJECT" | tail -1)
+[ "$HTTP_CODE" = "409" ] || { echo "FAIL: 9th join expected 409, got $HTTP_CODE"; exit 1; }
+ERROR_CODE=$(echo "$REJECT" | head -1 | python3 -c "import sys,json; print(json.load(sys.stdin)['error']['code'])")
+[ "$ERROR_CODE" = "OUTING_FULL" ] || { echo "FAIL: expected OUTING_FULL, got $ERROR_CODE"; exit 1; }
+echo "  9th join rejected: OK (OUTING_FULL)"
+
+echo "=== Test 4 PASSED ==="
+```
+
+**Test 5 — Allergy aggregation: combined warning, no names**
+
+```bash
+#!/bin/bash
+set -e
+BASE_URL="http://localhost:8000/api/v1"
+
+echo "=== Test 5: Allergy aggregation ==="
+
+# Setup: create session, two participants with different allergies
+# ... (session creation, two participants join) ...
+
+# Participant 1 sets allergies: peanuts
+curl -s -X PUT "$BASE_URL/outings/$OUTING_ID/preferences" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN1" \
+  -d '{"liked_cuisines": ["italian"], "allergies": ["peanuts"], "budget_min": 50, "budget_max": 150, "max_distance_km": 10, "seating_needs": ""}' > /dev/null
+
+# Participant 2 sets allergies: shellfish, dairy
+curl -s -X PUT "$BASE_URL/outings/$OUTING_ID/preferences" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN2" \
+  -d '{"liked_cuisines": ["japanese"], "allergies": ["shellfish", "dairy"], "budget_min": 30, "budget_max": 100, "max_distance_km": 8, "seating_needs": ""}' > /dev/null
+
+# Both mark ready, plan is generated
+# ...
+
+# Get plan and check allergy_warning
+PLAN=$(curl -s -X GET "$BASE_URL/outings/$OUTING_ID/plan" \
+  -H "Authorization: Bearer $TOKEN1")
+ALLERGIES=$(echo "$PLAN" | python3 -c "import sys,json; print(sorted(json.load(sys.stdin)['allergy_warning']))")
+echo "  allergy_warning: $ALLERGIES"
+# Should contain [dairy, peanuts, shellfish] — combined, no names attached
+
+echo "=== Test 5 PASSED ==="
+```
+
+#### 6.4.2 E2E test coverage
+
+| # | Test script | Stories covered | Critical path |
+| --- | --- | --- | --- |
+| 1 | Sign up, log in, save preferences | 1, 2, 3 | Authentication and profile setup |
+| 2 | Create session, join as guest, collect preferences | 4, 5, 7, 9 | Session creation and guest flow |
+| 3 | Full decision flow: preferences → plan → vote → result | 8, 10, 11, 12, 13, 15 | Core product loop |
+| 4 | Outing full: join rejected at 8 participants | 6, 7 | Capacity enforcement |
+| 5 | Allergy aggregation: combined warning, no names | 9, 11 | Privacy and safety |
+| 6 | Tie-break: tied vote → final vote → result | 12, 14 | Tie resolution |
+| 7 | Group flow: create group → start new outing → confirm attendance | 16, 18, 19 | Group lifecycle |
+
+### 6.5 Test plan by API endpoint
+
+Every endpoint in Section 4 is tested at least once. The table below maps each endpoint to its test cases.
+
+| Endpoint | Happy path | Failure paths |
+| --- | --- | --- |
+| `POST /auth/signup` | Account created (201) | Phone already registered (409) |
+| `POST /auth/verify` | Token returned (200) | Wrong code (401), expired code (401) |
+| `POST /auth/resend-code` | New code sent (200) | Phone not registered (404), rate limited (429) |
+| `POST /auth/push-token` | Token stored (200) | No auth (401) |
+| `POST /groups` | Group and first outing created (201) | No auth (401) |
+| `GET /groups` | List returned (200) | No auth (401) |
+| `GET /groups/{id}` | Details returned (200) | Not a member (403), not found (404) |
+| `POST /groups/{id}/outings` | Outing created (201) | Not organizer (403) |
+| `DELETE /groups/{id}/members/{uid}` | Member removed (200) | Not organizer (403) |
+| `POST /outings/session` | Session created (201) | No auth (401) |
+| `POST /outings/{code}/join` | Joined (200) | Outing full (409), voting started (409) |
+| `POST /outings/{code}/join-guest` | Joined with guest token (201) | Outing full (409), voting started (409) |
+| `GET /outings/{id}` | State returned (200) | Not a participant (403) |
+| `POST /outings/{id}/attendance` | Attendance recorded (200) | Not a participant (403) |
+| `POST /outings/{id}/start-preferences` | Status → preferences (200) | Not organizer (403), wrong stage (409) |
+| `POST /outings/{id}/start-voting` | Status → voting (200) | Not organizer (403) |
+| `DELETE /outings/{id}/participants/{pid}` | Removed (200) | Not organizer (403) |
+| `GET /users/me/preferences` | Preferences returned (200) | No auth (401) |
+| `PUT /users/me/preferences` | Saved (200) | No auth (401) |
+| `PUT /outings/{id}/preferences` | Updated (200) | Locked after voting (409) |
+| `POST /outings/{id}/preferences/ready` | Marked ready (200) | Already ready (409) |
+| `GET /outings/{id}/plan` | Plan returned (200) | No plan yet (404) |
+| `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
+| `GET /restaurants` | List returned (200) | — |
+| `POST /recommendations/personal` | Suggestions returned (200) | No auth (401) |
+| `POST /outings/{id}/votes` | Vote recorded (200) | Wrong stage (409), not a participant (403) |
+| `POST /outings/{id}/end-voting` | Result settled (200) | Not organizer (403) |
+| `POST /outings/{id}/tiebreak-vote` | Recorded (200) | Not in tiebreak (409), already voted (409) |
+| `GET /outings/{id}/result` | Result returned (200) | Not decided yet (409) |
+
+### 6.6 Bug tracking
+
+| Practice | Detail |
+| --- | --- |
+| Tool | GitHub Issues on the project repository |
+| Labels | `bug`, `priority:high`, `priority:medium`, `priority:low`, `area:backend`, `area:frontend`, `area:database` |
+| Bug report template | Title, steps to reproduce, expected behaviour, actual behaviour, environment (OS, device, API version), screenshots or curl output |
+| Severity | **Critical:** blocks a Must Have story or causes data loss. **High:** breaks a Should Have story or a common path. **Medium:** incorrect behaviour in an edge case. **Low:** cosmetic or minor UX issue |
+| Triage | Hassan reviews new bugs daily, assigns severity and owner, and links them to the relevant user story |
+| Verification | The reporter (or Hassan) verifies the fix on staging before the issue is closed |
+
+### 6.7 Deployment pipeline
+
+The deployment pipeline moves code from a developer's machine through staging to production, with quality gates at each step.
+
+```mermaid
+flowchart LR
+    DEV["Developer<br/>local machine"] -->|push to<br/>feature branch| PR["Pull request"]
+    PR -->|CI checks pass<br/>+ reviewer approves| DEV_BRANCH["develop"]
+    DEV_BRANCH -->|auto-deploy| STAGING["Staging<br/>environment"]
+    STAGING -->|E2E tests pass<br/>+ team review| REL["Release branch"]
+    REL -->|merge + tag| MAIN["main"]
+    MAIN -->|manual deploy| PROD["Production<br/>environment"]
+
+    classDef env fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    classDef gate fill:#FAEEDA,stroke:#854F0B,color:#412402
+    class STAGING,PROD env
+    class PR,REL gate
+```
+
+#### 6.7.1 Environments
+
+| Environment | Purpose | URL | Deploys from | Database |
+| --- | --- | --- | --- | --- |
+| Local | Development and unit tests | `localhost:8000` | Developer's branch | Local PostgreSQL or Docker |
+| Staging | Integration and E2E tests, team review, usability testing with real groups | Configured per deployment | `develop` (automatic) | Staging database (seeded with test data + restaurant dataset) |
+| Production | Live app for real users | Configured per deployment | `main` (manual, after release) | Production database |
+
+#### 6.7.2 Quality gates
+
+| Gate | When | What must pass | Who decides |
+| --- | --- | --- | --- |
+| PR review | Before merge to `develop` | Unit tests pass, integration tests pass, at least one cross-area reviewer approves | Reviewer |
+| Staging validation | Before creating a release branch | All E2E test scripts pass on staging, no critical or high bugs open | Hassan (QA) |
+| Release approval | Before merge to `main` | Staging validation passed, PM confirms scope, version number bumped | Shatha (PM) |
+| Production smoke test | After deploy to production | Tests 1–3 from the E2E suite run against production to confirm the deploy is healthy | Hassan |
+
+#### 6.7.3 CI pipeline (planned)
+
+When CI is configured (GitHub Actions), the following jobs run automatically:
+
+```yaml
+# .github/workflows/ci.yml (planned)
+name: CI
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: thouq_test
+          POSTGRES_USER: thouq
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest tests/unit/ -v
+      - run: pytest tests/integration/ -v
+      - run: |
+          # Start the server in test mode
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 3
+          # Run E2E smoke tests
+          bash tests/e2e/test_01_signup_login.sh
+          bash tests/e2e/test_02_session_guest.sh
+```
+
+#### 6.7.4 Rollback procedure
+
+| Situation | Action |
+| --- | --- |
+| Production deploy fails smoke tests | Revert to the previous release tag: `git checkout main && git reset --hard <previous-tag> && git push --force-with-lease` |
+| Critical bug found in production | Create a hotfix branch from `main`, fix, merge into `main` and `develop`, tag, and deploy |
+| Database migration fails | Migrations are reversible; run the down migration and redeploy the previous version |
+
+### 6.8 Testing schedule
+
+| Phase | Testing activity | Owner |
+| --- | --- | --- |
+| Sprint 1 (weeks 7–8) | Write unit tests for auth, outing, and preference services. Write integration tests for the session-creation and join flows. Run E2E tests 1 and 2 on staging | Hassan + each developer |
+| Sprint 2 (weeks 9–10) | Write unit tests for the recommendation engine and voting service. Write integration tests for the plan and voting flows. Run all E2E tests on staging | Hassan + each developer |
+| Closure (weeks 11–12) | Run the full E2E suite. Test with five real groups. Fix bugs. Verify fixes on staging. Final production smoke test | Hassan |
+
+### 6.9 Recommendation engine test cases
+
+The recommendation engine is the most complex component and has its own dedicated test suite. These are unit tests, but they are listed separately because they test a critical product requirement: zero constraint violations.
+
+| # | Test case | Input | Expected result |
+| --- | --- | --- | --- |
+| 1 | Budget filter | Group lowest `budget_max` = 80 SAR | No restaurant with `spend_low` > 80 in the result |
+| 2 | Distance filter | Group shortest `max_distance_km` = 3 km | No restaurant farther than 3 km from the meeting area |
+| 3 | Cuisine match scoring | Two participants like Italian, one likes Japanese | Italian restaurants score higher than Japanese |
+| 4 | No matching restaurants | Filters leave zero restaurants | The engine returns an empty list with a message, not an error |
+| 5 | Brand deduplication | Two branches of the same brand are in the area | Only one branch appears in the plan |
+| 6 | Meal fit | Outing at 20:00 (dinner) | No restaurants with `meal_fit_dinner = 0` in the result |
+| 7 | Mixed preferences | One participant wants Italian, one wants Japanese, one wants Saudi | The plan includes a mix, not just the majority's preference |
+| 8 | Single participant | Only the organizer (no group input) | The engine returns results based on the organizer's preferences alone |
+| 9 | All preferences empty | Participants joined but entered no preferences | The engine returns restaurants ranked by `quality_score` and `group_fit` |
+| 10 | Result count | Normal input | The engine returns exactly three restaurants (or fewer if fewer qualify) |
