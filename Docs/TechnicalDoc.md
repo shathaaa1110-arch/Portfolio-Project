@@ -137,34 +137,69 @@ Out of scope for the first version.
 
 ### Mockups
 
-The screens are designed in Figma: [Thouq design file](https://www.figma.com/design/w1p7AhzqMQEKJsgcAueoZl/Thouq?node-id=0-1). The first version is built in Arabic with the light theme; the English and dark variants in the file are for a later version.
+The screens are designed in Figma: [Thouq design file](https://www.figma.com/design/w1p7AhzqMQEKJsgcAueoZl/Thouq?node-id=0-1). The first version is built in Arabic with the light theme; the English and dark variants in the file are for a later version. The images below are the Arabic light screens, stored in `Docs/mockups/`.
 
-Exported images go in `Docs/mockups/`. Until they are exported, the table names each frame in the Figma file.
+#### Getting started
 
-| Screen | Frame in Figma | Stories | Status |
+| | | |
+|:---:|:---:|:---:|
+| <img src="mockups/01-splash.png" width="200" alt="Splash"><br>Splash | <img src="mockups/02-sign-up.png" width="200" alt="Sign up"><br>Sign up | <img src="mockups/03-verification-code.png" width="200" alt="Verification code"><br>Verification code |
+| <img src="mockups/04-location.png" width="200" alt="Location"><br>Location | <img src="mockups/05-taste-preferences.png" width="200" alt="Taste preferences"><br>Taste preferences | <img src="mockups/06-home.png" width="200" alt="Home"><br>Home |
+
+#### Deciding together
+
+| | | |
+|:---:|:---:|:---:|
+| <img src="mockups/07-create-session.png" width="200" alt="Create session"><br>Create session | <img src="mockups/08-join-with-code.png" width="200" alt="Join with code"><br>Join with code | <img src="mockups/09-waiting-room.png" width="200" alt="Waiting room"><br>Waiting room |
+| <img src="mockups/10-preference-collection.png" width="200" alt="Preference collection"><br>Preference collection | <img src="mockups/11-vote.png" width="200" alt="Vote"><br>Vote | <img src="mockups/12-live-consensus.png" width="200" alt="Live consensus"><br>Live consensus |
+| <img src="mockups/13-tie-breaker.png" width="200" alt="Tie-breaker"><br>Tie-breaker | <img src="mockups/14-winner.png" width="200" alt="Winner"><br>Winner | <img src="mockups/15-restaurant-details.png" width="200" alt="Restaurant details"><br>Restaurant details |
+
+#### Saved groups
+
+| | | |
+|:---:|:---:|:---:|
+| <img src="mockups/16-my-groups.png" width="200" alt="My groups"><br>My groups | <img src="mockups/17-group-details.png" width="200" alt="Group details"><br>Group details | <img src="mockups/18-attendance-request.png" width="200" alt="Attendance request"><br>Attendance request |
+
+#### On your own
+
+| | | |
+|:---:|:---:|:---:|
+| <img src="mockups/19-personal-recommendation.png" width="200" alt="Personal recommendation"><br>Personal recommendation | <img src="mockups/20-finding-matches.png" width="200" alt="Finding matches"><br>Finding matches | <img src="mockups/21-saved-and-profile.png" width="200" alt="Saved and profile"><br>Saved and profile |
+
+#### Tourist guide (Could Have)
+
+| | | |
+|:---:|:---:|:---:|
+| <img src="mockups/22-tourist-explore.png" width="200" alt="Explore Saudi food"><br>Explore Saudi food | <img src="mockups/23-tourist-dish-guide.png" width="200" alt="Dish guide"><br>Dish guide | <img src="mockups/24-tourist-restaurant.png" width="200" alt="Restaurant guidance"><br>Restaurant guidance |
+
+#### Screen status
+
+Every screen in the first version is designed. Some still need the changes agreed in the key decisions; the status column lists them. The images show the screens as they are in Figma today.
+
+| Screen | Image | Stories | Status |
 |---|---|---|---|
-| Splash | Splash — Arabic v2 | | Designed |
-| Sign up | | 1 | To design |
-| Verification code | | 1, 2 | To design |
-| Taste preferences | Onboarding — Taste preferences | 3 | Designed |
-| Home | Home — Arabic light | 22, 23 | Designed |
-| Create session | Group — Create session | 4 | Designed |
-| Join with code | Group — Join with code | 6, 7 | Designed |
-| Waiting room | Group lobby — Arabic | 5, 10 | Designed |
-| Preference collection | Group — Preference collection | 8, 9 | Designed; needs the organizer's "Start voting now" button, a seating-needs field, and the allergy sentence |
-| Vote | Group vote — Arabic light | 11, 12 | Designed; needs the allergy banner and a cuisine illustration in place of the photo |
-| Live consensus | Group — Live consensus | 12, 13 | Designed; needs the organizer's "End voting now" button |
-| Tie-breaker | Group — Tie breaker | 14 | Designed |
-| Winner | Group winner — Arabic light | 15, 26 | Designed; needs the allergy banner |
-| Restaurant details | Restaurant details — Arabic light | 21, 26 | Designed; the photo gallery is replaced by one illustration |
-| Personal recommendation | Personal recommendation — Mood and budget | 23, 31 | Designed |
-| Saved and profile | Saved and profile — Arabic | 29, 30 | Designed; the accuracy percentage is removed |
-| My groups | | 17 | To design |
-| Group details | | 16, 18, 20, 24 | To design |
-| Attendance request | | 19 | To design |
-| Tourist guide (three screens) | Tourist — Explore Saudi food, Saudi dish guide, Restaurant guidance | 32 | Designed; Could Have |
-
----
+| Splash | `01-splash.png` | | Designed |
+| Sign up | `02-sign-up.png` | 1 | Designed; the name field is labelled "session name" and should read "name" |
+| Verification code | `03-verification-code.png` | 1, 2 | Designed |
+| Location | `04-location.png` | 23 | Designed; moves from onboarding to the first use of the personal recommendation, as the key decisions state |
+| Taste preferences | `05-taste-preferences.png` | 3 | Designed |
+| Home | `06-home.png` | 22, 23 | Designed |
+| Create session | `07-create-session.png` | 4 | Designed |
+| Join with code | `08-join-with-code.png` | 6, 7 | Designed |
+| Waiting room | `09-waiting-room.png` | 5, 10 | Designed |
+| Preference collection | `10-preference-collection.png` | 8, 9 | Designed; needs the organizer's "Start voting now" button, a seating-needs field, and the allergy sentence |
+| Vote | `11-vote.png` | 11, 12 | Designed; needs the allergy banner and a cuisine illustration in place of the photo |
+| Live consensus | `12-live-consensus.png` | 12, 13 | Designed; needs the organizer's "End voting now" button |
+| Tie-breaker | `13-tie-breaker.png` | 14 | Designed |
+| Winner | `14-winner.png` | 15, 26 | Designed; needs the allergy banner |
+| Restaurant details | `15-restaurant-details.png` | 21, 26 | Designed; the photo gallery is replaced by one illustration |
+| My groups | `16-my-groups.png` | 16, 17 | Designed |
+| Group details | `17-group-details.png` | 18, 20, 24 | Designed |
+| Attendance request | `18-attendance-request.png` | 19 | Designed |
+| Personal recommendation | `19-personal-recommendation.png` | 23, 31 | Designed |
+| Finding matches | `20-finding-matches.png` | 23 | Designed; the travel-time line is removed, because the first version shows distance only |
+| Saved and profile | `21-saved-and-profile.png` | 29, 30 | Designed; the accuracy percentage is removed |
+| Tourist guide (three screens) | `22` to `24` | 32 | Designed; Could Have |
 
 ## 1. System architecture
 
