@@ -41,9 +41,9 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   label: {
-    textAlign: "right",
+    textAlign: "left",
     marginBottom: 8,
-    fontSize: 20
+    fontSize: 20,
   },
   button: {
     backgroundColor: "darkgreen",
