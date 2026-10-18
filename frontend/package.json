@@ -39,7 +39,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "test:architecture": "node --test scripts/check-architecture.test.mjs",
+    "check": "npm run typecheck && npm run check:architecture && npm run test:architecture"
   },
   "private": true
 }

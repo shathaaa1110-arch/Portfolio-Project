@@ -1,0 +1,8 @@
+{
+  "frontend": {
+    "sourceRoot": "frontend/src",
+    "features": {
+      "auth": []
+    }
+  }
+}

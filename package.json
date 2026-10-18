@@ -1,0 +1,8 @@
+{
+  "name": "thouq-repository",
+  "private": true,
+  "scripts": {
+    "check:architecture": "npm --prefix frontend run check:architecture",
+    "check": "npm --prefix frontend run check"
+  }
+}

@@ -781,6 +781,16 @@ How to read it: `+` is public, `-` is private, and `#` is internal (called by ot
 
 ### Front-end components
 
+#### Implemented source structure — 18 October 2026 / تنظيم المصدر الحالي
+
+The frontend source map and ownership rules are maintained in [Frontend-Architecture.ar.md](Frontend-Architecture.ar.md). `src/app` contains thin Expo routes, `src/application` composes the app, `src/features/<name>` owns feature behavior with a public `index.ts`, and `src/shared` contains reusable components, theme values and general tools. `architecture.json` declares implemented feature dependencies; `npm run check:architecture` enforces the import boundaries.
+
+This reorganization extracts the existing sign-up form into `features/auth/SignUpScreen.tsx`, its UI primitives into `shared/components`, and its styling values into `shared/theme.ts`. The legacy form is temporary and is not an approved delivery design; #21 will replace it with new account/login screens. Its existing alert is still a placeholder, not working SMS or authentication. No backend, API contract, SQL schema or transaction boundary changed. The following screen-flow/component tables describe the broader design, not implementation evidence; current screen references are in [the visual handoff](mockups/ux-01-visual-refresh/README.md).
+
+الخريطة المنفذة وملكية الملفات موثقتان في الدليل العربي. المخططات التالية تصف تصميمًا أوسع ولا تثبت اكتمال التطبيق. نطاق السبرنت العاجل المعتمد: حساب ودخول فعليان، تفضيلات محفوظة، رئيسية بمطاعم عامة وشريط «الرئيسية، المحفوظة، حسابي». الخوارزمية ومحتوى التبويبين الكامل ليسا شرطًا. يبقى الاكتشاف متاحًا دون حساب أو مجموعة؛ مخطط التسجيل أدناه يصف مسار إنشاء الحساب ولا يجعل الحساب شرطًا للتصفح.
+
+#### Design reference / مرجع التصميم
+
 The app is built with React Native and Expo. It is organised as screens, and the screens share a small set of reusable components. The same code produces the mobile app and the web version; the web version exposes only the guest path. This section follows the Figma design listed under Mockups.
 
 #### Screen flow
