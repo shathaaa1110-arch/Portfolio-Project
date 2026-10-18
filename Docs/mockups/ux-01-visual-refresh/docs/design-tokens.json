@@ -1,0 +1,51 @@
+{
+  "colors": {
+    "forest": "#194D3C",
+    "ink": "#193A30",
+    "cream": "#F8F6EF",
+    "muted": "#68745F",
+    "line": "#DCE1D5",
+    "wash": "#EDF0E6",
+    "error": "#A54837"
+  },
+  "font": {
+    "family": "IBM Plex Sans Arabic",
+    "regular": 400,
+    "bold": 700,
+    "license": "SIL Open Font License; public/fonts/OFL.txt",
+    "title": 31,
+    "restaurantTitle": 37,
+    "body": 14,
+    "label": 13,
+    "caption": 11,
+    "voteButton": 18,
+    "voteFacts": 12
+  },
+  "spacing": [
+    4,
+    8,
+    12,
+    16,
+    20,
+    24,
+    28,
+    32
+  ],
+  "radii": {
+    "field": 15,
+    "panel": 24,
+    "photoSurface": 28,
+    "pill": 999
+  },
+  "touchTargetMinimum": 44,
+  "primaryButtonHeight": 54,
+  "mobileContentSides": 24,
+  "guestBrowserSides": 20,
+  "guestBrowserMaxWidth": 480,
+  "guestDesktopBreakpoint": 768,
+  "referenceViewport": {
+    "width": 393,
+    "height": 852
+  },
+  "photoAttribution": "Illustrative generated food imagery; not verified restaurant photography. Replace with licensed verified photos or a no-photo treatment for real data."
+}

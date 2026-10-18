@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-18",
+  "base_revision": "a94d79da8d11a80073c95a6eb41eaa407a8c1ae6",
+  "node": "24.21.0",
+  "npm": "11.19.0",
+  "clean_install": "passed",
+  "production_build": "passed",
+  "guest_script_syntax": "passed",
+  "dependency_audit_known_vulnerabilities": 0,
+  "existing_tracked_files_compared": 91,
+  "existing_files_modified": 0,
+  "screen_count": 17,
+  "png_export_count": 52,
+  "local_markdown_targets": "all_resolve",
+  "scope": "Browser UI prototype and design documentation; no native/API integration validation"
+}
