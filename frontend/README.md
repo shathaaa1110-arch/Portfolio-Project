@@ -4,7 +4,7 @@
 
 ## Current implementation
 
-The existing sign-up form has been split into a feature screen, reusable UI components and theme values. Its verification button still shows the original placeholder alert; it does not send SMS. Login, preferences, Home and the API client remain tracked implementation tasks. Design previews under `Docs/mockups/` are separate from this app.
+The legacy sign-up form has been split into a feature screen, reusable UI components and theme values. This form is temporary and is not the approved delivery design: #21 will build new account/login screens, replacing it. Its verification button still shows the original placeholder alert; it does not send SMS. Login, preferences, Home and the API client remain tracked implementation tasks. Design previews under `Docs/mockups/` are separate from this app.
 
 ## Install and run
 

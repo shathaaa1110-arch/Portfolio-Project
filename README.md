@@ -14,7 +14,7 @@ Includes original-to-revised comparisons, Arabic UI, bilingual rules, guest brow
 
 [Arabic architecture and file ownership guide / شرح التقسيم وملفات شذى وفهد](Docs/Frontend-Architecture.ar.md) · [Run and check the app / التشغيل والفحص](frontend/README.md)
 
-Expo routes live in `frontend/src/app`, composition in `src/application`, feature screens and behavior in `src/features`, and reusable UI/theme/tools in `src/shared`. The refactor extracts the existing sign-up form; it does not implement real authentication, preferences or Home. The guide separates implemented files from the planned task map.
+Expo routes live in `frontend/src/app`, composition in `src/application`, feature screens and behavior in `src/features`, and reusable UI/theme/tools in `src/shared`. The refactor extracts a temporary legacy sign-up form. This form is not the approved design: #21 will replace it with new account/login screens. The refactor does not implement real authentication, preferences or Home. The guide separates implemented files from the planned task map.
 
 المسارات صغيرة، وكل ميزة تجمع شاشاتها ووظيفتها، والمكونات والهوية مشتركة. نُقلت شاشة التسجيل الأولية للتقسيم الجديد؛ ربط الحساب والتفضيلات والرئيسية يبقى في مهامه. الدليل يحدد مسؤول كل ملف ويشرح الموجود والمخطط بشكل منفصل.
 

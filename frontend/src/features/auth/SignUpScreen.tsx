@@ -3,6 +3,7 @@ import { Alert, StyleSheet, View } from "react-native";
 import { AppButton, AppInput, AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 
+// Temporary legacy form; replace its design and behavior with the new account screens in #21.
 export function SignUpScreen() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
