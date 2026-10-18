@@ -1,0 +1,189 @@
+[
+  {
+    "id": "02-sign-up",
+    "route": "signup",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "03-verification",
+    "route": "verify",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "05-account-preferences",
+    "route": "defaults",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "06-browse",
+    "route": "browse",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "07-create-session",
+    "route": "create",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "08-join",
+    "route": "join",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "09-waiting-room",
+    "route": "lobby",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "10-session-preferences",
+    "route": "preferences",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "20-generating",
+    "route": "generating",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "11-voting",
+    "route": "vote",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "11b-vote-review",
+    "route": "review",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "12-vote-progress",
+    "route": "progress",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "14-result",
+    "route": "result",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "15-details",
+    "route": "details",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "25-guest-browser",
+    "route": "guest",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "26-empty-retry",
+    "route": "empty",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  },
+  {
+    "id": "27-notifications",
+    "route": "notifications",
+    "rect": {
+      "height": 852,
+      "width": 393,
+      "x": 523.5,
+      "y": 114
+    },
+    "hasContent": true
+  }
+]

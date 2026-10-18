@@ -1,0 +1,107 @@
+[
+  {
+    "route": "browse",
+    "state": "loading",
+    "loaded": true
+  },
+  {
+    "route": "browse",
+    "state": "empty",
+    "loaded": true
+  },
+  {
+    "route": "browse",
+    "state": "error",
+    "loaded": true
+  },
+  {
+    "route": "join",
+    "state": "invalid",
+    "loaded": true
+  },
+  {
+    "route": "join",
+    "state": "full",
+    "loaded": true
+  },
+  {
+    "route": "join",
+    "state": "closed",
+    "loaded": true
+  },
+  {
+    "route": "join",
+    "state": "removed",
+    "loaded": true
+  },
+  {
+    "route": "join",
+    "state": "error",
+    "loaded": true
+  },
+  {
+    "route": "verify",
+    "state": "expired",
+    "loaded": true
+  },
+  {
+    "route": "verify",
+    "state": "limited",
+    "loaded": true
+  },
+  {
+    "route": "generating",
+    "state": "error",
+    "loaded": true
+  },
+  {
+    "route": "details",
+    "state": "missing",
+    "loaded": true
+  },
+  {
+    "route": "details",
+    "state": "error",
+    "loaded": true
+  },
+  {
+    "route": "details",
+    "state": "removed",
+    "loaded": true
+  },
+  {
+    "route": "empty",
+    "state": "no-likes",
+    "loaded": true
+  },
+  {
+    "route": "empty",
+    "state": "no-votes",
+    "loaded": true
+  },
+  {
+    "route": "result",
+    "state": "tie",
+    "loaded": true
+  },
+  {
+    "route": "notifications",
+    "state": "denied",
+    "loaded": true
+  },
+  {
+    "route": "notifications",
+    "state": "removed",
+    "loaded": true
+  },
+  {
+    "route": "preferences",
+    "state": "locked",
+    "loaded": true
+  },
+  {
+    "route": "lobby",
+    "state": "locked",
+    "loaded": true
+  }
+]

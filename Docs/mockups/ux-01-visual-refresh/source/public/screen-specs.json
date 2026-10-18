@@ -1,0 +1,1007 @@
+{
+  "source_revision": "a94d79da8d11a80073c95a6eb41eaa407a8c1ae6",
+  "review_date": "2026-10-18",
+  "issue": 9,
+  "decision_issue": 7,
+  "screens": [
+    {
+      "id": "02-sign-up",
+      "source": "02-sign-up.png",
+      "title": {
+        "en": "Organizer account",
+        "ar": "حساب المنظم"
+      },
+      "audit": {
+        "en": "Correct the name label. The current React Native form already says Name; retain that fix.",
+        "ar": "صحح اسم الحقل في الصورة. نموذج React Native الحالي يعرض «الاسم» بالفعل؛ حافظ على التصحيح."
+      },
+      "fields": [
+        {
+          "en": "Name: required, trimmed; never call it Session name.",
+          "ar": "الاسم: مطلوب، دون فراغات زائدة؛ وليس «اسم الجلسة»."
+        },
+        {
+          "en": "Phone: one input, 05XXXXXXXX; accept Arabic digits and normalize on the server.",
+          "ar": "رقم الجوال: حقل واحد بصيغة 05XXXXXXXX؛ اقبل الأرقام العربية ووحّدها في الخادم."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Send code → verification; Existing account → phone login; Back → public browsing.",
+          "ar": "إرسال رمز التحقق ← التحقق؛ لدي حساب ← دخول بالهاتف؛ رجوع ← التصفح العام."
+        }
+      ],
+      "states": [
+        {
+          "en": "Empty/invalid fields: show an inline message after submit. Sending: disable a second request.",
+          "ar": "الفراغ أو الصيغة الخاطئة: رسالة عند الحقل بعد الإرسال. أثناء الإرسال: امنع تكرار الطلب."
+        },
+        {
+          "en": "Delivery failure: keep entered values and offer Retry. Account creation succeeds only after verification.",
+          "ar": "فشل الإرسال: احفظ المدخلات وأظهر «إعادة المحاولة». لا يعتبر الحساب منشأ قبل نجاح التحقق."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Only the organizer needs an account; browsing and browser guests stay accessible.",
+          "ar": "الحساب مطلوب للمنظم فقط؛ يبقى التصفح وضيف المتصفح متاحين."
+        },
+        {
+          "en": "Login uses the same phone field without asking for the name again.",
+          "ar": "الدخول يستخدم حقل الهاتف نفسه دون طلب الاسم مرة أخرى."
+        }
+      ],
+      "route": "signup",
+      "preview_states": [
+        "default",
+        "error"
+      ],
+      "export": "exports/02-sign-up.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "03-verification",
+      "source": "03-verification-code.png",
+      "title": {
+        "en": "Verify phone",
+        "ar": "تأكيد رقم الجوال"
+      },
+      "audit": {
+        "en": "Keep the code screen; add edit-phone, failure and retry states.",
+        "ar": "أبق شاشة الرمز وأضف تعديل الرقم وحالات الخطأ وإعادة الإرسال."
+      },
+      "fields": [
+        {
+          "en": "Code: one accessible numeric input; length comes from the SMS provider/API contract.",
+          "ar": "الرمز: حقل رقمي واحد قابل للوصول؛ طوله يأتي من مزود SMS وعقد API."
+        },
+        {
+          "en": "Show a masked destination phone number in LTR order.",
+          "ar": "اعرض رقم الجوال المرسل إليه بشكل مخفي جزئيًا وباتجاه يسار إلى يمين."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Verify and continue; Change phone; Resend when the server cooldown ends.",
+          "ar": "تحقق ومتابعة؛ تعديل الرقم؛ إعادة الإرسال بعد انتهاء مهلة الخادم."
+        }
+      ],
+      "states": [
+        {
+          "en": "Wrong/expired code: explain next step. Rate limit: show server retry time.",
+          "ar": "رمز خاطئ أو منتهٍ: وضح الخطوة التالية. حد المحاولات: اعرض وقت إعادة المحاولة من الخادم."
+        },
+        {
+          "en": "Auto-fill/paste complete code; never show a successful login before server verification.",
+          "ar": "اسمح بالملء واللصق الكاملين؛ لا تعرض نجاح الدخول قبل تحقق الخادم."
+        }
+      ],
+      "notes": [
+        {
+          "en": "The four boxes and 45-second countdown in the old image are not a fixed requirement.",
+          "ar": "المربعات الأربعة وعدّاد ٤٥ ثانية في الصورة القديمة ليسا متطلبًا ثابتًا."
+        },
+        {
+          "en": "Return to the intended Create session action after successful login.",
+          "ar": "أعد المستخدم إلى إنشاء الجلسة التي بدأها بعد نجاح الدخول."
+        }
+      ],
+      "route": "verify",
+      "preview_states": [
+        "default",
+        "expired",
+        "limited",
+        "error"
+      ],
+      "export": "exports/03-verification.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "05-account-preferences",
+      "source": "05-taste-preferences.png",
+      "title": {
+        "en": "Saved account preferences",
+        "ar": "تفضيلات الحساب"
+      },
+      "audit": {
+        "en": "Reuse cuisine chips; replace mandatory three choices with clear optional preferences.",
+        "ar": "أعد استخدام خيارات المطابخ، واستبدل اشتراط ثلاثة اختيارات بتفضيلات اختيارية واضحة."
+      },
+      "fields": [
+        {
+          "en": "Cuisine likes: optional multi-select, with No preference.",
+          "ar": "المطابخ المفضلة: اختيار متعدد اختياري، مع «لا أفضل مطبخًا معينًا»."
+        },
+        {
+          "en": "Default budget, distance, allergies/restrictions and seating needs use the same fields as session preferences.",
+          "ar": "الميزانية والمسافة والحساسية أو القيود واحتياجات الجلسة الافتراضية تستخدم حقول تفضيلات الجلسة نفسها."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Save defaults; Skip for now; Edit from My account.",
+          "ar": "حفظ التفضيلات؛ التخطي الآن؛ التعديل من حسابي."
+        }
+      ],
+      "states": [
+        {
+          "en": "Saving/saved/failed: keep edits and show retry. New session copies defaults; an existing session does not silently change.",
+          "ar": "جارٍ الحفظ أو تم أو فشل: احفظ التعديل وأتح إعادة المحاولة. الجلسة الجديدة تنسخ التفضيلات ولا تتغير جلسة موجودة تلقائيًا."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Copy: These are defaults for new sessions. Editing a session does not change your account.",
+          "ar": "النص: «هذه تفضيلات للجلسات الجديدة. تعديل جلسة لا يغيّر تفضيلات حسابك»."
+        },
+        {
+          "en": "Do not require saving a profile before browsing.",
+          "ar": "لا تشترط حفظ الملف قبل التصفح."
+        }
+      ],
+      "route": "defaults",
+      "preview_states": [
+        "default",
+        "error"
+      ],
+      "export": "exports/05-account-preferences.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "06-browse",
+      "source": "06-home.png",
+      "title": {
+        "en": "Public restaurant browsing",
+        "ar": "تصفح المطاعم"
+      },
+      "audit": {
+        "en": "Reuse the green session card and restaurant list. Remove personal recommendations, saved tabs, dish search, and unverified ratings/photos.",
+        "ar": "أعد استخدام بطاقة الجلسة الخضراء وقائمة المطاعم. احذف الترشيح الشخصي وتبويب المحفوظات والبحث بالأطباق والصور والتقييمات غير الموثقة."
+      },
+      "fields": [
+        {
+          "en": "Search restaurant name; cuisine and price filters. No account required.",
+          "ar": "البحث باسم المطعم؛ تصفية المطبخ والسعر. لا يتطلب حسابًا."
+        },
+        {
+          "en": "Restaurant: name, cuisine, available price, verified fields only.",
+          "ar": "المطعم: الاسم والمطبخ والسعر المتوفر والحقول الموثقة فقط."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Create session → sign in if needed; Join by code; Open restaurant details; Account.",
+          "ar": "إنشاء جلسة ← دخول عند الحاجة؛ الانضمام برمز؛ تفاصيل المطعم؛ حسابي."
+        }
+      ],
+      "states": [
+        {
+          "en": "Loading list; no search results with Clear filters; failed load with Retry.",
+          "ar": "تحميل القائمة؛ لا نتائج مع «مسح الفلاتر»؛ فشل التحميل مع «إعادة المحاولة»."
+        },
+        {
+          "en": "No meeting area yet: omit distance. Missing rating/hours: say Not available, never invent values.",
+          "ar": "دون منطقة لقاء: لا تعرض مسافة. عند غياب التقييم أو الساعات: «غير متوفر» دون اختلاق قيم."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Public browsing is not a personalized recommendation and does not claim allergy suitability.",
+          "ar": "التصفح العام ليس ترشيحًا شخصيًا ولا يدعي ملاءمة الحساسية."
+        },
+        {
+          "en": "Arabic-only product copy in this release; English notes explain implementation.",
+          "ar": "واجهة المنتج عربية في هذه النسخة؛ الملاحظات الإنجليزية لشرح التنفيذ."
+        }
+      ],
+      "route": "browse",
+      "preview_states": [
+        "default",
+        "loading",
+        "empty",
+        "error"
+      ],
+      "export": "exports/06-browse.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "07-create-session",
+      "source": "07-create-session.png",
+      "title": {
+        "en": "Create a direct session",
+        "ar": "إنشاء جلسة مباشرة"
+      },
+      "audit": {
+        "en": "Keep the session form; split time and meeting area into explicit fields.",
+        "ar": "أبق نموذج الجلسة وافصل الوقت ومنطقة اللقاء إلى حقول واضحة."
+      },
+      "fields": [
+        {
+          "en": "Session name, date, time (Riyadh), and meeting area are required.",
+          "ar": "اسم الجلسة والتاريخ والوقت (الرياض) ومنطقة اللقاء حقول مطلوبة."
+        },
+        {
+          "en": "Meeting area is selected manually; no personal GPS permission required.",
+          "ar": "منطقة اللقاء تختار يدويًا؛ لا تشترط إذن الموقع الشخصي."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Create session → waiting room and shareable code/link.",
+          "ar": "إنشاء الجلسة ← غرفة الانتظار ورمز ورابط المشاركة."
+        }
+      ],
+      "states": [
+        {
+          "en": "Field errors stay beside fields; duplicate tap cannot create a second session.",
+          "ar": "أخطاء الحقول تظهر بجانبها؛ الضغط المتكرر لا ينشئ جلسة ثانية."
+        },
+        {
+          "en": "Request failed: preserve values; authentication expired: sign in and resume safely.",
+          "ar": "فشل الطلب: احفظ القيم؛ انتهاء الدخول: أعد الدخول ثم استأنف بأمان."
+        }
+      ],
+      "notes": [
+        {
+          "en": "One session, up to eight participants including organizer. Saved groups are deferred.",
+          "ar": "جلسة واحدة حتى ثمانية مشاركين بمن فيهم المنظم؛ المجموعات المحفوظة مؤجلة."
+        },
+        {
+          "en": "Use the same session terms throughout; replace Group with Session.",
+          "ar": "وحّد مصطلح «الجلسة» واستبدل به «القروب»."
+        }
+      ],
+      "route": "create",
+      "preview_states": [
+        "default",
+        "error"
+      ],
+      "export": "exports/07-create-session.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "08-join",
+      "source": "08-join-with-code.png",
+      "title": {
+        "en": "Join a session",
+        "ar": "الانضمام إلى جلسة"
+      },
+      "audit": {
+        "en": "Replace Group with Session. Add a guest display-name field and explicit join errors.",
+        "ar": "استبدل «القروب» بـ«الجلسة»، وأضف اسم الضيف وأخطاء الانضمام الواضحة."
+      },
+      "fields": [
+        {
+          "en": "Invite code: one LTR uppercase input, prefilled by invite link.",
+          "ar": "رمز الدعوة: حقل واحد باتجاه يسار إلى يمين وحروف كبيرة؛ يملؤه الرابط تلقائيًا."
+        },
+        {
+          "en": "Guest display name: required; no phone, OTP, or account. Show organizer/session preview only after valid invite lookup.",
+          "ar": "اسم الضيف: مطلوب؛ لا هاتف ولا رمز تحقق ولا حساب. لا تعرض معاينة الجلسة والمنظم إلا بعد تحقق رابط الدعوة."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Join → waiting room; Change code; Retry lookup.",
+          "ar": "انضمام ← الانتظار؛ تغيير الرمز؛ إعادة البحث."
+        }
+      ],
+      "states": [
+        {
+          "en": "Invalid invite; full (8/8); joining closed; removed access; connection lost. Each has a distinct message.",
+          "ar": "دعوة غير صحيحة؛ الجلسة ممتلئة (٨/٨)؛ الانضمام مغلق؛ الوصول ملغى؛ الاتصال منقطع. لكل منها رسالة مختلفة."
+        },
+        {
+          "en": "Joining closes when suggestion generation begins. Repeated join/reload resumes the same participant.",
+          "ar": "يغلق الانضمام عند بدء توليد الاقتراحات. تكرار الانضمام أو التحديث يعيد المشارك نفسه."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Four-character code is the current design; confirm server format in P-02. Do not reverse code characters in RTL.",
+          "ar": "الرمز من أربع خانات في التصميم الحالي ويؤكد عقد P-02 صيغته. لا تعكس ترتيب حروفه في العربية."
+        },
+        {
+          "en": "Guest browser uses this same form; no install banner blocks joining.",
+          "ar": "متصفح الضيف يستخدم النموذج نفسه؛ لا تعيق الانضمام دعوة تثبيت التطبيق."
+        }
+      ],
+      "route": "join",
+      "preview_states": [
+        "default",
+        "invalid",
+        "full",
+        "closed",
+        "removed",
+        "error"
+      ],
+      "export": "exports/08-join.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "09-waiting-room",
+      "source": "09-waiting-room.png",
+      "title": {
+        "en": "Participants and readiness",
+        "ar": "المشاركون والجاهزية"
+      },
+      "audit": {
+        "en": "Keep participant rows and share code. Add organizer removal, participant leave, readiness count, and a gated Generate action.",
+        "ar": "أبق صفوف المشاركين ورمز المشاركة. أضف إزالة المنظم ومغادرة المشارك وعدد الجاهزين وزر توليد مشروطًا."
+      },
+      "fields": [
+        {
+          "en": "Session code, name, time, area, total participants and ready count.",
+          "ar": "رمز الجلسة واسمها ووقتها ومنطقتها وعدد المشاركين والجاهزين."
+        },
+        {
+          "en": "Rows show only display name, organizer badge, and readiness. No personal constraints.",
+          "ar": "الصفوف تعرض الاسم وشارة المنظم والجاهزية فقط؛ دون القيود الشخصية."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Everyone: My preferences. Organizer: Share invite, remove another participant, Generate suggestions when everyone is ready.",
+          "ar": "للجميع: تفضيلاتي. للمنظم: مشاركة الدعوة وإزالة مشارك آخر وتوليد الاقتراحات عندما يجهز الجميع."
+        },
+        {
+          "en": "Participant: Leave before generation, after confirmation. No organizer self-removal/ownership transfer in this scope.",
+          "ar": "للمشارك: المغادرة قبل التوليد بعد التأكيد. لا إزالة للمنظم نفسه ولا نقل ملكية ضمن هذا النطاق."
+        }
+      ],
+      "states": [
+        {
+          "en": "3 of 4 ready: generation disabled with reason. 4 of 4 ready: organizer can generate.",
+          "ar": "جاهزون ٣ من ٤: التوليد معطل مع السبب. جاهزون ٤ من ٤: يمكن للمنظم التوليد."
+        },
+        {
+          "en": "Generation started: joining/leaving/removal lock. New arrival or preference edit updates readiness before generation.",
+          "ar": "بدء التوليد: يقفل الانضمام والمغادرة والإزالة. وصول شخص أو تعديل تفضيل يحدث الجاهزية قبل التوليد."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Do not generate automatically on the last Ready. Organizer starts after everyone is ready.",
+          "ar": "لا تولد تلقائيًا عند جاهزية آخر شخص؛ يبدأ المنظم بعد جاهزية الجميع."
+        },
+        {
+          "en": "Ready is not attendance and not simply opening the screen.",
+          "ar": "الجاهزية ليست حضورًا ولا مجرد فتح الشاشة."
+        }
+      ],
+      "route": "lobby",
+      "preview_states": [
+        "default",
+        "ready",
+        "locked"
+      ],
+      "export": "exports/09-waiting-room.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "10-session-preferences",
+      "source": "10-preference-collection.png",
+      "title": {
+        "en": "Private session preferences",
+        "ar": "تفضيلات الجلسة الخاصة"
+      },
+      "audit": {
+        "en": "Keep cuisine, budget and distance. Add seating needs, explicit private constraints, and save/ready/error states.",
+        "ar": "أبق المطبخ والميزانية والمسافة وأضف احتياجات الجلسة وخصوصية القيود وحالات الحفظ والجاهزية والخطأ."
+      },
+      "fields": [
+        {
+          "en": "Cuisine likes optional. Budget min/max in SAR per person, distance limit in km from the meeting area.",
+          "ar": "المطابخ اختيارية. حد أدنى وأقصى للميزانية بالريال للشخص وحد المسافة بالكيلومتر من منطقة اللقاء."
+        },
+        {
+          "en": "Allergies/restrictions: None or explicit selections; seating needs: No requirement or selections. No answer is not None.",
+          "ar": "الحساسية أو القيود: «لا يوجد» أو اختيارات صريحة؛ احتياجات الجلسة: «لا اشتراط» أو اختيارات. غياب الإجابة لا يعني «لا يوجد»."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Save and mark ready only after valid values are saved. Edit answers clears readiness until saved and marked ready again.",
+          "ar": "احفظ وأعلن الجاهزية بعد حفظ قيم صحيحة فقط. التعديل يلغي الجاهزية حتى الحفظ وإعلانها مجددًا."
+        }
+      ],
+      "states": [
+        {
+          "en": "Validation: minimum ≤ maximum, positive distance, required answers complete. Save failure keeps the form and never marks Ready.",
+          "ar": "التحقق: الأدنى لا يتجاوز الأعلى، والمسافة موجبة، والإجابات المطلوبة مكتملة. فشل الحفظ يبقي النموذج ولا يعلن الجاهزية."
+        },
+        {
+          "en": "After generation: read only. Retry carries values forward but resets every participant to not ready.",
+          "ar": "بعد التوليد: للقراءة فقط. الإعادة تبقي القيم وتلغي جاهزية جميع المشاركين."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Copy: Your constraints are used to filter suggestions. They are not shown to the other participants.",
+          "ar": "النص: «نستخدم شروطك لاستبعاد الاقتراحات غير المناسبة، ولا نعرض تفاصيلها لبقية المشاركين»."
+        },
+        {
+          "en": "Never expose a named allergy, anonymous allergen list, or who caused a no-match result. Unknown hard-limit facts exclude the restaurant.",
+          "ar": "لا تعرض حساسية منسوبة لشخص أو قائمة مسببات مجهولة الأسماء أو من تسبب بعدم التطابق. نقص حقيقة شرط أساسي يستبعد المطعم."
+        }
+      ],
+      "route": "preferences",
+      "preview_states": [
+        "default",
+        "locked",
+        "error"
+      ],
+      "export": "exports/10-session-preferences.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "20-generating",
+      "source": "20-finding-matches.png",
+      "title": {
+        "en": "Generate suggestions",
+        "ar": "توليد الاقتراحات"
+      },
+      "audit": {
+        "en": "Reuse the calm loading treatment. Remove personal mood, fake restaurant counts, travel time and fabricated progress.",
+        "ar": "أعد استخدام أسلوب التحميل الهادئ. احذف المزاج الشخصي وعدد المطاعم الوهمي ووقت الوصول والتقدم المختلق."
+      },
+      "fields": [
+        {
+          "en": "Show the current session and a neutral Generating message.",
+          "ar": "اعرض الجلسة الحالية ورسالة محايدة: «نجمع الاقتراحات المناسبة»."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Wait for server result; retry a failed request safely without starting a duplicate round.",
+          "ar": "انتظر نتيجة الخادم وأعد الطلب الفاشل بأمان دون إنشاء جولة مكررة."
+        }
+      ],
+      "states": [
+        {
+          "en": "Success → vote. Empty result → no-match screen. Failure → connection error with Retry.",
+          "ar": "نجاح ← التصويت. قائمة فارغة ← لا اقتراحات. فشل ← خطأ اتصال مع إعادة المحاولة."
+        },
+        {
+          "en": "The server is the source of truth. After reconnect, load the current session/round.",
+          "ar": "الخادم هو المرجع؛ بعد عودة الاتصال حمّل الجلسة والجولة الحالية."
+        }
+      ],
+      "notes": [
+        {
+          "en": "No personal details in loading messages; all round members remain locked.",
+          "ar": "لا تفاصيل شخصية في رسائل التحميل؛ تبقى عضوية الجولة ثابتة."
+        },
+        {
+          "en": "Do not require exactly three suggestions when fewer qualify. Never pad with unverified matches.",
+          "ar": "لا تشترط ثلاثة اقتراحات إذا تأهل أقل؛ لا تكمل العدد باقتراحات غير موثقة."
+        }
+      ],
+      "route": "generating",
+      "preview_states": [
+        "loading",
+        "error",
+        "empty"
+      ],
+      "export": "exports/20-generating.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "11-voting",
+      "source": "11-vote.png",
+      "title": {
+        "en": "Vote on suggestions",
+        "ar": "التصويت على الاقتراحات"
+      },
+      "audit": {
+        "en": "Selected option 2: edge-to-edge photo, cream information below, labelled Like / Pass, Undo and review before completion.",
+        "ar": "التصميم الثاني المختار: صورة ممتدة، معلومات تحتها على خلفية كريمية، يعجبني / أتخطّى، تراجع، ومراجعة قبل اكتمال التصويت."
+      },
+      "fields": [
+        {
+          "en": "Restaurant name, cuisine, available price, straight-line km from meeting area, recommendation reason.",
+          "ar": "اسم المطعم والمطبخ والسعر المتوفر والمسافة المباشرة من اللقاء وسبب الترشيح."
+        },
+        {
+          "en": "Show card x of actual n and your saved answer. Recommendation score, if shown, must be labelled separately from group support.",
+          "ar": "اعرض رقم البطاقة من العدد الفعلي وإجابتك المحفوظة. درجة الترشيح إن ظهرت تسمى بوضوح ولا تخلط بتأييد المجموعة."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Like / Pass saves the current answer, then advances only after success. Details returns to the same card. Undo restores the last saved answer. After every card is answered, open Review.",
+          "ar": "يعجبني / أتخطّى يحفظ الإجابة ثم ينتقل بعد النجاح فقط. التفاصيل تعود للبطاقة نفسها. التراجع يعيد آخر اختيار. بعد إجابة كل البطاقات افتح المراجعة."
+        }
+      ],
+      "states": [
+        {
+          "en": "Save failure: keep the card and offer retry; do not advance/count an unsaved vote. Session closed: show result.",
+          "ar": "فشل الحفظ: أبق البطاقة وأتح الإعادة؛ لا تنتقل أو تحتسب صوتًا غير محفوظ. انتهت الجولة: اعرض النتيجة."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Buttons are sufficient; swiping is optional and must not be the only way to vote.",
+          "ar": "الأزرار تكفي؛ السحب اختياري ولا يكون الطريقة الوحيدة للتصويت."
+        },
+        {
+          "en": "Never display private allergy details. Missing optional rating/hours are shown as unavailable. No guaranteed-safe claim.",
+          "ar": "لا تعرض تفاصيل الحساسية الخاصة. التقييم أو الساعات الاختيارية الناقصة «غير متوفرة». لا ادعاء بضمان السلامة."
+        },
+        {
+          "en": "Do not use a match percentage, a second ranking algorithm, or another person’s private constraints on the card.",
+          "ar": "لا تضع نسبة توافق أو خوارزمية ترتيب أخرى أو قيود شخص آخر الخاصة على البطاقة."
+        }
+      ],
+      "route": "vote",
+      "preview_states": [
+        "default",
+        "save-error",
+        "closed"
+      ],
+      "export": "exports/11-voting.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "11b-vote-review",
+      "source": "11-vote.png",
+      "title": {
+        "en": "Review and confirm votes",
+        "ar": "مراجعة واعتماد الاختيارات"
+      },
+      "audit": {
+        "en": "New screen requested with the visual refresh.",
+        "ar": "شاشة جديدة ضمن تحسين تجربة التصويت."
+      },
+      "fields": [
+        {
+          "en": "Every suggestion with a thumbnail, name and your saved Like / Pass / Unanswered state. Count your likes.",
+          "ar": "كل اقتراح مع صورة مصغرة واسمه واختيارك المحفوظ: يعجبني / أتخطّى / لم تصوّت. عدد إعجاباتك."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Edit a row → same voting card → save → return to Review. Confirm → confirmation sheet → mark voting complete. Cancel returns to review.",
+          "ar": "تعديل صف ← بطاقته ← حفظ ← المراجعة. اعتماد ← نافذة تأكيد ← احتساب التصويت مكتملًا. الإلغاء يعود للمراجعة."
+        }
+      ],
+      "states": [
+        {
+          "en": "Confirm disabled while any suggestion is unanswered or a request is pending. Failed confirmation keeps choices and offers retry. Settled round is read-only and opens the current result.",
+          "ar": "الاعتماد معطل عند وجود اقتراح بلا إجابة أو طلب جارٍ. فشل الاعتماد يحفظ الاختيارات ويتيح الإعادة. الجولة المحسومة للقراءة وتفتح النتيجة الحالية."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Individual votes are already saved before confirmation; they may count if the organizer ends early. Confirmation marks completion, not first submission. Never show others’ choices.",
+          "ar": "الأصوات الفردية محفوظة قبل الاعتماد وقد تدخل في الحسم المبكر. الاعتماد يؤكد الاكتمال وليس أول إرسال للأصوات. لا تعرض اختيارات الآخرين."
+        }
+      ],
+      "route": "review",
+      "preview_states": [
+        "default",
+        "error"
+      ],
+      "export": "exports/11b-vote-review.png",
+      "visual_update": {
+        "en": "Use the same photography, rounded rows and clear edit action.",
+        "ar": "نفس الصور والصفوف الدائرية مع إجراء تعديل واضح."
+      }
+    },
+    {
+      "id": "12-vote-progress",
+      "source": "12-live-consensus.png",
+      "title": {
+        "en": "Voting progress",
+        "ar": "تقدم التصويت"
+      },
+      "audit": {
+        "en": "Replace the unexplained live percentage with completed count. Add organizer early-end confirmation.",
+        "ar": "استبدل النسبة المباشرة غير المفسرة بعدد من أكملوا، وأضف تأكيد الإنهاء المبكر للمنظم."
+      },
+      "fields": [
+        {
+          "en": "Completed: 3 of 5. Each row shows completion only; no individual likes or provisional winner.",
+          "ar": "أكمل ٣ من ٥. يعرض الصف الاكتمال فقط؛ دون إعجابات فردية أو فائز مؤقت."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Participant: Review my votes while voting is open. Organizer: End voting → confirmation.",
+          "ar": "للمشارك: مراجعة أصواتي أثناء فتح التصويت. للمنظم: إنهاء التصويت ← تأكيد."
+        }
+      ],
+      "states": [
+        {
+          "en": "Confirmation: 3 of 5 finished. End now using the recorded votes? Continue voting / End and show result.",
+          "ar": "التأكيد: «أكمل ٣ من ٥ التصويت. ننهي الآن بالأصوات المسجلة؟» متابعة التصويت / إنهاء وعرض النتيجة."
+        },
+        {
+          "en": "Everyone completed → automatic settlement. Duplicate end requests return the same result.",
+          "ar": "إكمال الجميع ← حسم تلقائي. طلبات الإنهاء المكررة تعيد النتيجة نفسها."
+        }
+      ],
+      "notes": [
+        {
+          "en": "No timer or tie vote. Tied positive likes use stored recommendation order automatically.",
+          "ar": "لا مؤقت ولا تصويت تعادل؛ الإعجابات الإيجابية المتعادلة تحسم بترتيب الترشيح المحفوظ."
+        },
+        {
+          "en": "The full locked membership remains the support denominator, including incomplete voters.",
+          "ar": "مقام التأييد يبقى كامل أعضاء الجولة الثابتين، بمن فيهم من لم يكمل."
+        }
+      ],
+      "route": "progress",
+      "preview_states": [
+        "default"
+      ],
+      "export": "exports/12-vote-progress.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "14-result",
+      "source": "14-winner.png",
+      "title": {
+        "en": "Result and retry",
+        "ar": "النتيجة وإعادة المحاولة"
+      },
+      "audit": {
+        "en": "Keep the winner card. Show explainable support and completion counts instead of an unexplained percentage.",
+        "ar": "أبق بطاقة الفائز واعرض تأييدًا محسوبًا وعدد من أكملوا بدل نسبة بلا تفسير."
+      },
+      "fields": [
+        {
+          "en": "Support example: 3 likes / 5 round members = 60%. Completed voters: 4 of 5, shown separately.",
+          "ar": "مثال التأييد: ٣ إعجابات ÷ ٥ أعضاء للجولة = ٦٠٪. أكمل التصويت ٤ من ٥، ويعرض منفصلًا."
+        },
+        {
+          "en": "Winner name and available facts; optional tie note: Chosen by recommendation order after equal likes.",
+          "ar": "اسم الفائز وحقائقه المتوفرة؛ ملاحظة تعادل عند الحاجة: «حُسم بترتيب الترشيح بعد تساوي الإعجابات»."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Details; Open maps only with valid coordinates; Organizer: Try again in the same session.",
+          "ar": "التفاصيل؛ فتح الخرائط عند توفر إحداثيات صحيحة؛ للمنظم: إعادة المحاولة في الجلسة نفسها."
+        }
+      ],
+      "states": [
+        {
+          "en": "Zero likes → no winner. No recorded votes → no-votes wording. Do not select the top recommendation as a winner.",
+          "ar": "صفر إعجابات ← لا فائز. دون أصوات مسجلة ← نص عدم التصويت. لا تختَر أعلى ترشيح كفائز."
+        },
+        {
+          "en": "Retry confirmation resets votes/readiness in a new round, keeps participants/link/preferences, then returns to answers.",
+          "ar": "تأكيد الإعادة يصفر الأصوات والجاهزية في جولة جديدة ويحفظ المشاركين والرابط والتفضيلات ثم يعود للإجابات."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Never say Everyone agreed at 60%; non-votes are not dislikes.",
+          "ar": "لا تقل «اتفق الجميع» عند ٦٠٪؛ عدم التصويت ليس عدم إعجاب."
+        },
+        {
+          "en": "Guests see the result and wait for the organizer to retry; they cannot restart it.",
+          "ar": "الضيف يرى النتيجة وينتظر إعادة المنظم؛ لا يبدأ الإعادة بنفسه."
+        }
+      ],
+      "route": "result",
+      "preview_states": [
+        "default",
+        "tie"
+      ],
+      "export": "exports/14-result.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "15-details",
+      "source": "15-restaurant-details.png",
+      "title": {
+        "en": "Restaurant details",
+        "ar": "تفاصيل المطعم"
+      },
+      "audit": {
+        "en": "Keep the information hierarchy. Remove unsupported gallery, saved button and travel-time claim.",
+        "ar": "أبق ترتيب المعلومات واحذف المعرض والحفظ وادعاء وقت الوصول غير المدعوم."
+      },
+      "fields": [
+        {
+          "en": "Name, cuisine, available price, verified rating/hours, address, optional coordinates.",
+          "ar": "الاسم والمطبخ والسعر المتوفر والتقييم والساعات الموثقة والعنوان والإحداثيات إن توفرت."
+        },
+        {
+          "en": "Session context adds the recommendation reason and straight-line distance. Public details do not imply personalized suitability.",
+          "ar": "سياق الجلسة يضيف سبب الترشيح والمسافة المباشرة. التفاصيل العامة لا تعني ملاءمة شخصية."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Back to the originating list/card; Open in maps when location exists.",
+          "ar": "رجوع للقائمة أو البطاقة السابقة؛ فتح الخرائط عند توفر الموقع."
+        }
+      ],
+      "states": [
+        {
+          "en": "Missing price/rating/hours/location: explicit Not available. No coordinates: maps action unavailable with explanation.",
+          "ar": "السعر أو التقييم أو الساعات أو الموقع المفقود: «غير متوفر». دون إحداثيات: الخرائط غير متاحة مع توضيح."
+        },
+        {
+          "en": "Load error: retry; removed restaurant: return to the list.",
+          "ar": "خطأ تحميل: إعادة المحاولة؛ مطعم غير متاح: العودة للقائمة."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Do not substitute stock food photography as evidence of this restaurant. Data-free card treatment is acceptable.",
+          "ar": "لا تستخدم صورة طعام عامة كأنها دليل على المطعم. يكفي عرض معلوماتي دون صورة."
+        },
+        {
+          "en": "Only verified required facts pass recommendation filtering; public browsing may show incomplete records with missing fields explicit.",
+          "ar": "الترشيح يمرر الحقائق الأساسية الموثقة فقط؛ التصفح العام قد يعرض سجلات ناقصة مع توضيح النقص."
+        }
+      ],
+      "route": "details",
+      "preview_states": [
+        "default",
+        "missing",
+        "error",
+        "removed"
+      ],
+      "export": "exports/15-details.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "25-guest-browser",
+      "source": "08-join-with-code.png",
+      "title": {
+        "en": "Guest browser layout",
+        "ar": "تخطيط متصفح الضيف"
+      },
+      "audit": {
+        "en": "Add the missing guest-name form and desktop layout, using the same session vocabulary and components.",
+        "ar": "أضف نموذج اسم الضيف وتخطيط الكمبيوتر الناقصين، باستخدام مصطلحات الجلسة والمكونات نفسها."
+      },
+      "fields": [
+        {
+          "en": "Session preview and code from the invite; your display name only.",
+          "ar": "معاينة الجلسة ورمزها من الدعوة؛ اسمك الظاهر فقط."
+        },
+        {
+          "en": "Desktop ≥ 768px: centered form, max 480px; phone: full width with 20px sides.",
+          "ar": "كمبيوتر بعرض ٧٦٨ فأكثر: نموذج في الوسط بحد أقصى ٤٨٠؛ الهاتف: بعرض الشاشة وهوامش ٢٠."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Join and continue in browser; later: own preferences, Ready, vote and result. No app installation required.",
+          "ar": "انضم وأكمل بالمتصفح؛ بعدها تفضيلاتك والجاهزية والتصويت والنتيجة. لا يشترط تثبيت التطبيق."
+        }
+      ],
+      "states": [
+        {
+          "en": "Reload resumes the same participant if access remains valid. Removed/invalid access shows a clear message without leaking session details.",
+          "ar": "التحديث يعيد المشارك نفسه إذا بقي الوصول صالحًا. الوصول الملغى أو غير الصحيح يظهر رسالة دون كشف تفاصيل الجلسة."
+        },
+        {
+          "en": "Connection lost: visible Reconnecting status; preserve unsent form locally, never fake a saved answer.",
+          "ar": "انقطاع الاتصال: حالة «جارٍ استعادة الاتصال» واضحة؛ احفظ النموذج غير المرسل محليًا دون ادعاء حفظه بالخادم."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Use native browser keyboard/focus order and labelled inputs. Same screens resize, not a second product.",
+          "ar": "استخدم ترتيب لوحة المفاتيح والتركيز المعتاد وعناوين الحقول. تتكيف الشاشات نفسها دون منتج ثانٍ."
+        },
+        {
+          "en": "Browser guests receive in-page updates; browser push is deferred.",
+          "ar": "ضيف المتصفح يستقبل تحديثات داخل الصفحة؛ إشعارات المتصفح مؤجلة."
+        }
+      ],
+      "route": "guest",
+      "preview_states": [
+        "default",
+        "invalid",
+        "full",
+        "closed",
+        "removed",
+        "error"
+      ],
+      "export": "exports/25-guest-browser.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "26-empty-retry",
+      "source": "14-winner.png",
+      "title": {
+        "en": "No match / no winner",
+        "ar": "لا اقتراحات / لا فائز"
+      },
+      "audit": {
+        "en": "Add three distinct empty results and one safe recovery path.",
+        "ar": "أضف ثلاث نتائج فارغة مختلفة ومسار استعادة آمنًا واحدًا."
+      },
+      "fields": [
+        {
+          "en": "No matches: We could not verify restaurants that meet all essential conditions.",
+          "ar": "لا مطابقات: «لم نتمكن من التحقق من مطاعم تحقق الشروط الأساسية للجميع»."
+        },
+        {
+          "en": "No likes: No restaurant received a like. No votes: Voting ended without recorded votes.",
+          "ar": "لا إعجابات: «لم يحصل أي مطعم على إعجاب». لا أصوات: «انتهى التصويت دون أصوات مسجلة»."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Organizer: Review answers and retry. Participant: Wait for organizer. Public browse remains separate.",
+          "ar": "المنظم: مراجعة الإجابات وإعادة المحاولة. المشارك: انتظار المنظم. يبقى التصفح العام منفصلًا."
+        }
+      ],
+      "states": [
+        {
+          "en": "Retry keeps the same link/people/preferences, creates a new round, resets Ready/votes, and reopens joining before generation.",
+          "ar": "الإعادة تحفظ الرابط والأشخاص والتفضيلات وتنشئ جولة جديدة وتصفر الجاهزية والأصوات وتعيد فتح الانضمام قبل التوليد."
+        },
+        {
+          "en": "No silent budget/distance/allergy relaxation; only each person edits their own answers.",
+          "ar": "لا تخفيف تلقائي للميزانية أو المسافة أو الحساسية؛ يعدّل كل شخص إجاباته بنفسه."
+        }
+      ],
+      "notes": [
+        {
+          "en": "No winner card, celebratory copy, percentage, or maps CTA when there is no winner.",
+          "ar": "دون فائز لا تعرض بطاقة فائز أو احتفالًا أو نسبة أو زر خرائط."
+        },
+        {
+          "en": "Explain the group outcome without revealing whose private condition removed a restaurant.",
+          "ar": "اشرح نتيجة المجموعة دون كشف صاحب الشرط الخاص الذي استبعد المطعم."
+        }
+      ],
+      "route": "empty",
+      "preview_states": [
+        "no-match",
+        "no-likes",
+        "no-votes"
+      ],
+      "export": "exports/26-empty-retry.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    },
+    {
+      "id": "27-notifications",
+      "source": "12-live-consensus.png",
+      "title": {
+        "en": "App notifications",
+        "ar": "إشعارات التطبيق"
+      },
+      "audit": {
+        "en": "Add a contextual permission explanation and closed-app routing notes.",
+        "ar": "أضف شرح إذن في سياقه وملاحظات فتح التطبيق المغلق."
+      },
+      "fields": [
+        {
+          "en": "Prompt after joining/creating: Notify me when voting starts and the result is ready.",
+          "ar": "طلب الإذن بعد الانضمام أو الإنشاء: «ننبّهك عند بدء التصويت وظهور النتيجة»."
+        },
+        {
+          "en": "Notification text contains session name/event only; no allergy, preference or vote details.",
+          "ar": "نص الإشعار يحتوي اسم الجلسة والحدث فقط؛ دون حساسية أو تفضيلات أو تفاصيل أصوات."
+        }
+      ],
+      "actions": [
+        {
+          "en": "Allow → iOS permission; Not now → continue. Notification tap opens the current authorized session/round.",
+          "ar": "السماح ← إذن iOS؛ ليس الآن ← متابعة. الضغط على الإشعار يفتح الجلسة والجولة الحالية المصرح بها."
+        }
+      ],
+      "states": [
+        {
+          "en": "Denied: in-app progress/result still works. Stale notification: refresh current round. Removed access: explain access ended.",
+          "ar": "الإذن مرفوض: تستمر متابعة التصويت والنتيجة داخل التطبيق. إشعار قديم: حدّث الجولة الحالية. وصول ملغى: وضح انتهاء الوصول."
+        }
+      ],
+      "notes": [
+        {
+          "en": "Fahad implements handling; Shatha owns iOS build setup; Asem sends events; Hassan verifies device evidence.",
+          "ar": "فهد ينفذ الاستقبال وشذى تجهيز بناء iOS وعاصم إرسال الأحداث وحسن يتحقق من دليل الجهاز."
+        },
+        {
+          "en": "Design specification only. Delivery and closed-app routing need a real iPhone development/preview build, not Expo Go evidence.",
+          "ar": "هذا توصيف تصميم فقط. التسليم وفتح التطبيق المغلق يحتاجان نسخة تطوير أو تجربة فعلية على آيفون؛ لا يكفي Expo Go."
+        }
+      ],
+      "route": "notifications",
+      "preview_states": [
+        "default",
+        "denied",
+        "allowed",
+        "removed"
+      ],
+      "export": "exports/27-notifications.png",
+      "visual_update": {
+        "en": "Apply the selected warm cream and forest-green system, clear Arabic hierarchy and labelled actions. Keep the approved UX rules.",
+        "ar": "تطبيق هوية الكريم والأخضر المختارة، مع ترتيب عربي واضح وأزرار مسماة. الإبقاء على قرارات تجربة المستخدم المعتمدة."
+      }
+    }
+  ],
+  "reference_only": [
+    "01-splash.png",
+    "04-location.png",
+    "13-tie-breaker.png",
+    "16-my-groups.png",
+    "17-group-details.png",
+    "18-attendance-request.png",
+    "19-personal-recommendation.png",
+    "21-saved-and-profile.png",
+    "22-tourist-explore.png",
+    "23-tourist-dish-guide.png",
+    "24-tourist-restaurant.png"
+  ],
+  "delivery_revision": "UI refresh / 2026-10-18",
+  "selected_direction": 2,
+  "scope": "17 designed screens: 16 existing UX-01 screens plus vote review. Interactive web design prototype; no native build or backend implementation.",
+  "preview_states_note": "Error on forms means the next save/request fails; save-error applies to the next vote. All other state options switch the visible layout. Data and generated photos are illustrative."
+}
