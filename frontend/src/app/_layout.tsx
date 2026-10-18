@@ -1,4 +1,1 @@
-import { Stack } from "expo-router";
-
-export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;}
+export { ApplicationRoot as default } from "@/application/ApplicationRoot";
