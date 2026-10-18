@@ -1,5 +1,10 @@
 # Thouq (ذوق)
 
+> **Release design update · 18 Oct 2026:** Use [UX-01: core screens, fields, states and flow](mockups/ux-01/README.md) with the [approved P-01 decisions](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/7). This historical document still contains older scope such as saved groups and tie voting. Those parts are not instructions for the current release; full scope/contract reconciliation remains P-01/P-02 work. The UX handoff is design evidence, not implemented app behavior.
+>
+> **تحديث تصميم النسخة:** استخدم [تسليم UX-01](mockups/ux-01/README.md) والقرارات المعتمدة. تتضمن هذه الوثيقة التاريخية نطاقًا قديمًا مثل المجموعات المحفوظة وتصويت التعادل؛ لا يُنفّذ ضمن النسخة الحالية. توحيد النطاق والعقود بالكامل يبقى ضمن P-01/P-02. التسليم دليل تصميم وليس إثبات تنفيذ التطبيق.
+
+
 **A group meal decision app.** Participants join a shared session with a code, enter their preferences and constraints, and Thouq recommends three restaurants for the group to vote on.
 
 **Team:** Shatha Alanzi, Asim Alhubaishi, Hassan Alhuzali, Fahad Almidaj

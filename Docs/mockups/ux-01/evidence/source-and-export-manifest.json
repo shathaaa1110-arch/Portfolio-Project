@@ -1,0 +1,275 @@
+{
+  "date": "2026-10-18",
+  "source_revision": "a94d79da8d11a80073c95a6eb41eaa407a8c1ae6",
+  "originals": [
+    {
+      "file": "01-splash.png",
+      "sha256": "33bb10d624c14ee1e9c02db00a26fbbbf69e82da1ac9826da2ed17326cca7239",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "02-sign-up.png",
+      "sha256": "06de97c0aaa0dd31304adf7a4a723ba31839c077b5a3db27a337fbbe86987944",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "03-verification-code.png",
+      "sha256": "f24edb1ec4d739a579de923e43ae7e6c43f01ff4518c59995d35a28d811d9cc4",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "04-location.png",
+      "sha256": "0a085e6c6ce5245f9cd5bc75b06a05181c0926ed75f3a2dcdfd6d40e1ee4f9c1",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "05-taste-preferences.png",
+      "sha256": "131508c37043add8fdd1260f273b14efc0793ac311374d6141570cca5234aae8",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "06-home.png",
+      "sha256": "858c16de84fc81ab7d744800acb50b0cb82de04b3041bfc2f311ca93aaa50f70",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "07-create-session.png",
+      "sha256": "d9c107e0715d836ccff0a52e56866cffdee4d0e3aefe702bd03b193e7b763f6d",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "08-join-with-code.png",
+      "sha256": "6b7a64498d9587660e9dae12913bb66f5f95868c1733fa2ab9c0a07c93be3d84",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "09-waiting-room.png",
+      "sha256": "edee918372f9f0e67acede2a05a5d3b2c5850444fdbcb461d3b8540f6f6d512c",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "10-preference-collection.png",
+      "sha256": "8ee4bacbebf93cd393f25bb609ca340bb95951143991e49581541db8fcf720d8",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "11-vote.png",
+      "sha256": "5ae9ecab54ace24090be07b510aeb1d36fe692e3d3139304bfbb3cd716c53650",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "12-live-consensus.png",
+      "sha256": "63e4b96d053773d8a5360ff215e382b5b908f9042bf0c75cf92a06dced4455d6",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "13-tie-breaker.png",
+      "sha256": "1ae36e3490edbe9bcc10b3d24aff42fa3dcaa0066b324b8a72fa891b2717ea81",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "14-winner.png",
+      "sha256": "836a3f319b6fe709b8abdfb80bf61d013d3922ba44fa8ab2976f416c8da94b59",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "15-restaurant-details.png",
+      "sha256": "c47cefdaeec2094a24e3189a80d6bf5d66fa7101621bb4a9316e7c5c0f62f91e",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "16-my-groups.png",
+      "sha256": "451b3a021024b7b1fa01794c227dd7e8cc2fcd838e9677f3a36120c51be7e5cd",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "17-group-details.png",
+      "sha256": "2c767f51ff908122deb4405e635b7404a675f9d98b37b96e96e71e897d300824",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "18-attendance-request.png",
+      "sha256": "25efd80b6d75bd899b2fa7e5f116573bd7148503ed09df93fb46add2263f5902",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "19-personal-recommendation.png",
+      "sha256": "9d80357f33a05347b7a73f9a1652b8573d61fa82d5747f8d700d76b417710b58",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "20-finding-matches.png",
+      "sha256": "c8caee832f5c0494f4f4af07d8dce24a3740b18b5bcc1a69ac3aedcade4b505d",
+      "treatment": "revised-reference"
+    },
+    {
+      "file": "21-saved-and-profile.png",
+      "sha256": "ebbc87f293988167aab2a9a91d01a6b7f85d98a6abe18d052c049e61e79964df",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "22-tourist-explore.png",
+      "sha256": "284ebb9b7bdd5ba7635e9d118e30b2d61209f591ab29fa270fba03a53893866c",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "23-tourist-dish-guide.png",
+      "sha256": "0cc271083fb943059e05596a30bd55271e5c82bb32b7584f2560447f50ea9cf7",
+      "treatment": "reference-only"
+    },
+    {
+      "file": "24-tourist-restaurant.png",
+      "sha256": "f928dc4d5e567be50751aa098ac3417c0b76cbba25ce7e22e1c0d4d59082be1f",
+      "treatment": "reference-only"
+    }
+  ],
+  "exports": [
+    {
+      "file": "02-sign-up.jpg",
+      "screen": "02-sign-up",
+      "state": "default",
+      "sha256": "278e6bf705811f2e3485d7b71b55fcbc82673e8b62c1890afeef6862101345c0",
+      "source_image": "02-sign-up.png"
+    },
+    {
+      "file": "03-verification.jpg",
+      "screen": "03-verification",
+      "state": "default",
+      "sha256": "4bb86237e628ac2fdabb897e827702096a2eb99cf504d70828ce8b3cede4c8f4",
+      "source_image": "03-verification-code.png"
+    },
+    {
+      "file": "05-account-preferences.jpg",
+      "screen": "05-account-preferences",
+      "state": "default",
+      "sha256": "0f09cc2348c6fc91247f1fb5846fa305b0fdf268f9e333318417a3523d6f1269",
+      "source_image": "05-taste-preferences.png"
+    },
+    {
+      "file": "06-browse.jpg",
+      "screen": "06-browse",
+      "state": "default",
+      "sha256": "2140cd87bd4d7f62f0b4d2079bd714e9befbfb8e5c1e6844ef34dc264dce049f",
+      "source_image": "06-home.png"
+    },
+    {
+      "file": "07-create-session.jpg",
+      "screen": "07-create-session",
+      "state": "default",
+      "sha256": "320d968e80ea19b238a8ff8001a0d79f059cc4287f93ebaab121e30ca5d37d85",
+      "source_image": "07-create-session.png"
+    },
+    {
+      "file": "08-join.jpg",
+      "screen": "08-join",
+      "state": "default",
+      "sha256": "8ea7e33cbe87b3657c3290f6a19c736c9cfd31a9a7b12e0e41523c81923e76bf",
+      "source_image": "08-join-with-code.png"
+    },
+    {
+      "file": "09-waiting-room.jpg",
+      "screen": "09-waiting-room",
+      "state": "default",
+      "sha256": "68dc2ec3e098ff838a5d1cba30b539fe5ae52239301d83c8363858729fd18a61",
+      "source_image": "09-waiting-room.png"
+    },
+    {
+      "file": "10-session-preferences--error.jpg",
+      "screen": "10-session-preferences",
+      "state": "error",
+      "sha256": "0278d12fef3db7e94597602b7b23046cad687354840a012db755168c1db74b0e",
+      "source_image": "10-preference-collection.png"
+    },
+    {
+      "file": "10-session-preferences.jpg",
+      "screen": "10-session-preferences",
+      "state": "default",
+      "sha256": "ac30b5fb6726adef4d7d3d09f05d20c421a9fee97adcd39260a9c9dacbf82e20",
+      "source_image": "10-preference-collection.png"
+    },
+    {
+      "file": "11-voting.jpg",
+      "screen": "11-voting",
+      "state": "default",
+      "sha256": "1490eb83698175126945bcb7ad7e5e1e6ffd453638d57a3e2b6af3be97a79929",
+      "source_image": "11-vote.png"
+    },
+    {
+      "file": "12-vote-progress--confirm.jpg",
+      "screen": "12-vote-progress",
+      "state": "confirm",
+      "sha256": "7c7e82380f4b504172b6e82a6b37e6d957571df7a4fcffcdd707b8e4d320a15d",
+      "source_image": "12-live-consensus.png"
+    },
+    {
+      "file": "12-vote-progress.jpg",
+      "screen": "12-vote-progress",
+      "state": "default",
+      "sha256": "b9813c128620e5d220ff874f69f41cbdf9580ecd9cb85d36afc59b319f7167fd",
+      "source_image": "12-live-consensus.png"
+    },
+    {
+      "file": "14-result.jpg",
+      "screen": "14-result",
+      "state": "default",
+      "sha256": "508cb1a75d4703714617b7eb5b078a4e7f74fc723fa7ecf35a8dbd1036d0df54",
+      "source_image": "14-winner.png"
+    },
+    {
+      "file": "15-details--missing.jpg",
+      "screen": "15-details",
+      "state": "missing",
+      "sha256": "760938d10fb7b4ae7169789e3e4c67f5291d6f329f5ab6cb68f505116b73cfe0",
+      "source_image": "15-restaurant-details.png"
+    },
+    {
+      "file": "15-details.jpg",
+      "screen": "15-details",
+      "state": "default",
+      "sha256": "f89151d3ecc3812d6394e6ef6629380fabecf7e68321526cc0828a75a3b64ed3",
+      "source_image": "15-restaurant-details.png"
+    },
+    {
+      "file": "20-generating.jpg",
+      "screen": "20-generating",
+      "state": "default",
+      "sha256": "5748cc9f8d22ac5fac2539fddeb55d01d30c7b8d9d6d043f525fdd1cb0a10934",
+      "source_image": "20-finding-matches.png"
+    },
+    {
+      "file": "25-guest-browser.jpg",
+      "screen": "25-guest-browser",
+      "state": "default",
+      "sha256": "5cce03ded4a3d3cc1ce751e9bc35495550303a2f52c62dd292e9e90c1b43564a",
+      "source_image": "08-join-with-code.png"
+    },
+    {
+      "file": "26-empty-retry--no-likes.jpg",
+      "screen": "26-empty-retry",
+      "state": "no-likes",
+      "sha256": "b858a04bedcee6fbae21cbff825f142c7693d958c5582c0f16f6b142c39f5136",
+      "source_image": "14-winner.png"
+    },
+    {
+      "file": "26-empty-retry--retry.jpg",
+      "screen": "26-empty-retry",
+      "state": "retry",
+      "sha256": "e1b1702810bd165cefd958e454fa6abcbbafa1e0d625009d1ac6dfee84eeb0c0",
+      "source_image": "14-winner.png"
+    },
+    {
+      "file": "26-empty-retry.jpg",
+      "screen": "26-empty-retry",
+      "state": "default",
+      "sha256": "2b8ad705b9fd3e357728af8016cee133706edc1490638147e285d055ca33ffd9",
+      "source_image": "14-winner.png"
+    },
+    {
+      "file": "27-notifications.jpg",
+      "screen": "27-notifications",
+      "state": "default",
+      "sha256": "161d02e5b0cc8c2b4dc9398062211f10e0c1ebc7fd4f25120645cc47edce4c2f",
+      "source_image": "12-live-consensus.png"
+    }
+  ]
+}

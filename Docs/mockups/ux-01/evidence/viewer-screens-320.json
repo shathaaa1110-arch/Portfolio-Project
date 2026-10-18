@@ -1,0 +1,98 @@
+[
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "02-sign-up",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "03-verification",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "05-account-preferences",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "06-browse",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "07-create-session",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "08-join",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "09-waiting-room",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "10-session-preferences",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "20-generating",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "11-voting",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "12-vote-progress",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "14-result",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "15-details",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "25-guest-browser",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "26-empty-retry",
+    "viewport": 320
+  },
+  {
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "screen": "27-notifications",
+    "viewport": 320
+  }
+]

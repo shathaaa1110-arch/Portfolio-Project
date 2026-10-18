@@ -1,0 +1,31 @@
+{
+  "layoutChecks": [
+    {
+      "formWidth": 266,
+      "pageOverflow": false,
+      "phoneOverflow": false,
+      "viewport": 320
+    },
+    {
+      "formWidth": 336,
+      "pageOverflow": false,
+      "phoneOverflow": false,
+      "viewport": 390
+    },
+    {
+      "formWidth": 480,
+      "pageOverflow": false,
+      "phoneOverflow": false,
+      "viewport": 768
+    },
+    {
+      "formWidth": 480,
+      "pageOverflow": false,
+      "phoneOverflow": false,
+      "viewport": 1280
+    }
+  ],
+  "keyboardNext": "26-empty-retry",
+  "previous": "25-guest-browser",
+  "consoleErrors": []
+}
