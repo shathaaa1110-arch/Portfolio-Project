@@ -1,0 +1,461 @@
+[
+  {
+    "heading": "أنشئ حسابك",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "02-sign-up",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "أنشئ حسابك",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "02-sign-up",
+    "state": "invalid",
+    "viewport": 390
+  },
+  {
+    "heading": "أهلًا بعودتك",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "02-sign-up",
+    "state": "login",
+    "viewport": 390
+  },
+  {
+    "heading": "أدخل رمز التحقق",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "03-verification",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "أدخل رمز التحقق",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "03-verification",
+    "state": "expired",
+    "viewport": 390
+  },
+  {
+    "heading": "تفضيلات حسابك",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "05-account-preferences",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "وش ودّك تجرّب؟",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "06-browse",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "وش ودّك تجرّب؟",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "06-browse",
+    "state": "empty",
+    "viewport": 390
+  },
+  {
+    "heading": "وش ودّك تجرّب؟",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "06-browse",
+    "state": "error",
+    "viewport": 390
+  },
+  {
+    "heading": "أنشئ جلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "07-create-session",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "أنشئ جلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "07-create-session",
+    "state": "invalid",
+    "viewport": 390
+  },
+  {
+    "heading": "انضم إلى الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "08-join",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "انضم إلى الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "08-join",
+    "state": "closed",
+    "viewport": 390
+  },
+  {
+    "heading": "انضم إلى الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "08-join",
+    "state": "full",
+    "viewport": 390
+  },
+  {
+    "heading": "انضم إلى الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "08-join",
+    "state": "removed",
+    "viewport": 390
+  },
+  {
+    "heading": "انضم إلى الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "08-join",
+    "state": "invalid",
+    "viewport": 390
+  },
+  {
+    "heading": "عشاء الخميس",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "09-waiting-room",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "عشاء الخميس",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "09-waiting-room",
+    "state": "ready",
+    "viewport": 390
+  },
+  {
+    "heading": "عشاء الخميس",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "09-waiting-room",
+    "state": "participant",
+    "viewport": 390
+  },
+  {
+    "heading": "عشاء الخميس",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "09-waiting-room",
+    "state": "locked",
+    "viewport": 390
+  },
+  {
+    "heading": "عشاء الخميس",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "09-waiting-room",
+    "state": "remove",
+    "viewport": 390
+  },
+  {
+    "heading": "اختياراتك للجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "10-session-preferences",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "اختياراتك للجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "10-session-preferences",
+    "state": "saved",
+    "viewport": 390
+  },
+  {
+    "heading": "اختياراتك للجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "10-session-preferences",
+    "state": "error",
+    "viewport": 390
+  },
+  {
+    "heading": "اختياراتك للجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "10-session-preferences",
+    "state": "locked",
+    "viewport": 390
+  },
+  {
+    "heading": "نبحث عن الأنسب",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "20-generating",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "نبحث عن الأنسب",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "20-generating",
+    "state": "error",
+    "viewport": 390
+  },
+  {
+    "heading": "صوّت بذوقك",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "11-voting",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "صوّت بذوقك",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "11-voting",
+    "state": "error",
+    "viewport": 390
+  },
+  {
+    "heading": "صوّت بذوقك",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "11-voting",
+    "state": "closed",
+    "viewport": 390
+  },
+  {
+    "heading": "صوّت بذوقك",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "11-voting",
+    "state": "last",
+    "viewport": 390
+  },
+  {
+    "heading": "ننتظر اكتمال التصويت",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "12-vote-progress",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "ننتظر اكتمال التصويت",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "12-vote-progress",
+    "state": "confirm",
+    "viewport": 390
+  },
+  {
+    "heading": "ننتظر اكتمال التصويت",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "12-vote-progress",
+    "state": "participant",
+    "viewport": 390
+  },
+  {
+    "heading": "اختيار الجلسة: سهيل",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "14-result",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "اختيار الجلسة: سهيل",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "14-result",
+    "state": "tie",
+    "viewport": 390
+  },
+  {
+    "heading": "اختيار الجلسة: سهيل",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "14-result",
+    "state": "participant",
+    "viewport": 390
+  },
+  {
+    "heading": "سهيل",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "15-details",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "سهيل",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "15-details",
+    "state": "missing",
+    "viewport": 390
+  },
+  {
+    "heading": "سهيل",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "15-details",
+    "state": "public",
+    "viewport": 390
+  },
+  {
+    "heading": "انضم إلى الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "25-guest-browser",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "انضم إلى الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "25-guest-browser",
+    "state": "desktop",
+    "viewport": 390
+  },
+  {
+    "heading": "انضم إلى الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "25-guest-browser",
+    "state": "closed",
+    "viewport": 390
+  },
+  {
+    "heading": "لا توجد اقتراحات مناسبة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "26-empty-retry",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "لا يوجد فائز",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "26-empty-retry",
+    "state": "no-likes",
+    "viewport": 390
+  },
+  {
+    "heading": "لا يوجد فائز",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "26-empty-retry",
+    "state": "no-votes",
+    "viewport": 390
+  },
+  {
+    "heading": "لا توجد اقتراحات مناسبة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "26-empty-retry",
+    "state": "retry",
+    "viewport": 390
+  },
+  {
+    "heading": "لا توجد اقتراحات مناسبة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "26-empty-retry",
+    "state": "participant",
+    "viewport": 390
+  },
+  {
+    "heading": "تابع قرار الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "27-notifications",
+    "state": "default",
+    "viewport": 390
+  },
+  {
+    "heading": "تابع قرار الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "27-notifications",
+    "state": "denied",
+    "viewport": 390
+  },
+  {
+    "heading": "تابع قرار الجلسة",
+    "pageOverflow": false,
+    "phoneOverflow": false,
+    "rtl": true,
+    "screen": "27-notifications",
+    "state": "stale",
+    "viewport": 390
+  }
+]
