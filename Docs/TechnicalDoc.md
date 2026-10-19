@@ -1542,8 +1542,9 @@ Requires: Authorization
 
 Creates the row on first use, updates it afterwards (`user_id` is unique).
 
-Request: same shape as the response above.
+Request: same fields as the GET response, except `is_saved`. The app sends preference choices only; the server determines whether they are saved.
 
+After a successful save, GET /users/me/preferences returns `is_saved: true`, and subsequent authentication responses return `user.has_saved_preferences: true`.
 Response `200`
 ```json
 { "message": "preferences saved" }
