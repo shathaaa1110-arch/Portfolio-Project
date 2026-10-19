@@ -1,4 +1,4 @@
-"""Sign up and log in with a verification code (BE-04).
+"""Sign up and log in with a verification code (BE-04), and the session (BE-05).
 
 See Docs/TechnicalDoc.md, section 4.3. Sign-up and log-in are the same flow:
 the account is created in /auth/verify only when the phone has none yet.
@@ -6,7 +6,7 @@ the account is created in /auth/verify only when the phone has none yet.
 import math
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy import Uuid, bindparam, select, text, update
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
+from app.services.auth.dependencies import current_user
 from app.services.auth.models import OtpCode, User, utcnow
 from app.services.auth.otp import (
     CODE_LENGTH,
@@ -40,6 +41,10 @@ class VerifyIn(BaseModel):
     phone: str
     code: str
     name: str | None = None
+
+
+class PushTokenIn(BaseModel):
+    push_token: str
 
 
 def _phone_or_422(raw: str) -> str:
@@ -184,3 +189,24 @@ def verify(body: VerifyIn, db: Session = Depends(get_db)) -> dict:
             "has_saved_preferences": _has_saved_preferences(db, user),
         },
     }
+
+
+@router.post("/push-token")
+def save_push_token(
+    body: PushTokenIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+) -> dict:
+    """Store the Expo device token used for push notifications."""
+    token = body.push_token.strip()
+    if not token:
+        raise ApiError(422, "VALIDATION_ERROR", "Some fields are missing or invalid.", fields=["push_token"])
+    user.push_token = token
+    db.commit()
+    return {"message": "push token updated"}
+
+
+@router.post("/logout", status_code=204)
+def logout(user: User = Depends(current_user), db: Session = Depends(get_db)) -> Response:
+    """Clear this user's push token. The app then deletes its token and opens sign-up."""
+    user.push_token = None
+    db.commit()
+    return Response(status_code=204)
