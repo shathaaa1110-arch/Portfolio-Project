@@ -890,32 +890,39 @@ sequenceDiagram
     actor U as User
     participant A as App
     participant API as API server
-    participant O as OTP provider
     participant DB as PostgreSQL
- 
-    U->>A: Enter name and phone number
-    A->>API: POST /auth/otp/request
-    API->>O: Send a code to the phone
+    participant O as Authentica (SMS)
+
+    U->>A: Enter phone (and name when signing up)
+    A->>API: POST /auth/request-code {phone}
+    API->>API: Generate a 6-digit code
+    API->>DB: Save code hash, expiry (5 min), attempts = 0
+    API->>O: Send the code by SMS
     O-->>U: SMS with the code
-    API-->>A: 204 No Content
+    API-->>A: 200 code_length, expires_in_seconds
     U->>A: Enter the code
-    A->>API: POST /auth/otp/verify
-    API->>O: Check the code
-    alt Code is correct
-        O-->>API: Valid
-        API->>DB: Find the user or create one
+    A->>API: POST /auth/verify {phone, code, name}
+    API->>DB: Find the latest unused code for this phone
+    alt Code is correct and not expired
+        API->>DB: Mark the code used, find the user or create one
         DB-->>API: User
-        API-->>A: 200 token and user
-        A-->>U: Taste preferences (first time) or Home
-    else Code is wrong or expired
-        O-->>API: Invalid
-        API-->>A: 401 Unauthorized
+        API-->>A: 200 token and user (has_saved_preferences)
+        A-->>U: Taste preferences (not saved) or Home (saved)
+    else New phone without a name
+        API-->>A: 422 NAME_REQUIRED (code stays unused)
+        A-->>U: Ask for the name, then send the same code again
+    else Wrong code
+        API->>DB: attempts + 1
+        API-->>A: 401 INVALID_CODE (429 TOO_MANY_ATTEMPTS after 5)
         A-->>U: Show the error and allow a retry
+    else Expired code
+        API-->>A: 401 CODE_EXPIRED
+        A-->>U: Offer to resend a code
     end
 ```
  
-- The app never talks to the OTP provider. Only the API server does, so the provider's key stays on the server.
-- The provider checks the code, so the API server never stores one.
+- The app never talks to Authentica. Only the API server does, so the API key stays on the server.
+- The API server generates and checks the code. Authentica only delivers the SMS. The code is stored as a hash, never as plain text.
 - Signing up and logging in are the same exchange. The only difference is whether the user row already exists.
 ### 3.2 Create a session and join it as a guest
  
@@ -1052,6 +1059,7 @@ As described in Section 1, the restaurants table is filled once by an offline im
 | 2 | POST | `/auth/verify` | 1, 2 |
 | 3 | POST | `/auth/resend-code` | 2 |
 | 4 | POST | `/auth/push-token` | 25 |
+| 5 | POST | `/auth/logout` | 2 |
 
 #### Request code
 
@@ -1104,10 +1112,11 @@ Response `200` — verified
 {
   "token": "jwt",
   "expires_in_seconds": 2592000,
-  "is_new_user": true,
-  "user": { "id": "uuid", "name": "string" }
+  "user": { "id": "uuid", "name": "string", "has_saved_preferences": false }
 }
 ```
+
+The app uses `user.has_saved_preferences` to choose the next screen: `false` opens Taste preferences, `true` opens Home. A new account always starts with `false`. If the user leaves before saving preferences, the value stays `false`, so the next login opens Taste preferences again.
 
 Response `401` — wrong code
 ```json
@@ -1124,7 +1133,7 @@ Response `422` — new phone number without a name
 { "error": { "code": "NAME_REQUIRED", "message": "Name is required to create a new account." } }
 ```
 
-Response `429` — too many wrong attempts on this code
+Response `429` — 5 wrong attempts on this code
 ```json
 { "error": { "code": "TOO_MANY_ATTEMPTS", "message": "Too many attempts. Request a new code.", "retry_after_seconds": 60 } }
 ```
@@ -1179,6 +1188,31 @@ Request
 Response `200`
 ```json
 { "message": "push token updated" }
+```
+
+#### Log out
+
+```http
+POST /auth/logout
+```
+Requires: Authorization (registered user)
+
+Clears the push token saved for this user, so the device stops receiving notifications. After a `204`, the app deletes the token from the device and opens the sign-up screen. Tokens are not stored on the server, so a copied token stays valid until it expires; this is a known MVP limitation.
+
+Response `204` — logged out (no body)
+
+#### Expired or invalid token
+
+Every endpoint that requires Authorization returns `401` when the token is missing, invalid, or expired. The app deletes the stored token and opens the sign-up screen; the user logs in again with a new code.
+
+Response `401` — token expired (after 30 days)
+```json
+{ "error": { "code": "TOKEN_EXPIRED", "message": "Your session has expired. Please log in again." } }
+```
+
+Response `401` — token missing or invalid
+```json
+{ "error": { "code": "INVALID_TOKEN", "message": "Please log in again." } }
 ```
 
 ### 4.4 Groups API
@@ -1493,6 +1527,7 @@ Requires: Authorization
 Response `200`
 ```json
 {
+  "is_saved": true,
   "liked_cuisines": ["italian", "japanese"],
   "allergies": ["peanuts"],
   "budget_min": 50,
@@ -1501,7 +1536,7 @@ Response `200`
   "seating_needs": "family seating"
 }
 ```
-If nothing is saved yet, the same shape is returned with empty/`null` fields.
+If nothing is saved yet, the same shape is returned with `"is_saved": false` and empty/`null` fields. When the app reopens with a stored token, it calls this endpoint to decide between Taste preferences and Home.
 
 #### Save preferences
 
@@ -1782,7 +1817,7 @@ Every Must Have and Should Have story (Section 0) maps to at least one endpoint 
 | Story | Endpoint(s) |
 | ----- | ----------- |
 | 1 | `POST /auth/request-code`, `POST /auth/verify` |
-| 2 | `POST /auth/request-code`, `POST /auth/verify`, `POST /auth/resend-code` |
+| 2 | `POST /auth/request-code`, `POST /auth/verify`, `POST /auth/resend-code`, `POST /auth/logout` |
 | 3 | `GET/PUT /users/me/preferences` |
 | 4 | `POST /outings/session` |
 | 5 | `invite_code` returned by outing/group creation |
@@ -2399,6 +2434,7 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `POST /auth/verify` | Token returned (200), new account created | Wrong code (401), expired code (401), name required (422), too many attempts (429) |
 | `POST /auth/resend-code` | New code sent (200) | No pending code (404), rate limited (429), SMS failed (503) |
 | `POST /auth/push-token` | Token stored (200) | No auth (401) |
+| `POST /auth/logout` | Push token cleared (204) | No auth (401) |
 | `POST /groups` | Group and first outing created (201) | No auth (401) |
 | `GET /groups` | List returned (200) | No auth (401) |
 | `GET /groups/{id}` | Details returned (200) | Not a member (403), not found (404) |
