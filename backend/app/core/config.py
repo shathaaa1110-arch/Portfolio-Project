@@ -21,7 +21,11 @@ class Settings(BaseSettings):
     authentica_api_key: str = ""
 
     # SMS delivery: "mock" prints the code to the console, "real" sends it through Authentica.
-    sms_mode: str = "mock"
+    sms_mode: str = "mock" 
+
+    
+    # Secret used to sign login tokens and hash verification codes. Never commit it.
+    secret_key: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:
