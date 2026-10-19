@@ -1048,32 +1048,42 @@ As described in Section 1, the restaurants table is filled once by an offline im
 
 | # | Method | Path | Story |
 | - | ------ | ---- | ----- |
-| 1 | POST | `/auth/signup` | 1 |
-| 2 | POST | `/auth/verify` | 2 |
+| 1 | POST | `/auth/request-code` | 1, 2 |
+| 2 | POST | `/auth/verify` | 1, 2 |
 | 3 | POST | `/auth/resend-code` | 2 |
 | 4 | POST | `/auth/push-token` | 25 |
 
-#### Sign up
+#### Request code
 
 ```http
-POST /auth/signup
+POST /auth/request-code
 ```
 
-Creates the account and sends a verification code. Does not return a token; the account is not usable until the code is verified.
+Sends a verification code to a phone number, for both sign up and log in. The response is the same whether or not the number is registered. No account is created here; a new account is created only in `/auth/verify`. A phone number can request one code every 60 seconds. The server accepts Arabic digits and normalizes them to `05XXXXXXXX`.
 
 Request
 ```json
-{ "name": "string", "phone": "string" }
+{ "phone": "05XXXXXXXX" }
 ```
 
-Response `201`
+Response `200` — code sent
 ```json
-{ "user_id": "uuid", "message": "verification code sent" }
+{ "message": "verification code sent", "code_length": 6, "expires_in_seconds": 300 }
 ```
 
-Response `409` — phone already registered
+Response `422` — invalid phone format
 ```json
-{ "error": { "code": "PHONE_ALREADY_REGISTERED", "message": "This phone number is already registered." } }
+{ "error": { "code": "INVALID_PHONE", "message": "Phone number must be in the format 05XXXXXXXX." } }
+```
+
+Response `429` — a code was requested less than 60 seconds ago
+```json
+{ "error": { "code": "RATE_LIMITED", "message": "Please wait before requesting another code.", "retry_after_seconds": 42 } }
+```
+
+Response `503` — the SMS provider could not send the code
+```json
+{ "error": { "code": "SMS_SEND_FAILED", "message": "Could not send the code. Please try again." } }
 ```
 
 #### Verify code
@@ -1082,21 +1092,41 @@ Response `409` — phone already registered
 POST /auth/verify
 ```
 
-Checks the code against the `otp_codes` table (code, not yet used, not expired), marks it used, and returns a token for the matching user.
+Checks the code against the `otp_codes` table. If the phone has no account yet, `name` is required and the account is created here. If the phone already has an account, `name` is ignored. On success the code is marked used and a token is returned. If `NAME_REQUIRED` is returned, the code is not marked used, so the app can send it again with a name.
 
 Request
 ```json
-{ "phone": "string", "code": "string" }
+{ "phone": "05XXXXXXXX", "code": "123456", "name": "string (required for a new account)" }
 ```
 
-Response `200`
+Response `200` — verified
 ```json
-{ "token": "jwt", "user_id": "uuid", "name": "string" }
+{
+  "token": "jwt",
+  "expires_in_seconds": 2592000,
+  "is_new_user": true,
+  "user": { "id": "uuid", "name": "string" }
+}
 ```
 
-Response `401` — wrong or expired code
+Response `401` — wrong code
 ```json
-{ "error": { "code": "INVALID_OR_EXPIRED_CODE", "message": "This code is invalid or has expired." } }
+{ "error": { "code": "INVALID_CODE", "message": "This code is incorrect." } }
+```
+
+Response `401` — expired code
+```json
+{ "error": { "code": "CODE_EXPIRED", "message": "This code has expired. Request a new one." } }
+```
+
+Response `422` — new phone number without a name
+```json
+{ "error": { "code": "NAME_REQUIRED", "message": "Name is required to create a new account." } }
+```
+
+Response `429` — too many wrong attempts on this code
+```json
+{ "error": { "code": "TOO_MANY_ATTEMPTS", "message": "Too many attempts. Request a new code.", "retry_after_seconds": 60 } }
 ```
 
 #### Resend code
@@ -1105,26 +1135,31 @@ Response `401` — wrong or expired code
 POST /auth/resend-code
 ```
 
-Issues a new code for a phone that already has an account. Rate-limited to one new code per 60 seconds per phone, to prevent abuse of the SMS provider.
+Sends a new code to a phone that already requested one through `/auth/request-code`. It works for both new and registered numbers. The previous code stops working once a new one is sent. A phone number can receive one code every 60 seconds.
 
 Request
 ```json
-{ "phone": "string" }
+{ "phone": "05XXXXXXXX" }
 ```
 
-Response `200`
+Response `200` — new code sent
 ```json
-{ "message": "new code sent" }
+{ "message": "new code sent", "code_length": 6, "expires_in_seconds": 300 }
 ```
 
-Response `404` — phone not registered
+Response `404` — no code was requested for this phone
 ```json
-{ "error": { "code": "PHONE_NOT_REGISTERED", "message": "No account found for this phone number." } }
+{ "error": { "code": "NO_PENDING_CODE", "message": "Request a code first." } }
 ```
 
-Response `429` — too soon
+Response `429` — a code was sent less than 60 seconds ago
 ```json
-{ "error": { "code": "RATE_LIMITED", "message": "Please wait before requesting another code." } }
+{ "error": { "code": "RATE_LIMITED", "message": "Please wait before requesting another code.", "retry_after_seconds": 42 } }
+```
+
+Response `503` — the SMS provider could not send the code
+```json
+{ "error": { "code": "SMS_SEND_FAILED", "message": "Could not send the code. Please try again." } }
 ```
 
 #### Register push token
@@ -1746,8 +1781,8 @@ Every Must Have and Should Have story (Section 0) maps to at least one endpoint 
 
 | Story | Endpoint(s) |
 | ----- | ----------- |
-| 1 | `POST /auth/signup` |
-| 2 | `POST /auth/verify`, `POST /auth/resend-code` |
+| 1 | `POST /auth/request-code`, `POST /auth/verify` |
+| 2 | `POST /auth/request-code`, `POST /auth/verify`, `POST /auth/resend-code` |
 | 3 | `GET/PUT /users/me/preferences` |
 | 4 | `POST /outings/session` |
 | 5 | `invite_code` returned by outing/group creation |
@@ -2100,20 +2135,18 @@ BASE_URL="http://localhost:8000/api/v1"
 
 echo "=== Test 1: Sign up, log in, save preferences ==="
 
-# 1. Sign up
-SIGNUP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/auth/signup" \
+# 1. Request a code
+REQ=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/auth/request-code" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Test User", "phone": "+966500000001"}')
-HTTP_CODE=$(echo "$SIGNUP" | tail -1)
-BODY=$(echo "$SIGNUP" | head -1)
-[ "$HTTP_CODE" = "201" ] || { echo "FAIL: signup expected 201, got $HTTP_CODE"; exit 1; }
-USER_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['user_id'])")
-echo "  signup: OK (user_id=$USER_ID)"
+  -d '{"phone": "0500000001"}')
+HTTP_CODE=$(echo "$REQ" | tail -1)
+[ "$HTTP_CODE" = "200" ] || { echo "FAIL: request-code expected 200, got $HTTP_CODE"; exit 1; }
+echo "  request-code: OK"
 
-# 2. Verify code (mock OTP returns a fixed code in test mode)
+# 2. Verify code and create the account (mock OTP returns a fixed code in test mode)
 VERIFY=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/auth/verify" \
   -H "Content-Type: application/json" \
-  -d '{"phone": "+966500000001", "code": "1234"}')
+  -d '{"phone": "0500000001", "code": "123456", "name": "Test User"}')
 HTTP_CODE=$(echo "$VERIFY" | tail -1)
 BODY=$(echo "$VERIFY" | head -1)
 [ "$HTTP_CODE" = "200" ] || { echo "FAIL: verify expected 200, got $HTTP_CODE"; exit 1; }
@@ -2153,7 +2186,7 @@ echo "=== Test 2: Create session, join as guest, collect preferences ==="
 # 1. Organizer logs in (assumes test user exists)
 VERIFY=$(curl -s -X POST "$BASE_URL/auth/verify" \
   -H "Content-Type: application/json" \
-  -d '{"phone": "+966500000001", "code": "1234"}')
+    -d '{"phone": "0500000001", "code": "123456"}')
 ORG_TOKEN=$(echo "$VERIFY" | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
 
 # 2. Create a session
@@ -2362,9 +2395,9 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 
 | Endpoint | Happy path | Failure paths |
 | --- | --- | --- |
-| `POST /auth/signup` | Account created (201) | Phone already registered (409) |
-| `POST /auth/verify` | Token returned (200) | Wrong code (401), expired code (401) |
-| `POST /auth/resend-code` | New code sent (200) | Phone not registered (404), rate limited (429) |
+| `POST /auth/request-code` | Code sent (200) | Invalid phone (422), rate limited (429), SMS failed (503) |
+| `POST /auth/verify` | Token returned (200), new account created | Wrong code (401), expired code (401), name required (422), too many attempts (429) |
+| `POST /auth/resend-code` | New code sent (200) | No pending code (404), rate limited (429), SMS failed (503) |
 | `POST /auth/push-token` | Token stored (200) | No auth (401) |
 | `POST /groups` | Group and first outing created (201) | No auth (401) |
 | `GET /groups` | List returned (200) | No auth (401) |
