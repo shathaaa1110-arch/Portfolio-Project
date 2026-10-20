@@ -10,16 +10,28 @@ export function AppText({ variant = "body", style, ...props }: AppTextProps) {
 }
 
 const styles = StyleSheet.create({
-  body: { fontFamily: theme.typography.fontFamily },
+  body: {
+  fontFamily: theme.typography.fontFamily,
+  fontSize: theme.typography.bodySize,
+  color: theme.colors.text,
+},
+
   title: {
+    fontFamily: theme.typography.fontFamilyBold,
     textAlign: "center",
     fontSize: theme.typography.titleSize,
-    fontWeight: theme.typography.bold,
   },
-  label: { textAlign: "left", fontSize: theme.typography.labelSize },
+
+  label: {
+    fontFamily: theme.typography.fontFamilyBold,
+    textAlign: "left",
+    fontSize: theme.typography.labelSize,
+  },
+
   button: {
-    color: theme.colors.onPrimary,
-    textAlign: "center",
-    fontWeight: theme.typography.bold,
-  },
+  fontFamily: theme.typography.fontFamilyBold,
+  fontSize: theme.typography.buttonSize,
+  color: theme.colors.onPrimary,
+  textAlign: "center",
+},
 });
