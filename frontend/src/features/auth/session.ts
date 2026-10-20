@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
-import type { VerifyResponse } from "./api";
+import { ApiError } from "@/shared/api/errors";
+import { logout, type VerifyResponse } from "./api";
 
 const SESSION_KEY = "thouq.session";
 
@@ -46,4 +47,22 @@ export async function loadSession(): Promise<AuthSession | null> {
 
 export async function clearSession(): Promise<void> {
   await SecureStore.deleteItemAsync(SESSION_KEY);
+}
+
+// Logs out on the server when possible, then always deletes the local session
+export async function signOut(): Promise<void> {
+  const session = await loadSession();
+  try {
+    if (session) {
+      await logout(session.token);
+    }
+  } catch {
+    // Still sign out on this device if the server cannot be reached
+  }
+  await clearSession();
+}
+
+// True when the server says the token expired or is invalid: delete the session and open sign-up
+export function isSessionEnded(error: unknown): boolean {
+  return error instanceof ApiError && (error.code === "TOKEN_EXPIRED" || error.code === "INVALID_TOKEN");
 }

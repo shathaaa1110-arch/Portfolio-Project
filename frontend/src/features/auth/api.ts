@@ -30,3 +30,8 @@ export function resendCode(phone: string) {
 export function verifyCode(phone: string, code: string, name?: string) {
   return request<VerifyResponse>("POST", "/auth/verify", { body: { phone, code, name } });
 }
+
+// Clears the push token on the server; the app then deletes the local session
+export function logout(token: string) {
+  return request<null>("POST", "/auth/logout", { token });
+}

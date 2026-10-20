@@ -8,6 +8,7 @@ export const theme = {
     primary: "darkgreen",
     onPrimary: "white",
     disabled: "gray",
+        error: "#A54837", // From UX-01 design-tokens.json
   },
   typography: {
     // undefined keeps the platform's default font until a real font is loaded.
