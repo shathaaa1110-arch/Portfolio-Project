@@ -1676,22 +1676,46 @@ Response `200`
 }
 ```
 
-#### Browse and search restaurants
+#### Browse restaurants
 
 ```http
-GET /restaurants?search=&cuisine=&district=
+GET /restaurants?limit=20&offset=0
 ```
-Requires: Authorization
+Requires: nothing. Public browsing works without an account, outing, or group, and returns no account or session data.
 
-A plain filtered query against `restaurants`; it does not call the recommendation engine.
+A plain query against `restaurants`; it does not call the recommendation engine. Results are ordered by `quality_score`, then `rating`, best first. `limit` is 1–50 (default 20); `offset` starts at 0. Search by name and filters (`search`, `cuisine`, `district`) come later with story 22.
 
 Response `200`
 ```json
 {
   "restaurants": [
-    { "id": 101, "name_ar": "string", "cuisines": ["italian"], "price_tier": 3, "rating": 4.6 }
-  ]
+    {
+      "id": 101,
+      "name_ar": "string",
+      "name_en": "string",
+      "cuisines": ["italian"],
+      "district": "string",
+      "price_tier": 3,
+      "rating": 4.6,
+      "maps_url": "string"
+    }
+  ],
+  "total": 1234,
+  "limit": 20,
+  "offset": 0
 }
+```
+
+An empty dataset returns `200` with `"restaurants": []` and `"total": 0`.
+
+Response `422` — `limit` or `offset` outside the allowed range
+```json
+{ "error": { "code": "VALIDATION_ERROR", "message": "Some fields are missing or invalid.", "fields": ["query.limit"] } }
+```
+
+Response `503` — the restaurants table cannot be read
+```json
+{ "error": { "code": "RESTAURANTS_UNAVAILABLE", "message": "Restaurants are not available right now. Please try again." } }
 ```
 
 #### Personal recommendation
@@ -2466,7 +2490,7 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `POST /outings/{id}/preferences/ready` | Marked ready (200) | Already ready (409) |
 | `GET /outings/{id}/plan` | Plan returned (200) | No plan yet (404) |
 | `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
-| `GET /restaurants` | List returned (200) | — |
+| `GET /restaurants` | List returned (200), empty list (200) | Bad `limit` (422), database unavailable (503) |
 | `POST /recommendations/personal` | Suggestions returned (200) | No auth (401) |
 | `POST /outings/{id}/votes` | Vote recorded (200) | Wrong stage (409), not a participant (403) |
 | `POST /outings/{id}/end-voting` | Result settled (200) | Not organizer (403) |
