@@ -8,7 +8,7 @@ export const theme = {
     placeholder: "#7A826F",
     primary: "#194D3C",
     onPrimary: "#FFFEF9",
-        error: "#A54837", // From UX-01 design-tokens.json
+    error: "#A54837", // From UX-01 design-tokens.json
   },
 
   opacity: {
