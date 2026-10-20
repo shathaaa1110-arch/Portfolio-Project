@@ -36,9 +36,12 @@
 Portfolio-Project/
 ├── architecture.json                # قائمة الميزات واعتمادياتها
 ├── package.json                     # أوامر فحص من جذر المستودع
-├── Docs/Frontend-Architecture.ar.md  # هذا الدليل
+├── Docs/
+│   ├── Frontend-Architecture.ar.md  # هذا الدليل
+│   └── Frontend-API-Usage.ar.md     # طريقة استخدام أداة الطلبات #20
 └── frontend/
     ├── assets/                      # الصور الموجودة
+    ├── .env.example                 # متغيرات البيئة المطلوبة #20
     ├── package.json
     ├── package-lock.json
     ├── app.json
@@ -49,15 +52,31 @@ Portfolio-Project/
     └── src/
         ├── app/
         │   ├── _layout.tsx          # يستدعي ApplicationRoot
-        │   └── index.tsx            # يستدعي SignUpScreen حاليًا
+        │   ├── index.tsx            # يستدعي SignUpScreen حاليًا
+        │   ├── sign-up.tsx          # التسجيل #21
+        │   ├── login.tsx            # الدخول #21
+        │   └── verify-phone.tsx     # رمز التحقق #21
         ├── application/
-        │   └── ApplicationRoot.tsx  # تركيب Stack
+        │   └── ApplicationRoot.tsx  # تركيب Stack وتسجيل ردود Mock
         ├── features/
-        │   └── auth/
-        │       ├── SignUpScreen.tsx # النموذج ووظيفته الحالية
-        │       └── index.ts         # المدخل العام للميزة
+        │   └── auth/                # #21
+        │       ├── SignUpScreen.tsx      # التسجيل بالاسم والجوال
+        │       ├── LoginScreen.tsx       # الدخول بالجوال فقط
+        │       ├── VerifyPhoneScreen.tsx # الرمز وإعادة الإرسال
+        │       ├── SignOutButton.tsx     # زر الخروج لأي شاشة
+        │       ├── api.ts                # طلبات الحساب عبر client
+        │       ├── mocks.ts              # ردود تجريبية مطابقة للعقد
+        │       ├── session.ts            # حفظ الجلسة واسترجاعها ومسحها
+        │       ├── authErrors.ts         # رسائل الأخطاء للشاشات الثلاث
+        │       ├── navigation.ts         # التنقل بين شاشات الحساب
+        │       └── index.ts              # المدخل العام للميزة
         └── shared/
             ├── theme.ts
+            ├── api/                 # أداة الطلبات #20
+            │   ├── client.ts
+            │   ├── config.ts
+            │   ├── errors.ts
+            │   └── mockTransport.ts
             └── components/
                 ├── AppButton.tsx
                 ├── AppInput.tsx
