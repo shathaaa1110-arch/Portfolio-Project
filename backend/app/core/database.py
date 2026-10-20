@@ -8,20 +8,12 @@ from collections.abc import Iterator
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from app.core.config import get_settings
-
-
-def _normalize_url(url: str) -> str:
-    # Hosts like Neon and Render hand out "postgres://" or "postgresql://" URLs;
-    # SQLAlchemy needs the driver named explicitly.
-    for prefix in ("postgres://", "postgresql://"):
-        if url.startswith(prefix):
-            return "postgresql+psycopg://" + url[len(prefix):]
-    return url
+from app.core.config import get_database_connect_args, get_database_url
 
 
 engine = create_engine(
-    _normalize_url(get_settings().database_url),
+    get_database_url(),
+    connect_args=get_database_connect_args(),
     pool_pre_ping=True,  # hosted Postgres (Neon) suspends idle connections
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

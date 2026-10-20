@@ -4,14 +4,16 @@ FastAPI + PostgreSQL. Every endpoint lives under `/api/v1`.
 
 ## Run it locally
 
-Needs Python 3.12 and a PostgreSQL database (local or Neon).
+Needs Python 3.12 and PostgreSQL 18 for local development. Follow the
+[database setup guide](../database/README.md) first to create the local roles,
+configure connections, and apply migrations. Hosted deployments use their own DATABASE_URL.
 
 ```bash
 cd backend
-python3 -m venv .venv
+uv venv --python 3.12 .venv  # skip if the setup guide already created it
 source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env        # then put your DATABASE_URL in .env
+uv pip install -r requirements.txt
+# Configure .env using the database guide; preserve an existing .env.
 uvicorn app.main:app --reload
 ```
 
@@ -24,9 +26,24 @@ Interactive docs for every endpoint: http://127.0.0.1:8000/docs
 
 ## Tests
 
+From `backend/`, with `.env` configured:
+
 ```bash
-pytest
+python -m pytest -m "not integration"
 ```
+
+For real PostgreSQL checks, from the repository root with the virtual environment active:
+
+```bash
+python database/reset_test_db.py
+cd backend
+ENVIRONMENT=test python -m pytest -m integration
+```
+
+All pytest runs select test mode before importing the API. `TEST_DATABASE_URL`
+is required and validated; unit tests do not connect to PostgreSQL. Running
+`python -m pytest` includes integration checks and requires a migrated test database.
+See [database validation](../database/VALIDATION.md) for recorded evidence.
 
 ## Layout
 
@@ -58,7 +75,8 @@ A new endpoint goes in its service's `router.py`; the service is already mounted
 | Name | What it is |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL URL. `postgres://` and `postgresql://` URLs from Neon or Render work as they are. |
-| `ENVIRONMENT` | `development`, `staging` or `production` |
+| `TEST_DATABASE_URL` | Required for tests: only local `127.0.0.1:5432`, database/user `thouq_test`, and no URL query parameters are accepted. |
+| `ENVIRONMENT` | `development`, `test`, `staging` or `production`; test mode selects only `TEST_DATABASE_URL`. |
 | `CORS_ORIGINS` | Comma-separated origins allowed to call the API from a browser (`*` in development) |
 
 Never commit `.env`: the repository is public.

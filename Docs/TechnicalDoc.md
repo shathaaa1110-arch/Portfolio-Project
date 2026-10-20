@@ -2544,6 +2544,13 @@ flowchart LR
 | Release approval | Before merge to `main` | Staging validation passed, PM confirms scope, version number bumped | Shatha (PM) |
 | Production smoke test | After deploy to production | Tests 1–3 from the E2E suite run against production to confirm the deploy is healthy | Hassan |
 
+Local database setup now uses PostgreSQL 18 with separate `thouq_dev` and
+`thouq_test` databases and Alembic migrations. See the [database guide](../database/README.md)
+for the executable setup, connection isolation diagram, and current test commands.
+The DB-02 baseline establishes migration tracking only; application table migrations
+and full journey validation remain separate work. The CI YAML below is a future
+pipeline sketch, not a runnable validation record.
+
 #### 6.7.3 CI pipeline (planned)
 
 When CI is configured (GitHub Actions), the following jobs run automatically:
@@ -2562,7 +2569,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_DB: thouq_test
           POSTGRES_USER: thouq
