@@ -6,7 +6,7 @@ database tasks (DB-03, DB-08); these classes only map to it.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Integer, Text, Uuid
+from sqlalchemy import ForeignKey, Integer, LargeBinary, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -38,4 +38,21 @@ class OtpCode(Base):
     expires_at: Mapped[datetime] = mapped_column(nullable=False)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     used_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, default=utcnow)
+
+
+class FaceProfile(Base):
+    """The reference face a user registered for face login (experiment).
+
+    Biometric data: kept only after explicit consent, one row per user,
+    and deleted when the user turns face login off.
+    """
+
+    __tablename__ = "face_profiles"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), primary_key=True)
+    image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    consented_at: Mapped[datetime] = mapped_column(nullable=False)
+    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False, default=utcnow)

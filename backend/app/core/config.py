@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Secret used to sign login tokens and hash verification codes. Never commit it.
     secret_key: str = ""
 
+    # Face login (experiment): "mock" matches only identical images, "real" asks Authentica.
+    face_mode: str = "mock"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
