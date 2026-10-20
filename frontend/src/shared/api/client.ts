@@ -1,5 +1,5 @@
 import { API_BASE_URL, USE_MOCK } from "./config";
-import { networkError, toApiError } from "./errors";
+import { invalidResponseError, networkError, toApiError } from "./errors";
 import { mockTransport } from "./mockTransport";
 
 const TIMEOUT_MS = 15000; // 15 seconds before the request is cancelled
@@ -25,6 +25,7 @@ export async function request<T>(method: Method, path: string, options: RequestO
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   let response: Response;
+  let text: string;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
@@ -32,15 +33,35 @@ export async function request<T>(method: Method, path: string, options: RequestO
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: controller.signal,
     });
+    // Read the whole body while the timeout is still active
+    text = await response.text();
   } catch {
+    // Connection failed, dropped while reading, or timed out
     throw networkError();
   } finally {
     clearTimeout(timer);
   }
 
-  const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw toApiError(response.status, data);
+    throw toApiError(response.status, parseJsonOrNull(text));
   }
-  return data as T;
+
+  // Intentional empty response, e.g. 204 from /auth/logout
+  if (text === "") {
+    return null as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw invalidResponseError(response.status);
+  }
+}
+
+function parseJsonOrNull(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }

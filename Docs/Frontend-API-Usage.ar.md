@@ -18,7 +18,7 @@ EXPO_PUBLIC_USE_MOCK=true
 مثل قراءة المطاعم العامة.
 
 ```ts
-const restaurants = await request("GET", "/restaurants");
+const { restaurants } = await request<{ restaurants: Restaurant[] }>("GET", "/restaurants");
 ```
 
 ## 3. طلب يحتاج تسجيل دخول
@@ -46,5 +46,7 @@ if (error.code === "NETWORK_ERROR") { /* show "check your connection" */ }
 كل ميزة تسجّل ردودها التجريبية في ملف خاص فيها.
 
 ```ts
-registerMock("GET", "/restaurants", () => [{ id: "1", name: "Test" }]);
+registerMock("GET", "/restaurants", () => ({
+  restaurants: [{ id: 101, name_ar: "Test Restaurant", cuisines: ["italian"], price_tier: 3, rating: 4.6 }],
+}));
 ```
