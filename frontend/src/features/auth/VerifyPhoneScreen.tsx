@@ -1,40 +1,18 @@
-import { type Href, router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { ApiError } from "@/shared/api/errors";
 import { AppButton, AppInput, AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { resendCode, verifyCode } from "./api";
+import { errorMessage } from "./authErrors";
+import { goToApp } from "./navigation";
 import { saveSession, sessionFromVerify } from "./session";
 
 const RESEND_WAIT_SECONDS = 60; // Same wait as the backend
-const PREFERENCES_ROUTE = "/preferences" as Href; // app/preferences.tsx is added by Shatha (#25); cast until it exists
-
-// Arabic message for each backend error code this screen can receive
-function errorMessage(error: unknown): string {
-  if (!(error instanceof ApiError)) {
-    return "صار خطأ، حاول مرة ثانية.";
-  }
-  switch (error.code) {
-    case "INVALID_CODE":
-      return "الرمز غير صحيح.";
-    case "CODE_EXPIRED":
-      return "انتهت صلاحية الرمز، اطلب رمزًا جديدًا.";
-    case "TOO_MANY_ATTEMPTS":
-      return "محاولات كثيرة، اطلب رمزًا جديدًا.";
-    case "RATE_LIMITED":
-      return `انتظر ${error.retryAfterSeconds ?? RESEND_WAIT_SECONDS} ثانية قبل طلب رمز جديد.`;
-    case "SMS_SEND_FAILED":
-      return "ما قدرنا نرسل الرمز، حاول مرة ثانية.";
-    case "NETWORK_ERROR":
-      return "تأكد من اتصالك بالإنترنت.";
-    default:
-      return "صار خطأ، حاول مرة ثانية.";
-  }
-}
 
 export function VerifyPhoneScreen() {
-  const params = useLocalSearchParams<{ phone: string; name?: string; codeLength?: string }>();
+  const params = useLocalSearchParams<{ phone: string; name?: string; codeLength?: string; wait?: string }>();
   const phone = params.phone ?? "";
   const codeLength = Number(params.codeLength) || 6;
 
@@ -43,7 +21,7 @@ export function VerifyPhoneScreen() {
   const [needsName, setNeedsName] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_WAIT_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(Number(params.wait) || RESEND_WAIT_SECONDS);
 
   // Count down once per second until resending is allowed
   useEffect(() => {
@@ -60,8 +38,7 @@ export function VerifyPhoneScreen() {
     try {
       const response = await verifyCode(phone, code, name.trim() || undefined);
       await saveSession(sessionFromVerify(response));
-      // New or incomplete accounts set preferences first; completed accounts go to Home
-      router.replace(response.user.has_saved_preferences ? "/" : PREFERENCES_ROUTE);
+      goToApp(response.user.has_saved_preferences);
     } catch (e) {
       if (e instanceof ApiError && e.code === "NAME_REQUIRED") {
         // A new phone came from the login screen: ask for the name, the same code still works
