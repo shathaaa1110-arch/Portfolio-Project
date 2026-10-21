@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useState } from "react";
 import {
   RestaurantList,
-  previewRestaurants,
+  useRestaurants,
 } from "@/features/restaurants";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
@@ -16,16 +16,11 @@ import { SymbolView } from "expo-symbols";
 
 export function HomePage() {
   // Keep the current search text.
-const [searchQuery, setSearchQuery] = useState("");
-    // Track the current list state during the preview.
-const [previewStatus, setPreviewStatus] = useState<
-  "ready" | "loading" | "error"
->("ready");
+  const [searchQuery, setSearchQuery] = useState("");
 
-function retryPreview() {
-  // Restore sample cards without a network request.
-  setPreviewStatus("ready");
-}
+  // Load restaurants and track the request.
+  const { restaurants, status, retry } = useRestaurants();
+
   // Place the page introduction above the restaurant cards.
   const header = (
     <View style={styles.header}>
@@ -147,12 +142,10 @@ function retryPreview() {
           تصفّح عام للمطاعم، غير مخصّص حسب تفضيلاتك.
         </AppText>
 
-        {/* Label the sample data during development. */}
-        {__DEV__ && (
-          <AppText variant="label" style={styles.arabicText}>
-            معاينة التصميم — بيانات تجريبية
-          </AppText>
-        )}
+                {/* Explain the current search scope. */}
+        <AppText style={styles.arabicText}>
+          البحث ضمن المطاعم المعروضة.
+        </AppText>
       </View>
     </View>
   );
@@ -163,12 +156,12 @@ function retryPreview() {
       style={styles.screen}
     >
       {/* Scroll the introduction and cards together. */}
-      <RestaurantList
+            <RestaurantList
         header={header}
-        restaurants={__DEV__ ? previewRestaurants : []}
+        restaurants={restaurants}
         searchQuery={searchQuery}
-        status={previewStatus}
-        onRetry={__DEV__ ? retryPreview : undefined}
+        status={status}
+        onRetry={retry}
       />
 
 
