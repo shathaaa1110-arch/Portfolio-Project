@@ -11,7 +11,7 @@ export function SignUpScreen() {
 
   return (
     <View style={styles.container}>
-      <AppText variant="title" style={styles.title}>انشئ حسابك</AppText>
+      <AppText variant="title" style={styles.title}>أنشئ حسابك </AppText>
       <AppText variant="label" style={styles.label}>الاسم</AppText>
       <AppInput
         style={styles.input}
