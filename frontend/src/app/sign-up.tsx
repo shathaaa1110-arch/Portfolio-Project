@@ -1,2 +1,2 @@
-// Open the existing sign-up screen.
+// Open the sign-up screen.
 export { SignUpScreen as default } from "@/features/auth";

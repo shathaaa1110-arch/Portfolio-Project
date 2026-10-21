@@ -1,6 +1,7 @@
 // القيم المشتركة لهوية واجهة التطبيق.
 export const theme = {
-  colors: {
+   colors: {
+    // Shared app colors.
     background: "#F8F6EF",
     surface: "#FFFDF8",
     text: "#193A30",
@@ -8,11 +9,16 @@ export const theme = {
     placeholder: "#7A826F",
     primary: "#194D3C",
     onPrimary: "#FFFEF9",
-        // Colors used by the search preview.
+
+    // Search field background, hint, and icon.
     searchBackground: "#EDEEDE",
     searchText: "#6E7C5F",
-        // Light accent for the session preview.
+
+    // Light accent for the session card.
     sessionAccent: "#DAE5C6",
+
+    // Error messages in account screens.
+    error: "#A54837",
   },
 
   opacity: {

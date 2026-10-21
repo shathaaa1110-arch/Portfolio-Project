@@ -34,12 +34,14 @@ It does not make a network request.
 The current Home page passes an empty list outside development mode.
 Real restaurant data still needs API integration.
 
-The legacy sign-up form is available at `/sign-up`.
-Its verification button shows a placeholder alert.
-It does not send SMS or create an account.
+Sign-up, login, and phone verification screens are implemented.
+They use the shared API client and support explicit mock mode.
 
-Real authentication, preferences, restaurant API integration,
-and session creation remain pending.
+Session storage helpers and a sign-out button are available.
+Connecting these to the Account page is still pending.
+
+Real authentication and SMS testing, preferences, restaurant API
+integration, and session creation remain pending.
 
 ## Install and run
 
@@ -50,6 +52,7 @@ From the repository root:
 
 ```sh
 npm --prefix frontend ci
+cp -n frontend/.env.example frontend/.env.local
 npm run check
 cd frontend
 npm start
@@ -72,7 +75,7 @@ Paths below are relative to `frontend`.
 | `src/app/(tabs)/index.tsx` | Opens Home at `/` |
 | `src/app/(tabs)/saved.tsx` | Opens the Saved placeholder |
 | `src/app/(tabs)/account.tsx` | Opens the Account placeholder |
-| `src/app/sign-up.tsx` | Opens the legacy sign-up screen |
+| `src/app/sign-up.tsx` | Opens the sign-up screen |
 | `src/application/ApplicationRoot.tsx` | Loads fonts and composes the root navigation |
 | `src/application/MainTabs.tsx` | Defines the three bottom tabs |
 | `src/application/HomePage.tsx` | Composes the Home header, search field, session preview, and list |
@@ -83,13 +86,15 @@ Paths below are relative to `frontend`.
 | `src/features/restaurants/types.ts` | Defines the restaurant data used by the UI |
 | `src/features/restaurants/mocks.ts` | Provides sample data for development |
 | `src/features/restaurants/index.ts` | Exposes the feature's public exports |
-| `src/features/auth` | Contains the legacy sign-up screen |
+| `src/features/auth` | Contains account screens, API calls, mocks and session helpers |
 | `src/shared/components` | Contains reusable text, input, and button components |
 | `src/shared/theme.ts` | Defines shared colors, fonts, sizes, and spacing |
 | `assets/images/food-illustration.png` | General food image used by restaurant cards |
 | `assets/fonts` | Contains the Arabic fonts and their license |
 
-Preferences and the shared HTTP client are still planned.
+The shared HTTP client is implemented in `src/shared/api`.
+Preferences are still planned.
+See the [API setup guide](../Docs/Frontend-API-Usage.ar.md).
 
 Import another feature through its public `index.ts`.
 Declare implemented features and their required dependencies
