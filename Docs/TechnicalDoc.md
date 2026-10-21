@@ -1676,22 +1676,46 @@ Response `200`
 }
 ```
 
-#### Browse and search restaurants
+#### Browse restaurants
 
 ```http
-GET /restaurants?search=&cuisine=&district=
+GET /restaurants?limit=20&offset=0
 ```
-Requires: Authorization
+Requires: nothing. Public browsing works without an account, outing, or group, and returns no account or session data.
 
-A plain filtered query against `restaurants`; it does not call the recommendation engine.
+A plain query against `restaurants`; it does not call the recommendation engine. Results are ordered by `quality_score`, then `rating`, best first. `limit` is 1–50 (default 20); `offset` starts at 0. Search by name and filters (`search`, `cuisine`, `district`) come later with story 22.
 
 Response `200`
 ```json
 {
   "restaurants": [
-    { "id": 101, "name_ar": "string", "cuisines": ["italian"], "price_tier": 3, "rating": 4.6 }
-  ]
+    {
+      "id": 101,
+      "name_ar": "string",
+      "name_en": "string",
+      "cuisines": ["italian"],
+      "district": "string",
+      "price_tier": 3,
+      "rating": 4.6,
+      "maps_url": "string"
+    }
+  ],
+  "total": 1234,
+  "limit": 20,
+  "offset": 0
 }
+```
+
+An empty dataset returns `200` with `"restaurants": []` and `"total": 0`.
+
+Response `422` — `limit` or `offset` outside the allowed range
+```json
+{ "error": { "code": "VALIDATION_ERROR", "message": "Some fields are missing or invalid.", "fields": ["query.limit"] } }
+```
+
+Response `503` — the restaurants table cannot be read
+```json
+{ "error": { "code": "RESTAURANTS_UNAVAILABLE", "message": "Restaurants are not available right now. Please try again." } }
 ```
 
 #### Personal recommendation
@@ -2466,7 +2490,7 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `POST /outings/{id}/preferences/ready` | Marked ready (200) | Already ready (409) |
 | `GET /outings/{id}/plan` | Plan returned (200) | No plan yet (404) |
 | `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
-| `GET /restaurants` | List returned (200) | — |
+| `GET /restaurants` | List returned (200), empty list (200) | Bad `limit` (422), database unavailable (503) |
 | `POST /recommendations/personal` | Suggestions returned (200) | No auth (401) |
 | `POST /outings/{id}/votes` | Vote recorded (200) | Wrong stage (409), not a participant (403) |
 | `POST /outings/{id}/end-voting` | Result settled (200) | Not organizer (403) |
@@ -2520,6 +2544,13 @@ flowchart LR
 | Release approval | Before merge to `main` | Staging validation passed, PM confirms scope, version number bumped | Shatha (PM) |
 | Production smoke test | After deploy to production | Tests 1–3 from the E2E suite run against production to confirm the deploy is healthy | Hassan |
 
+Local database setup now uses PostgreSQL 18 with separate `thouq_dev` and
+`thouq_test` databases and Alembic migrations. See the [database guide](../database/README.md)
+for the executable setup, connection isolation diagram, and current test commands.
+The DB-02 baseline establishes migration tracking only; application table migrations
+and full journey validation remain separate work. The CI YAML below is a future
+pipeline sketch, not a runnable validation record.
+
 #### 6.7.3 CI pipeline (planned)
 
 When CI is configured (GitHub Actions), the following jobs run automatically:
@@ -2538,7 +2569,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_DB: thouq_test
           POSTGRES_USER: thouq
