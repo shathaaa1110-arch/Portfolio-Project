@@ -311,6 +311,15 @@ The same information also appears as a card inside the app, so a member who has 
 - **Local restaurant data:** suggestions do not depend on a call to an external service, which keeps response time short and predictable.
 - **Stored plans:** a plan is generated once per outing and saved, not recalculated every time a participant opens it.
 
+### Back-end technology choices
+
+| Choice | Why we chose it | Alternatives considered |
+| --- | --- | --- |
+| **Python with FastAPI** (API) | The recommendation engine runs inside the API server, so writing both in Python keeps the back-end in one language. FastAPI checks request bodies with Pydantic and generates interactive docs at `/docs`, which the team uses to try each endpoint | Django REST Framework (heavier; its admin and templates are not needed); Node.js with Express (would split the back-end across two languages) |
+| **PostgreSQL** (database) | The data is relational (users, outings, participants, preferences, plans, votes) and relies on foreign keys and unique constraints, for example one vote per participant and plan item. Restaurant filtering by district and budget runs in SQL on indexed columns | MongoDB (a document store does not enforce relations between records with foreign keys); SQLite (a single file, not suited to a hosted multi-user server; used only in automated tests) |
+| **Render and Neon** (hosting) | Both have free tiers, deploy from GitHub, and keep secrets in environment variables. Neon is managed PostgreSQL, so the team does not run a database server | A self-managed server (setup and maintenance the team does not have time for) |
+| **Authentica** (SMS) | Delivers to Saudi numbers through a simple HTTPS API. Chosen and tested in OPS-14 (Section 4.2.1) | — |
+
 ---
 
 ## 2. Components, classes, and database design
