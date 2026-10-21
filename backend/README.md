@@ -24,6 +24,89 @@ Check it: http://127.0.0.1:8000/api/v1/health
 
 Interactive docs for every endpoint: http://127.0.0.1:8000/docs
 
+## Health check contract
+
+`GET /api/v1/health` opens a real database connection and executes `SELECT 1`
+through the existing database helper. Both outcomes return HTTP **200**, so
+inspect the JSON body:
+
+| Database state | `status` | `database` |
+| --- | --- | --- |
+| Query succeeds | `ok` | `ok` |
+| Connection or query fails | `degraded` | `unreachable` |
+
+The `environment` field reports the configured environment. This checks database
+connectivity, not application tables or migration completeness. Keep the API
+running when checking database shutdown and recovery.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as GET /api/v1/health
+    participant Helper as database_is_up()
+    participant DB as PostgreSQL
+    Client->>API: GET request
+    API->>Helper: Check database
+    Helper->>DB: Connect and SELECT 1
+    alt Query succeeds
+        DB-->>Helper: Query result
+        Helper-->>API: true
+        API-->>Client: HTTP 200, status=ok, database=ok
+    else Connection or query fails
+        Helper-->>API: false
+        API-->>Client: HTTP 200, status=degraded, database=unreachable
+    end
+```
+
+See [BE-01 validation evidence](VALIDATION.md) for the real running, stopped,
+and recovered database results.
+
+## Shared endpoint errors
+
+Endpoint authors should raise `ApiError` from `app.core.errors`; its handler is
+already registered in `app/main.py`. For example, the existing invalid-phone
+contract uses HTTP **422**:
+
+```python
+from app.core.errors import ApiError
+
+raise ApiError(
+    status_code=422,
+    code="INVALID_PHONE",
+    message="Phone number must be in the format 05XXXXXXXX.",
+)
+```
+
+```json
+{
+  "error": {
+    "code": "INVALID_PHONE",
+    "message": "Phone number must be in the format 05XXXXXXXX."
+  }
+}
+```
+
+Clients can branch on the stable `error.code` and display `error.message`.
+Additional named arguments, such as `retry_after_seconds=60`, become fields
+inside `error`; do not use extras to replace `code` or `message`.
+
+Missing or invalid request fields also return HTTP **422** through the shared
+validation handler. For example, posting `{}` to `/api/v1/auth/request-code`:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Some fields are missing or invalid.",
+    "fields": ["phone"]
+  }
+}
+```
+
+These handlers cover `ApiError` and request validation. Framework errors such
+as unmatched routes, and unexpected exceptions, are not normalized by these
+handlers. Health degradation uses the health response above.
+
 ## Tests
 
 From `backend/`, with `.env` configured:
