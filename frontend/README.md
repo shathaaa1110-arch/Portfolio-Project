@@ -1,14 +1,52 @@
 # Thouq frontend — Expo SDK 57
 
-[شرح عربي مفصل للتقسيم وملفات شذى وفهد](../Docs/Frontend-Architecture.ar.md)
+[Arabic architecture and learning guide](../Docs/Frontend-Architecture.ar.md)
 
 ## Current implementation
 
-The legacy sign-up form has been split into a feature screen, reusable UI components and theme values. This form is temporary and is not the approved delivery design: #21 will build new account/login screens, replacing it. Its verification button still shows the original placeholder alert; it does not send SMS. Login, preferences, Home and the API client remain tracked implementation tasks. Design previews under `Docs/mockups/` are separate from this app.
+The app opens on the public Home screen without requiring sign-in.
+
+The bottom tabs contain Home, Saved, and Account. Saved and Account
+currently show placeholder pages.
+
+The Home screen includes:
+
+- Arabic welcome text using the shared fonts and theme.
+- A text field that searches restaurant names and cuisines.
+- A session card with a disabled "Start session" button marked "Coming soon".
+- A restaurant list with a general food illustration.
+- Loading, empty, and error states.
+- An optional retry button.
+
+Search filters the restaurant data already passed to the list.
+It does not send a search request to a server.
+
+## Preview data and current limits
+
+Development mode uses three sample restaurants from
+`src/features/restaurants/mocks.ts`.
+
+The food image is illustrative and does not represent a specific restaurant.
+
+The preview retry action returns the list to its ready state.
+It does not make a network request.
+
+The current Home page passes an empty list outside development mode.
+Real restaurant data still needs API integration.
+
+The legacy sign-up form is available at `/sign-up`.
+Its verification button shows a placeholder alert.
+It does not send SMS or create an account.
+
+Real authentication, preferences, restaurant API integration,
+and session creation remain pending.
 
 ## Install and run
 
-Install Node.js and Git. Use the SDK 57-compatible Expo Go app or the team's iPhone development build (#58). From the repository root:
+Use Node.js and Git, plus an Expo Go version compatible with SDK 57
+or the team's development build.
+
+From the repository root:
 
 ```sh
 npm --prefix frontend ci
@@ -17,31 +55,74 @@ cd frontend
 npm start
 ```
 
-Use the QR code with the compatible app on the same Wi-Fi network, or use the development build's connection method. `npm run web` starts the web app. `npx expo start --tunnel` is an alternative if local network access fails. Expo is installed with the project; no global Expo install is needed.
+Press `i` in the Expo terminal to open the iOS Simulator.
+
+For a phone, use the QR code with the compatible app on the same
+Wi-Fi network, or follow the development build's connection method.
+
+From `frontend`, `npm run web` starts the web app.
 
 ## Files
 
-| Path (relative to frontend) | Purpose | Coordinator |
-|---|---|---|
-| `src/app` | Thin route entrypoints | Each screen owner; Shatha for root/layouts/tabs |
-| `src/application` | App composition, providers and pages that combine features | Shatha; guest invitation page belongs to Fahad (#67) |
-| `src/features/auth` | Sign-up, then login/verification/session behavior | Fahad |
-| `src/features/preferences`, `src/features/restaurants` | Planned preferences and restaurant UI/API wrappers | Shatha |
-| `src/shared/components`, `src/shared/theme.ts` | Reusable controls and visual identity | Shatha |
-| `src/shared/api` | Planned generic HTTP transport (#20) | Fahad |
-| `package.json`, `package-lock.json`, `app.json`, `tsconfig.json` | Shared configuration | Shatha coordinates changes |
+Paths below are relative to `frontend`.
 
-Import another feature through its public `index.ts`. Register real feature dependencies in the root `architecture.json`. Keep feature-specific components/API wrappers in their feature; shared tools must not import features. Native styling uses `StyleSheet` plus theme values, not a global web CSS file.
+| Path | Purpose |
+|---|---|
+| `src/app/(tabs)/_layout.tsx` | Opens the main tab layout |
+| `src/app/(tabs)/index.tsx` | Opens Home at `/` |
+| `src/app/(tabs)/saved.tsx` | Opens the Saved placeholder |
+| `src/app/(tabs)/account.tsx` | Opens the Account placeholder |
+| `src/app/sign-up.tsx` | Opens the legacy sign-up screen |
+| `src/application/ApplicationRoot.tsx` | Loads fonts and composes the root navigation |
+| `src/application/MainTabs.tsx` | Defines the three bottom tabs |
+| `src/application/HomePage.tsx` | Composes the Home header, search field, session preview, and list |
+| `src/application/SavedPlaceholderPage.tsx` | Temporary Saved page |
+| `src/application/AccountPlaceholderPage.tsx` | Temporary Account page |
+| `src/features/restaurants/RestaurantList.tsx` | Filters and displays restaurants and list states |
+| `src/features/restaurants/components/RestaurantCard.tsx` | Displays one restaurant |
+| `src/features/restaurants/types.ts` | Defines the restaurant data used by the UI |
+| `src/features/restaurants/mocks.ts` | Provides sample data for development |
+| `src/features/restaurants/index.ts` | Exposes the feature's public exports |
+| `src/features/auth` | Contains the legacy sign-up screen |
+| `src/shared/components` | Contains reusable text, input, and button components |
+| `src/shared/theme.ts` | Defines shared colors, fonts, sizes, and spacing |
+| `assets/images/food-illustration.png` | General food image used by restaurant cards |
+| `assets/fonts` | Contains the Arabic fonts and their license |
 
-## Checks
+Preferences and the shared HTTP client are still planned.
 
-From the repository root or `frontend`:
+Import another feature through its public `index.ts`.
+Declare implemented features and their required dependencies
+in the root `architecture.json`.
+
+Keep restaurant-specific behavior inside `features/restaurants`.
+Shared tools must not import features.
+
+Native styling uses `StyleSheet` and theme values.
+
+## Validation
+
+Run from the repository root:
 
 ```sh
-npm run check:architecture
 npm run check
+git diff --check
 ```
 
-`check` runs TypeScript, architecture boundaries, and the architecture checker's tests. From `frontend`, build the web output with `npx expo export --platform web`.
+`npm run check` runs TypeScript, architecture boundary checks,
+and seven tests for the architecture checker.
 
-The pre-existing `lint` script has no configured ESLint installation yet; setting it up is tracked in #54. Do not report it as passing. Build/type checks do not replace real iPhone or API/SMS acceptance tests.
+For the current Home implementation:
+
+- TypeScript and architecture checks passed.
+- All seven architecture checker tests passed.
+- Home was reviewed on the iPhone 17 Pro simulator.
+- Searching by cuisine and part of a restaurant name returned matching cards.
+- A search with no matches showed the empty message.
+- Clearing the search restored all sample cards.
+
+These checks do not confirm API integration, SMS, or production readiness.
+The architecture tests do not replace UI interaction testing.
+
+The existing lint script does not have a configured ESLint installation.
+Do not report lint as passing.
