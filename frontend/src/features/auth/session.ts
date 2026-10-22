@@ -1,8 +1,19 @@
+import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { ApiError } from "@/shared/api/errors";
 import { logout, type VerifyResponse } from "./api";
 
 const SESSION_KEY = "thouq.session";
+
+// expo-secure-store has no web support, so the browser uses localStorage instead
+const storage = {
+  get: (key: string) =>
+    Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.getItem(key) ?? null) : SecureStore.getItemAsync(key),
+  set: (key: string, value: string) =>
+    Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.setItem(key, value)) : SecureStore.setItemAsync(key, value),
+  remove: (key: string) =>
+    Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.removeItem(key)) : SecureStore.deleteItemAsync(key),
+};
 
 export type AuthSession = {
   token: string;
@@ -22,12 +33,12 @@ export function sessionFromVerify(response: VerifyResponse): AuthSession {
 }
 
 export async function saveSession(session: AuthSession): Promise<void> {
-  await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(session));
+  await storage.set(SESSION_KEY, JSON.stringify(session));
 }
 
 // Returns the saved session, or null when there is none or it has expired
 export async function loadSession(): Promise<AuthSession | null> {
-  const saved = await SecureStore.getItemAsync(SESSION_KEY);
+  const saved = await storage.get(SESSION_KEY);
   if (!saved) {
     return null;
   }
@@ -46,7 +57,7 @@ export async function loadSession(): Promise<AuthSession | null> {
 }
 
 export async function clearSession(): Promise<void> {
-  await SecureStore.deleteItemAsync(SESSION_KEY);
+  await storage.remove(SESSION_KEY);
 }
 
 // Logs out on the server when possible, then always deletes the local session
