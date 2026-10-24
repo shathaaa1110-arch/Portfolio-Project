@@ -61,6 +61,33 @@ sequenceDiagram
 See [BE-01 validation evidence](VALIDATION.md) for the real running, stopped,
 and recovered database results.
 
+## Live test environment
+
+The API is deployed on Render:
+
+- Base URL: https://thouq-api.onrender.com
+- Health check: https://thouq-api.onrender.com/api/v1/health
+
+Open the health check in a browser. `"database": "ok"` means the live API
+reaches the database. The first request after a quiet period can take about a
+minute while the free Render instance wakes up.
+
+### Redeploy
+
+Render is connected to this repository and deploys automatically when a change
+is merged into the `deployment` branch. No manual step is needed.
+
+### Data
+
+The database is on Neon (project `thouq`, branch `production`), not inside
+Render. A redeploy replaces only the API, so the data stays in place.
+
+### When something fails
+
+- Build and runtime errors appear in the service's **Logs** on Render.
+- If the API runs but cannot reach the database, the health check returns
+  `"status": "degraded"` and `"database": "unreachable"`.
+
 ## Shared endpoint errors
 
 Endpoint authors should raise `ApiError` from `app.core.errors`; its handler is
