@@ -1,4 +1,4 @@
-# Thouq frontend — Expo SDK 57
+# Thouq frontend — Expo SDK 58
 
 [Arabic architecture and learning guide](../Docs/Frontend-Architecture.ar.md)
 
@@ -45,7 +45,7 @@ integration, and session creation remain pending.
 
 ## Install and run
 
-Use Node.js and Git, plus an Expo Go version compatible with SDK 57
+Use Node.js and Git, plus an Expo Go version compatible with SDK 58
 or the team's development build.
 
 From the repository root:
