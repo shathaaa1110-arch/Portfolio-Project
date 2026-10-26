@@ -6,7 +6,7 @@ import { theme } from "@/shared/theme";
 export function MainTabs() {
   return (
     <Tabs
-      initialRouteName="index"
+      backBehavior="initialRoute"
       screenOptions={{
         // Use our page titles instead of a navigation header.
         headerShown: false,
