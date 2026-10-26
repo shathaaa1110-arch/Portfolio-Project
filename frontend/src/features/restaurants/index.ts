@@ -6,3 +6,6 @@ export { RestaurantList } from "./RestaurantList";
 export { previewRestaurant, previewRestaurants } from "./mocks";
 // Export restaurant loading and retry logic.
 export { useRestaurants } from "./useRestaurants";
+
+// Share the restaurant type with other features.
+export { type RestaurantSummary } from "./types";
