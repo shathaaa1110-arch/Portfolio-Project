@@ -17,10 +17,20 @@ export function getSavedRestaurants(token: string) {
         { token },
     );
 }
+
 // Save a restaurant for the signed-in user; repeating it keeps one record.
 export function saveRestaurant(token: string, restaurantId: number) {
     return request<null>(
         "PUT",
+        `/users/me/saved-restaurants/${restaurantId}`,
+        { token },
+    );
+}
+
+// Remove a saved restaurant for the signed-in user.
+export function removeSavedRestaurant(token: string, restaurantId: number) {
+    return request<null>(
+        "DELETE",
         `/users/me/saved-restaurants/${restaurantId}`,
         { token },
     );
