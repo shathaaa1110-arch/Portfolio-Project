@@ -4,6 +4,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { registerAuthMocks } from "@/features/auth";
 import { USE_MOCK } from "@/shared/api/config";
+import {registerRestaurantMocks} from "@/features/restaurants";
 
 // Mock responses are registered once, only when mock mode is on
 if (USE_MOCK) {
@@ -33,4 +34,8 @@ export function ApplicationRoot() {
   }
 
   return <Stack screenOptions={{ headerShown: false }} />;
+}
+if (USE_MOCK) {
+  registerAuthMocks();
+  registerRestaurantMocks();
 }
