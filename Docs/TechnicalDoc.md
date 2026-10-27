@@ -352,9 +352,9 @@ erDiagram
     USERS {
         uuid id PK
         text name
-        text phone UK
+        text phone_number UK
         text push_token
-        timestamptz created_at
+        timestamp created_at
     }
     GROUPS {
         uuid id PK
@@ -443,13 +443,19 @@ How to read the lines: `||` means exactly one, `o{` means zero or many, and `o|`
 
 One row per registered account. Guests have no row here.
 
+DB-03 implements this table in migration `0002_account_keys_and_phone`.
+`id` is the sole primary key; all account foreign keys reference `users(id)`.
+Phone numbers are stored as text to preserve `+` and leading zeros, with a
+separate unique constraint. Existing group references remain compatible; the
+other tables in this diagram remain draft designs, not tables created by DB-03.
+
 | Column | Type | Required | Notes |
 |---|---|---|---|
-| id | uuid | yes | Primary key |
+| id | uuid | yes | Sole primary key, supplied by the application |
 | name | text | yes | |
-| phone | text | yes | Unique. Used to log in |
+| phone_number | text | yes | Unique. Used to log in; not part of the primary key |
 | push_token | text | no | Device token for push notifications |
-| created_at | timestamptz | yes | |
+| created_at | timestamp | yes | Without time zone, matching the existing SQL schema |
 
 #### `groups`
 

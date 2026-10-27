@@ -1,9 +1,12 @@
-# Thouq database setup (DB-02)
+# Thouq database setup (DB-02 / DB-03)
 
 This workflow uses installed PostgreSQL 18, Python 3.12, SQLAlchemy/Psycopg,
 and Alembic 1.20.0. It provides separate local development and disposable test
-databases. `schema.sql` remains a draft: the initial migration only establishes
-migration tracking. Table corrections and application tables follow in DB-03/DB-04.
+databases. DB-02 establishes migration tracking; DB-03 creates `users` with a
+single UUID primary key and a unique, required text `phone_number`. The remaining
+tables in `schema.sql` are drafts for later tasks, not applied migrations.
+The account diagram and column definitions are in
+[TechnicalDoc.md](../Docs/TechnicalDoc.md#users).
 
 ## 1. Install the backend environment
 
@@ -107,9 +110,15 @@ alembic -c database/alembic.ini upgrade head
 alembic -c database/alembic.ini current
 ```
 
-Expected revision: `0001_empty_baseline (head)`. Only `alembic_version` is created
-by this baseline. `upgrade head` can be rerun without recreating the database.
-Migration files live in `database/migrations/versions/`.
+Expected revision: `0002_account_keys_and_phone (head)`. The migrations create
+`alembic_version` and `users` only. `upgrade head` can be rerun without recreating
+the database. Migration files live in `database/migrations/versions/`.
+
+DB-03 starts from DB-02's empty baseline; it does not convert a database manually
+populated from the draft SQL. Its downgrade drops `users` and its account data,
+so use downgrade checks only on the disposable test database. Existing draft
+group foreign keys continue to reference `users(id)` without a phone column;
+DB-03 does not create group tables or implement group features.
 
 For a later schema task, create a revision, implement its upgrade/downgrade, review
 it, and apply it:
@@ -119,7 +128,7 @@ alembic -c database/alembic.ini revision -m "describe the schema change"
 alembic -c database/alembic.ini upgrade head
 ```
 
-Automatic model comparison is intentionally not configured for the empty baseline.
+Automatic model comparison is intentionally not configured; migrations are explicit.
 Do not use `schema.sql` or `Base.metadata.create_all()` as a parallel migration path.
 
 ## 6. Create or reset the test database with one command
@@ -133,7 +142,7 @@ python database/reset_test_db.py
 Expected output:
 
 ```text
-Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0001_empty_baseline
+Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0002_account_keys_and_phone
 ```
 
 This command always selects test mode, verifies the URL and local role attributes,
@@ -182,7 +191,8 @@ curl --fail http://127.0.0.1:8000/api/v1/health
 ```
 
 Expect `{"status":"ok","database":"ok","environment":"test"}`.
-The empty baseline does not yet support auth/preferences/restaurant queries.
+The migrated account table alone does not support complete authentication,
+preferences, or restaurant queries; their other tables belong to later tasks.
 
 ## Troubleshooting
 
