@@ -1,2 +1,2 @@
-// Open the saved page.
-export { SavedPlaceholderPage as default } from "@/application/SavedPlaceholderPage";
+// Open the saved restaurants screen.
+export { SavedRestaurantsScreen as default } from "@/features/savedRestaurants";
