@@ -74,8 +74,11 @@ function renderEmptyState() {
 
   return (
     <View style={styles.statePanel}>
+      {/* Explain why the list is empty. */}
       <AppText style={styles.stateText}>
-        لا توجد مطاعم للعرض حاليًا.
+        {normalizedQuery
+          ? "ما لقينا مطاعم تطابق بحثك ضمن القائمة المعروضة."
+          : "لا توجد مطاعم للعرض حاليًا."}
       </AppText>
     </View>
   );

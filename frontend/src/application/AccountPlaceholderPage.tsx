@@ -32,6 +32,7 @@ export function AccountPlaceholderPage() {
         {session && (
           <>
             <AppText style={styles.message}>أهلًا {session.userName}</AppText>
+            <AppButton title="تفضيلاتي" onPress={() => router.push("/preferences")} />
             <SignOutButton />
           </>
         )}

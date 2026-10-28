@@ -7,7 +7,9 @@ import { request } from "@/shared/api/client";
 ```
 
 ## 1. الإعداد
-انسخ ملف الإعدادات المثال إلى ملفك الخاص، وخلّ الوضع التجريبي مفعّل لين يجهز الخادم.
+انسخ ملف الإعدادات المثال إلى ملفك الخاص. للمطاعم والدخول الحقيقي استخدم `EXPO_PUBLIC_USE_MOCK=false`.
+لتجربة ردود الحساب والتفضيلات المحلية فقط، فعّل `EXPO_PUBLIC_USE_MOCK=true` وأعد تشغيل Expo.
+هذا الوضع لا يرسل SMS ولا يحفظ التفضيلات في قاعدة البيانات.
 
 ```
 copy .env.example → .env.local
@@ -50,3 +52,19 @@ registerMock("GET", "/restaurants", () => ({
   restaurants: [{ id: 101, name_ar: "Test Restaurant", cuisines: ["italian"], price_tier: 3, rating: 4.6 }],
 }));
 ```
+
+
+## 7. تفضيلات الحساب
+
+استدعاءات التفضيلات في `frontend/src/features/preferences/api.ts`:
+
+```ts
+const saved = await getAccountPreferences(token);
+await saveAccountPreferences(token, payload);
+```
+
+تستخدم GET وPUT على `/users/me/preferences`. يمرر غلاف الحساب الرمز،
+ويحوّل `model.ts` إجابات النموذج قبل الإرسال وبعد الاسترجاع.
+لا ترسل `user_id` أو `is_saved` في طلب PUT.
+راجع [العقد والتدفق والاختبارات](Preferences-Implementation.ar.md).
+عند فحص ٢٨ أكتوبر ٢٠٢٦ لم يكن المسار منشورًا؛ عاد GET برمز 404.
