@@ -3,7 +3,8 @@
     "sourceRoot": "frontend/src",
     "features": {
       "auth": [],
-      "restaurants": []
+      "restaurants": [],
+      "savedRestaurants": ["restaurants", "auth"]
     }
   }
 }

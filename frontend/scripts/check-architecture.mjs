@@ -97,7 +97,7 @@ export function checkArchitecture(root = defaultRoot) {
       if (from.layer === "features" && !["features", "shared"].includes(to.layer)) report(file, `features cannot import ${to.layer}: '${specifier}'`);
       if (from.layer === "application" && to.layer === "app") report(file, `application cannot import route files: '${specifier}'`);
       if (to.layer === "features" && from.feature !== to.feature) {
-        if (resolved !== path.join(src, "features", to.feature, "index.ts")) report(file, `Import '${to.feature}' through its public index.ts: '${specifier}'`);
+        if (path.normalize(resolved) !== path.join(src, "features", to.feature, "index.ts")) report(file, `Import '${to.feature}' through its public index.ts: '${specifier}'`);
         if (from.feature && !(features[from.feature] ?? []).includes(to.feature)) report(file, `Undeclared dependency '${from.feature}' -> '${to.feature}'`);
       }
     }

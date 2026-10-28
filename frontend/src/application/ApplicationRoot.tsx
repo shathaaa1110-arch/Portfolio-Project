@@ -4,10 +4,14 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { registerAuthMocks } from "@/features/auth";
 import { USE_MOCK } from "@/shared/api/config";
+import { registerRestaurantMocks } from "@/features/restaurants";
+import { registerSavedRestaurantsMocks } from "@/features/savedRestaurants";
 
 // Mock responses are registered once, only when mock mode is on
 if (USE_MOCK) {
   registerAuthMocks();
+  registerRestaurantMocks();
+  registerSavedRestaurantsMocks();
 }
 
 void SplashScreen.preventAutoHideAsync();

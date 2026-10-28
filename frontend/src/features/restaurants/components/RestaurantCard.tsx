@@ -5,6 +5,8 @@ import { StyleSheet, View } from "react-native";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 
+import type { ReactNode } from "react";
+
 
 // Describe the data this card needs.
 type RestaurantCardProps = {
@@ -12,6 +14,8 @@ type RestaurantCardProps = {
   cuisines: string[];
   district: string;
   rating: number | null;
+    // Optional control from another feature, such as a save button.
+  action?: ReactNode;
 };
 
 export function RestaurantCard({
@@ -19,6 +23,7 @@ export function RestaurantCard({
   cuisines,
   district,
   rating,
+  action,
 }: RestaurantCardProps) {
   // Join cuisine names into one readable line.
   const cuisineText =
@@ -63,6 +68,7 @@ export function RestaurantCard({
         الحي: {district || "غير محدد"}
       </AppText>
         <AppText style={styles.arabicText}>{ratingText}</AppText>
+        {action}
       </View>
     </View>
   );

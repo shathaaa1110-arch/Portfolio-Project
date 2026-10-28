@@ -2,7 +2,11 @@
 export { RestaurantCard } from "./components/RestaurantCard";
 export { RestaurantList } from "./RestaurantList";
 
-// Sample data for development previews.
-export { previewRestaurant, previewRestaurants } from "./mocks";
+// Sample data and mock responses for development.
+export { previewRestaurant, previewRestaurants, registerRestaurantMocks } from "./mocks";
+
 // Export restaurant loading and retry logic.
 export { useRestaurants } from "./useRestaurants";
+
+// Share the restaurant type with other features.
+export { type RestaurantSummary } from "./types";
