@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -17,6 +17,8 @@ type RestaurantListProps = {
   searchQuery?: string;
   status?: "ready" | "loading" | "error";
   onRetry?: () => void;
+    // Optional control for each card, added by the screen that shows the list.
+  renderAction?: (restaurant: RestaurantSummary) => ReactNode;
 };
 
 export function RestaurantList({
@@ -25,6 +27,7 @@ export function RestaurantList({
   searchQuery = "",
   status = "ready",
   onRetry,
+  renderAction,
 }: RestaurantListProps) {
       // Match restaurant names or cuisine names.
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -95,6 +98,7 @@ function renderEmptyState() {
           cuisines={item.cuisines}
           district={item.district}
           rating={item.rating}
+          action={renderAction?.(item)}
         />
       )}
       ListHeaderComponent={header}

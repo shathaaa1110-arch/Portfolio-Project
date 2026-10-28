@@ -2,14 +2,19 @@ import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
+
 import { registerAuthMocks } from "@/features/auth";
 import { registerPreferencesMocks } from "@/features/preferences";
+import { registerRestaurantMocks } from "@/features/restaurants";
+import { registerSavedRestaurantsMocks } from "@/features/savedRestaurants";
 import { USE_MOCK } from "@/shared/api/config";
 
-// Mock responses are registered once, only when mock mode is on
+// Register test responses only when mock mode is enabled.
 if (USE_MOCK) {
   registerAuthMocks();
   registerPreferencesMocks();
+  registerRestaurantMocks();
+  registerSavedRestaurantsMocks();
 }
 
 void SplashScreen.preventAutoHideAsync();

@@ -15,12 +15,17 @@ import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { SymbolView } from "expo-symbols";
 
+import { SaveRestaurantButton, useSavedRestaurants } from "@/features/savedRestaurants";
+
 export function HomePage() {
   // Keep the current search text.
   const [searchQuery, setSearchQuery] = useState("");
 
   // Load restaurants and track the request.
   const { restaurants, status, retry } = useRestaurants();
+
+  // Saved restaurants of the signed-in account, for the save buttons.
+  const savedList = useSavedRestaurants();
 
   // Place the page introduction above the restaurant cards.
   const header = (
@@ -157,12 +162,19 @@ export function HomePage() {
       style={styles.screen}
     >
       {/* Scroll the introduction and cards together. */}
-            <RestaurantList
+      <RestaurantList
         header={header}
         restaurants={restaurants}
         searchQuery={searchQuery}
         status={status}
         onRetry={retry}
+        renderAction={(restaurant) => (
+          <SaveRestaurantButton
+            restaurantId={restaurant.id}
+            saved={savedList.isSaved(restaurant.id)}
+            onChange={(isNowSaved) => savedList.setSaved(restaurant, isNowSaved)}
+          />
+        )}
       />
 
 

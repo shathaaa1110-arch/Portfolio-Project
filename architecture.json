@@ -4,9 +4,8 @@
     "features": {
       "auth": [],
       "restaurants": [],
-      "preferences": [
-        "auth"
-      ]
+      "preferences": ["auth"],
+      "savedRestaurants": ["restaurants", "auth"]
     }
   }
 }
