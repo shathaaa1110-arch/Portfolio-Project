@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { isSessionEnded, loadSession } from "@/features/auth";
 import type { RestaurantSummary } from "@/features/restaurants";
@@ -8,7 +8,7 @@ import { getSavedRestaurants } from "./api";
 type LoadStatus = "loading" | "ready" | "error" | "signed-out";
 
 export function useSavedRestaurants() {
-  // Store the saved restaurants returned by the server.
+  // Saved restaurants of the current account only.
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
 
   // Track the current request state.
@@ -17,20 +17,34 @@ export function useSavedRestaurants() {
   // Changing this value starts another request.
   const [attempt, setAttempt] = useState(0);
 
-  // Reload every time the tab opens, because saving on Home changes the list.
+  // The account whose list is in memory, so another account never sees it.
+  const ownerToken = useRef<string | null>(null);
+
+  // Reload every time the tab opens, because another tab may have changed the list.
   useFocusEffect(
     useCallback(() => {
       let active = true;
 
-      async function loadSaved() {
-        setStatus("loading");
+      // Forget the list and show a state instead of old data.
+      function clearList(nextStatus: LoadStatus) {
+        ownerToken.current = null;
+        setRestaurants([]);
+        setStatus(nextStatus);
+      }
 
-        // Saved restaurants belong to an account.
+      async function loadSaved() {
         const session = await loadSession();
         if (!active) return;
         if (!session) {
-          setStatus("signed-out");
+          clearList("signed-out");
           return;
+        }
+
+        // A different account starts from an empty list.
+        if (session.token !== ownerToken.current) {
+          ownerToken.current = session.token;
+          setRestaurants([]);
+          setStatus("loading");
         }
 
         try {
@@ -40,7 +54,7 @@ export function useSavedRestaurants() {
           setStatus("ready");
         } catch (error) {
           if (active) {
-            setStatus(isSessionEnded(error) ? "signed-out" : "error");
+            clearList(isSessionEnded(error) ? "signed-out" : "error");
           }
         }
       }
@@ -58,5 +72,18 @@ export function useSavedRestaurants() {
     setAttempt((previous) => previous + 1);
   }
 
-  return { restaurants, status, retry };
+  // True only for restaurants saved by the current account.
+  function isSaved(restaurantId: number) {
+    return restaurants.some((restaurant) => restaurant.id === restaurantId);
+  }
+
+  // Update the list right after the server confirms a save or removal.
+  function setSaved(restaurant: RestaurantSummary, saved: boolean) {
+    setRestaurants((previous) => {
+      const others = previous.filter((item) => item.id !== restaurant.id);
+      return saved ? [...others, restaurant] : others;
+    });
+  }
+
+  return { restaurants, status, retry, isSaved, setSaved };
 }

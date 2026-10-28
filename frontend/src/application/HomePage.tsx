@@ -23,9 +23,8 @@ export function HomePage() {
   // Load restaurants and track the request.
   const { restaurants, status, retry } = useRestaurants();
 
-  // Load saved ids so each card shows the right button.
-  const { restaurants: savedRestaurants } = useSavedRestaurants();
-  const savedIds = new Set(savedRestaurants.map((restaurant) => restaurant.id));
+  // Saved restaurants of the signed-in account, for the save buttons.
+  const savedList = useSavedRestaurants();
 
   // Place the page introduction above the restaurant cards.
   const header = (
@@ -171,7 +170,8 @@ export function HomePage() {
         renderAction={(restaurant) => (
           <SaveRestaurantButton
             restaurantId={restaurant.id}
-            initiallySaved={savedIds.has(restaurant.id)}
+            saved={savedList.isSaved(restaurant.id)}
+            onChange={(isNowSaved) => savedList.setSaved(restaurant, isNowSaved)}
           />
         )}
       />

@@ -10,8 +10,8 @@ import { useSavedRestaurants } from "./useSavedRestaurants";
 
 export function SavedRestaurantsScreen() {
   // Load the saved list every time this tab opens.
-  const { restaurants, status, retry } = useSavedRestaurants();
-
+  const { restaurants, status, retry, setSaved } = useSavedRestaurants();
+  
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -56,8 +56,8 @@ export function SavedRestaurantsScreen() {
               action={
                 <SaveRestaurantButton
                   restaurantId={restaurant.id}
-                  initiallySaved={true}
-                  onChange={retry}
+                  saved={true}
+                  onChange={(isNowSaved) => setSaved(restaurant, isNowSaved)}
                 />
               }
             />

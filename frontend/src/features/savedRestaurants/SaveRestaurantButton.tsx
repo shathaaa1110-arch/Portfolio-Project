@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Pressable, StyleSheet } from "react-native";
 
 import { isSessionEnded, loadSession } from "@/features/auth";
@@ -10,25 +10,18 @@ import { removeSavedRestaurant, saveRestaurant } from "./api";
 
 type SaveRestaurantButtonProps = {
   restaurantId: number;
-  initiallySaved: boolean;
-  // Lets a screen refresh its list after a successful change.
-  onChange?: (saved: boolean) => void;
+  saved: boolean;
+  // The screen updates its list after the server confirms.
+  onChange: (saved: boolean) => void;
 };
 
 export function SaveRestaurantButton({
   restaurantId,
-  initiallySaved,
+  saved,
   onChange,
 }: SaveRestaurantButtonProps) {
-  const [saved, setSaved] = useState(initiallySaved);
-
   // Blocks repeated taps while a request is running.
   const [busy, setBusy] = useState(false);
-
-  // Follow the screen when its saved list finishes loading.
-  useEffect(() => {
-    setSaved(initiallySaved);
-  }, [initiallySaved]);
 
   async function toggle() {
     if (busy) return;
@@ -48,9 +41,8 @@ export function SaveRestaurantButton({
         await saveRestaurant(session.token, restaurantId);
       }
 
-      // Change the button only after the server confirms.
-      setSaved(!saved);
-      onChange?.(!saved);
+      // Tell the screen only after the server confirms.
+      onChange(!saved);
     } catch (error) {
       if (isSessionEnded(error)) {
         router.navigate("/login");
