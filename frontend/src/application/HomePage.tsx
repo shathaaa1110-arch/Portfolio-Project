@@ -1,4 +1,5 @@
 import {
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -205,7 +206,11 @@ const styles = StyleSheet.create({
     searchField: {
     // Arrange the icon and text from right to left.
     flexDirection: "row",
-    direction: "rtl",
+        // Use the supported RTL style on each platform.
+    ...Platform.select({
+      web: { writingDirection: "rtl" as const },
+      default: { direction: "rtl" as const },
+    }),
     alignItems: "center",
     gap: theme.spacing.labelGap,
 
@@ -231,7 +236,11 @@ const styles = StyleSheet.create({
     sessionCard: {
     // Place the content on the right and the icon on the left.
     flexDirection: "row",
-    direction: "rtl",
+        // Use the supported RTL style on each platform.
+    ...Platform.select({
+      web: { writingDirection: "rtl" as const },
+      default: { direction: "rtl" as const },
+    }),
     alignItems: "center",
     gap: theme.spacing.actionGap,
     backgroundColor: theme.colors.primary,

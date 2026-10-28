@@ -10,6 +10,11 @@ export const theme = {
     primary: "#194D3C",
     onPrimary: "#FFFEF9",
 
+        // Colors for selectable chips.
+    chipText: "#6B796C",
+    chipBorder: "#D8DECF",
+    onSelected: "#FFFFFF",
+
     // Search field background, hint, and icon.
     searchBackground: "#EDEEDE",
     searchText: "#6E7C5F",
@@ -37,6 +42,8 @@ export const theme = {
     labelSize: 13,
     inputSize: 16,
     buttonSize: 15,
+        // Text size inside a chip.
+    chipSize: 12,
   },
 
   spacing: {
@@ -48,6 +55,13 @@ export const theme = {
     buttonPaddingVertical: 12,
     buttonPaddingHorizontal: 20,
 
+        // Space inside each chip.
+    chipPaddingVertical: 8,
+    chipPaddingHorizontal: 16,
+
+    // Space between the check mark and text.
+    chipIconGap: 5,
+
     fieldGap: 20,
     actionGap: 12,
     pagePadding: 24,
@@ -56,17 +70,23 @@ export const theme = {
     cardPadding: 20,
   },
 
-  sizes: {
+     sizes: {
     controlMinHeight: 54,
+
+    // Keep small controls easy to tap.
+    touchTargetMin: 44,
+
+    // Check mark size.
+    chipIcon: 14,
   },
 
+    // Corner shapes for shared components.
   radii: {
     field: 15,
     button: 28,
-    // Round restaurant card corners.
+    chip: 25,
     card: 24,
   },
-
   borders: {
     control: 1,
   },

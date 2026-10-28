@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
-
+import { Platform } from "react-native";
 import { theme } from "@/shared/theme";
 
 export function MainTabs() {
@@ -17,16 +17,32 @@ export function MainTabs() {
 
         tabBarLabelPosition: "below-icon",
         tabBarLabelStyle: {
-          fontFamily: theme.typography.fontFamily,
-          fontSize: theme.typography.labelSize,
-        },
+  fontFamily: theme.typography.fontFamily,
+  fontSize: theme.typography.labelSize,
+
+  // Give Arabic labels enough space on web.
+  ...Platform.select({
+    web: {
+      lineHeight: 20,
+      flexShrink: 0,
+    },
+  }),
+},
 
         // Let the navigator handle the bottom safe area.
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.border,
-          borderTopWidth: theme.borders.control,
-        },
+  backgroundColor: theme.colors.surface,
+  borderTopColor: theme.colors.border,
+  borderTopWidth: theme.borders.control,
+
+  // Keep web tabs readable and ordered from the right.
+...Platform.select({
+  web: {
+    height: 64,
+    writingDirection: "rtl" as const,
+  },
+}),
+},
 
         sceneStyle: {
           backgroundColor: theme.colors.background,

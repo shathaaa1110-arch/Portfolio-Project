@@ -8,8 +8,14 @@
     "scheme": "thouq",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
-    },
+  "icon": "./assets/expo.icon",
+  "bundleIdentifier": "com.shathaalanazi.thouq.dev",
+  "infoPlist": {
+    "ExpoLocalization_supportsRTL": true,
+    "ExpoLocalization_forcesRTL": true
+  }
+},
+
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
