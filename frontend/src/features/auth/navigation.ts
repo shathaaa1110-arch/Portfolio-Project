@@ -3,8 +3,8 @@ import { type Href, router } from "expo-router";
 // app/preferences.tsx is added by Shatha (#25); cast until the route exists
 const PREFERENCES_ROUTE = "/preferences" as Href;
 
-// Open preferences for accounts that have not saved them yet.
-const PREFERENCES_READY = true;
+// Enable automatic onboarding after the real preferences API is verified.
+const PREFERENCES_READY = false;
 
 // New or incomplete accounts set preferences first; completed accounts go to Home
 export function goToApp(hasSavedPreferences: boolean): void {
