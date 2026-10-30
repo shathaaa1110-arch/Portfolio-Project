@@ -11,6 +11,10 @@ type AuthBody = { phone?: string; code?: string; name?: string };
 // Last time a code was sent to each phone, to copy the backend's 60-second limit
 const lastSentAt = new Map<string, number>();
 
+// The account that verified last; GET /users/me returns it in mock mode
+type MockAccount = { id: string; name: string; phone: string };
+let currentAccount: MockAccount | null = null;
+
 // Same cleanup as the backend: Arabic digits become 0-9, then the format is checked
 function normalizePhone(raw = ""): string {
   const phone = raw.replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
@@ -58,12 +62,22 @@ export function registerAuthMocks(): void {
       throw new ApiError(422, "NAME_REQUIRED", "Name is required to create a new account.");
     }
 
+    currentAccount = { id: "1", name: isExisting ? "Test User" : name!.trim(), phone };
+
     return {
       token: "mock-token",
       expires_in_seconds: 2592000,
-      user: { id: "1", name: isExisting ? "Test User" : name!.trim(), has_saved_preferences: isExisting },
+      user: { id: currentAccount.id, name: currentAccount.name, has_saved_preferences: isExisting },
     };
   });
 
-  registerMock("POST", "/auth/logout", () => null);
+  registerMock("POST", "/auth/logout", () => {
+    currentAccount = null;
+    return null;
+  });
+
+  // Mock memory is empty after a reload, so fall back to the returning test account
+  registerMock("GET", "/users/me", () => {
+    return currentAccount ?? { id: "1", name: "Test User", phone: EXISTING_PHONE };
+  });
 }
