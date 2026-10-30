@@ -1,2 +1,2 @@
 // Open the account page.
-export { AccountPlaceholderPage as default } from "@/application/AccountPlaceholderPage";
+export { AccountScreen as default } from "@/features/auth";
