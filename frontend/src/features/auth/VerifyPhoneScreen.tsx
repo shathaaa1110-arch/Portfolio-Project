@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import { I18nManager, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +16,8 @@ const CODE_FIELD_HEIGHT = 68; // From the UX-01 design
 const CODE_FONT_SIZE = 23; // From the UX-01 design
 const CODE_SLOT_WIDTH = 24; // Wide enough for one digit or one dash
 const NOT_A_DIGIT = /[^0-9٠-٩۰-۹]/g; // Keeps 0-9 and Arabic or Persian digits
+const LOCK_CIRCLE_SIZE = 68; // From the UX-01 design
+const LOCK_ICON_SIZE = 30; // From the UX-01 design
 
 export function VerifyPhoneScreen() {
   const params = useLocalSearchParams<{ phone: string; name?: string; codeLength?: string; wait?: string }>();
@@ -97,6 +100,15 @@ export function VerifyPhoneScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
+        <View style={styles.lockCircle}>
+          <SymbolView
+            name={{ ios: "lock", android: "lock", web: "lock" }}
+            size={LOCK_ICON_SIZE}
+            tintColor={theme.colors.text}
+            accessible={false}
+          />
+        </View>
+
         <AppText style={styles.eyebrow}>خطوة بسيطة وبنبدأ</AppText>
         <AppText variant="title" style={styles.title}>تأكد من جوالك.</AppText>
         <AppText style={styles.subtitle}>أرسلنا الرمز إلى {maskedPhone}</AppText>
@@ -165,6 +177,20 @@ const styles = StyleSheet.create({
   // The design flows from the top; scrolling keeps the button above the keyboard
   content: {
     padding: theme.spacing.pagePadding,
+  },
+
+  // Soft circle with a lock, as in the design
+  lockCircle: {
+    width: LOCK_CIRCLE_SIZE,
+    height: LOCK_CIRCLE_SIZE,
+    borderRadius: LOCK_CIRCLE_SIZE / 2,
+    // Closest shared color to the design's circle
+    backgroundColor: theme.colors.searchBackground,
+    alignItems: "center",
+    justifyContent: "center",
+    // The design keeps it on the right; "flex-start" means the right side only in Arabic layout
+    alignSelf: I18nManager.isRTL ? "flex-start" : "flex-end",
+    marginBottom: theme.spacing.fieldGap,
   },
 
   // Small green line above the title, as in the design
