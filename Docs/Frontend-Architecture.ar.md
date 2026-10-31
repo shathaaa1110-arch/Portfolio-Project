@@ -207,6 +207,7 @@ Portfolio-Project/
     │   │   ├── IBMPlexSansArabic-Bold.ttf
     │   │   └── OFL.txt
     │   └── images/
+    │       ├── auth/
     │       ├── food-illustration.png
     │       └── preferences/
     ├── scripts/
@@ -233,6 +234,7 @@ Portfolio-Project/
         │   └── AccountPlaceholderPage.tsx
         ├── features/
         │   ├── auth/
+        │   │   ├── AuthHero.tsx
         │   │   ├── SignUpScreen.tsx
         │   │   ├── LoginScreen.tsx
         │   │   ├── VerifyPhoneScreen.tsx
@@ -335,6 +337,8 @@ export { SignUpScreen as default } from "@/features/auth";
 بعد الدخول فيبقى معطلًا حتى نجاح الربط الحقيقي مع الباك.
 
 تستخدم الشاشات `AppInput` و`AppButton` و`AppText` والهوية المشتركة.
+تتبع الشاشات الثلاث تصميم UX-01: صورة الواجهة في التسجيل والدخول من `AuthHero`،
+وحقل رمز واحد في التحقق تظهر فوقه خانات الأرقام، ويبقى الحقل الحقيقي تحتها حتى يعمل اللصق والتعبئة التلقائية.
 يبقى منطق طلب الرمز داخل ميزة الحساب، ولا يوضع داخل `AppButton`.
 
 المكونات المشتركة مسؤولة عن العرض والتفاعل العام.
