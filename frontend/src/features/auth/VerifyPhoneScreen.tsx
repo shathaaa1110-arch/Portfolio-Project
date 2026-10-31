@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet } from "react-native";
+import { I18nManager, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiError } from "@/shared/api/errors";
 import { AppButton, AppInput, AppText } from "@/shared/components";
@@ -11,6 +11,10 @@ import { goToApp } from "./navigation";
 import { saveSession, sessionFromVerify } from "./session";
 
 const RESEND_WAIT_SECONDS = 60; // Same wait as the backend
+const CODE_FIELD_HEIGHT = 68; // From the UX-01 design
+const CODE_FONT_SIZE = 23; // From the UX-01 design
+const CODE_SLOT_WIDTH = 24; // Wide enough for one digit or one dash
+const NOT_A_DIGIT = /[^0-9٠-٩۰-۹]/g; // Keeps 0-9 and Arabic or Persian digits
 
 export function VerifyPhoneScreen() {
   const params = useLocalSearchParams<{ phone: string; name?: string; codeLength?: string; wait?: string }>();
@@ -75,6 +79,17 @@ export function VerifyPhoneScreen() {
   const maskedPhone = `\u2066${phone.slice(0, 2)}••••••${phone.slice(-2)}\u2069`;
   const canVerify = code.length === codeLength && !loading && (!needsName || name.trim().length > 0);
 
+  // One slot per digit: a dash until that digit is typed. The server decides how many digits
+  const slots = Array.from({ length: codeLength }, (_, index) => code[index] ?? "—");
+
+  // Rows run right to left in Arabic, so reverse them to keep the code reading left to right
+  const visibleSlots = I18nManager.isRTL ? [...slots].reverse() : slots;
+
+  // Pasted text like "123 456" keeps only the digits, cut to the code length
+  function handleCodeChange(text: string) {
+    setCode(text.replace(NOT_A_DIGIT, "").slice(0, codeLength));
+  }
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView
@@ -87,15 +102,28 @@ export function VerifyPhoneScreen() {
         <AppText style={styles.subtitle}>أرسلنا الرمز إلى {maskedPhone}</AppText>
 
         <AppText variant="label" style={styles.label}>رمز التحقق</AppText>
-        <AppInput
-          style={styles.input}
-          keyboardType="number-pad"
-          textContentType="oneTimeCode"
-          autoComplete="sms-otp"
-          maxLength={codeLength}
-          value={code}
-          onChangeText={setCode}
-        />
+        {/* The real field stays underneath with invisible text, so typing, pasting and SMS autofill still work */}
+        <View>
+          <AppInput
+            style={[styles.input, styles.codeInput]}
+            accessibilityLabel="رمز التحقق"
+            caretHidden
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
+            value={code}
+            onChangeText={handleCodeChange}
+          />
+
+          {/* Drawn on top; touches pass through to the field */}
+          <View style={styles.codeSlots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {visibleSlots.map((slot, index) => (
+              <AppText key={index} style={[styles.codeSlot, slot === "—" && styles.codeSlotEmpty]}>
+                {slot}
+              </AppText>
+            ))}
+          </View>
+        </View>
 
         {needsName && (
           <>
@@ -151,6 +179,34 @@ const styles = StyleSheet.create({
   subtitle: { marginBottom: theme.spacing.titleGap },
   label: { marginBottom: theme.spacing.labelGap },
   input: { marginBottom: theme.spacing.fieldGap },
+  // The typed text is invisible here; the slots on top show it
+  codeInput: {
+    height: CODE_FIELD_HEIGHT,
+    color: "transparent",
+  },
+
+  codeSlots: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: CODE_FIELD_HEIGHT,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: theme.spacing.labelGap,
+    pointerEvents: "none",
+  },
+
+  codeSlot: {
+    width: CODE_SLOT_WIDTH,
+    textAlign: "center",
+    fontSize: CODE_FONT_SIZE,
+  },
+
+  codeSlotEmpty: {
+    color: theme.colors.placeholder,
+  },
   error: { color: theme.colors.error, textAlign: "center", marginBottom: theme.spacing.fieldGap },
   button: { marginTop: theme.spacing.actionGap },
   // Tall enough to tap easily, like the design's text button
