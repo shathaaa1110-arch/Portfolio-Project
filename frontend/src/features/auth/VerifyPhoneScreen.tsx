@@ -100,7 +100,7 @@ export function VerifyPhoneScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <View style={styles.lockCircle}>
+        <View style={styles.lockCircle} aria-hidden>
           <SymbolView
             name={{ ios: "lock", android: "lock", web: "lock" }}
             size={LOCK_ICON_SIZE}
@@ -128,7 +128,7 @@ export function VerifyPhoneScreen() {
           />
 
           {/* Drawn on top; touches pass through to the field */}
-          <View style={styles.codeSlots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <View style={styles.codeSlots} aria-hidden>
             {visibleSlots.map((slot, index) => (
               <AppText key={index} style={[styles.codeSlot, slot === "—" && styles.codeSlotEmpty]}>
                 {slot}
