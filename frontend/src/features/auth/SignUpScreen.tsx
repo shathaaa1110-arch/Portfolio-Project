@@ -55,10 +55,11 @@ export function SignUpScreen() {
         <AppText>رجوع</AppText>
       </Pressable>
 
+      <AppText style={styles.eyebrow}>جمعة حلوة، تبدأ هنا</AppText>
       <AppText variant="title" style={styles.title}>خلّنا نتعرّف عليك.</AppText>
       <AppText style={styles.subtitle}>حسابك لتنظيم الجلسات. أصحابك يقدرون ينضمون بالدعوة.</AppText>
 
-      <AppText variant="label" style={styles.label}>الاسم</AppText>
+      <AppText variant="label" style={styles.label}>اسمك</AppText>
       <AppInput style={styles.input} placeholder="كيف نناديك؟" value={name} onChangeText={setName} />
       {nameError !== "" && <AppText style={styles.fieldError}>{nameError}</AppText>}
 
@@ -72,7 +73,10 @@ export function SignUpScreen() {
         value={phone}
         onChangeText={setPhone}
       />
-      {phoneError !== "" && <AppText style={styles.fieldError}>{phoneError}</AppText>}
+      {/* One line under the phone field: the error when there is one, otherwise the hint */}
+      <AppText style={phoneError !== "" ? styles.fieldError : styles.hint}>
+        {phoneError !== "" ? phoneError : "نرسل رمزًا للتحقق من الرقم."}
+      </AppText>
 
       {error !== "" && <AppText style={styles.error}>{error}</AppText>}
 
@@ -84,7 +88,7 @@ export function SignUpScreen() {
       />
 
       <Pressable style={styles.link} onPress={() => router.replace("/login")}>
-        <AppText>عندك حساب؟ تسجيل الدخول</AppText>
+        <AppText style={styles.linkText}>عندك حساب؟ تسجيل الدخول</AppText>
       </Pressable>
 
       <AppText style={styles.note}>تقدر تتصفح المطاعم وتنضم كضيف بدون حساب.</AppText>
@@ -100,13 +104,39 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   back: { position: "absolute", top: theme.spacing.titleGap * 2, start: theme.spacing.pagePadding },
-  title: { marginBottom: theme.spacing.labelGap },
-  subtitle: { textAlign: "center", marginBottom: theme.spacing.titleGap },
+  // Small green line above the title, as in the design
+  eyebrow: {
+    fontFamily: theme.typography.fontFamilyBold,
+    fontSize: theme.typography.chipSize,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.labelGap,
+  },
+  // The shared title is centered; this screen follows the design and starts at the right
+  title: { textAlign: "auto", marginBottom: theme.spacing.labelGap },
+  subtitle: { marginBottom: theme.spacing.titleGap },
   label: { marginBottom: theme.spacing.labelGap },
   input: { marginBottom: theme.spacing.labelGap },
   fieldError: { color: theme.colors.error, marginBottom: theme.spacing.fieldGap },
+  // Same space as the error, so the form does not jump when the error appears
+  hint: {
+    color: theme.colors.placeholder,
+    fontSize: theme.typography.chipSize,
+    marginBottom: theme.spacing.fieldGap,
+  },
   error: { color: theme.colors.error, textAlign: "center", marginTop: theme.spacing.fieldGap },
   button: { marginTop: theme.spacing.actionGap },
-  link: { marginTop: theme.spacing.fieldGap, alignItems: "center" },
+  // Tall enough to tap easily, like the design's text button
+  link: {
+    marginTop: theme.spacing.fieldGap,
+    minHeight: theme.sizes.touchTargetMin,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Underlined green text, as in the design, so it reads as a link
+  linkText: {
+    color: theme.colors.primary,
+    fontSize: theme.typography.labelSize,
+    textDecorationLine: "underline",
+  },
   note: { textAlign: "center", marginTop: theme.spacing.titleGap },
 });
