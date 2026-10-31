@@ -1,10 +1,12 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiError } from "@/shared/api/errors";
 import { AppButton, AppInput, AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { requestCode } from "./api";
+import { AuthHero } from "./AuthHero";
 import { errorMessage } from "./authErrors";
 import { goBack, goToVerify } from "./navigation";
 
@@ -44,56 +46,108 @@ export function LoginScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Pressable style={styles.back} onPress={goBack}>
-        <AppText>رجوع</AppText>
-      </Pressable>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
+        <Pressable style={styles.back} onPress={goBack}>
+          <AppText>رجوع</AppText>
+        </Pressable>
 
-      <AppText variant="title" style={styles.title}>أهلًا من جديد.</AppText>
-      <AppText style={styles.subtitle}>اكتب رقم جوالك ونرسل لك رمز الدخول.</AppText>
+        <AuthHero />
 
-      <AppText variant="label" style={styles.label}>رقم الجوال</AppText>
-      <AppInput
-        style={styles.input}
-        keyboardType="phone-pad"
-        textContentType="telephoneNumber"
-        placeholder="05xxxxxxxx"
-        maxLength={10}
-        value={phone}
-        onChangeText={setPhone}
-      />
-      {phoneError !== "" && <AppText style={styles.fieldError}>{phoneError}</AppText>}
+        <AppText style={styles.eyebrow}>جمعة حلوة، تبدأ هنا</AppText>
+        <AppText variant="title" style={styles.title}>حيّاك من جديد.</AppText>
+        <AppText style={styles.subtitle}>ادخل بجوالك، ونرجعك لإنشاء الجلسة.</AppText>
 
-      {error !== "" && <AppText style={styles.error}>{error}</AppText>}
+        <AppText variant="label" style={styles.label}>رقم الجوال</AppText>
+        <AppInput
+          style={styles.input}
+          keyboardType="phone-pad"
+          textContentType="telephoneNumber"
+          placeholder="05xxxxxxxx"
+          maxLength={10}
+          value={phone}
+          onChangeText={setPhone}
+        />
+        {/* One line under the phone field: the error when there is one, otherwise the hint */}
+        <AppText style={phoneError !== "" ? styles.fieldError : styles.hint}>
+          {phoneError !== "" ? phoneError : "نرسل رمزًا للتحقق من الرقم."}
+        </AppText>
 
-      <AppButton
-        title={loading ? "جاري الإرسال..." : "إرسال رمز الدخول"}
-        style={styles.button}
-        disabled={loading}
-        onPress={handleSubmit}
-      />
+        {error !== "" && <AppText style={styles.error}>{error}</AppText>}
 
-      <Pressable style={styles.link} onPress={() => router.replace("/sign-up")}>
-        <AppText>ما عندك حساب؟ سجّل الآن</AppText>
-      </Pressable>
-    </View>
+        <AppButton
+          title={loading ? "جاري الإرسال..." : "إرسال رمز التحقق"}
+          style={styles.button}
+          disabled={loading}
+          onPress={handleSubmit}
+        />
+
+        <Pressable style={styles.link} onPress={() => router.replace("/sign-up")}>
+          <AppText style={styles.linkText}>أول مرة؟ أنشئ حسابًا</AppText>
+        </Pressable>
+
+        <AppText style={styles.note}>تقدر تتصفح المطاعم وتنضم كضيف بدون حساب.</AppText>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    padding: theme.spacing.pagePadding,
-    justifyContent: "center",
     backgroundColor: theme.colors.background,
   },
-  back: { position: "absolute", top: theme.spacing.titleGap * 2, start: theme.spacing.pagePadding },
-  title: { marginBottom: theme.spacing.labelGap },
-  subtitle: { textAlign: "center", marginBottom: theme.spacing.titleGap },
+
+  // The design flows from the top; scrolling keeps the form reachable on small phones
+  content: {
+    padding: theme.spacing.pagePadding,
+  },
+
+  // Stays until the shared header from the design is ready
+  back: {
+    alignSelf: "flex-start",
+    minHeight: theme.sizes.touchTargetMin,
+    justifyContent: "center",
+    marginBottom: theme.spacing.labelGap,
+  },
+
+  // Small green line above the title, as in the design
+  eyebrow: {
+    fontFamily: theme.typography.fontFamilyBold,
+    fontSize: theme.typography.chipSize,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.labelGap,
+  },
+  // The shared title is centered; this screen follows the design and starts at the right
+  title: { textAlign: "auto", marginBottom: theme.spacing.labelGap },
+  subtitle: { marginBottom: theme.spacing.titleGap },
   label: { marginBottom: theme.spacing.labelGap },
   input: { marginBottom: theme.spacing.labelGap },
   fieldError: { color: theme.colors.error, marginBottom: theme.spacing.fieldGap },
+  // Same space as the error, so the form does not jump when the error appears
+  hint: {
+    color: theme.colors.placeholder,
+    fontSize: theme.typography.chipSize,
+    marginBottom: theme.spacing.fieldGap,
+  },
   error: { color: theme.colors.error, textAlign: "center", marginTop: theme.spacing.fieldGap },
   button: { marginTop: theme.spacing.actionGap },
-  link: { marginTop: theme.spacing.fieldGap, alignItems: "center" },
+  // Tall enough to tap easily, like the design's text button
+  link: {
+    marginTop: theme.spacing.fieldGap,
+    minHeight: theme.sizes.touchTargetMin,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Underlined green text, as in the design, so it reads as a link
+  linkText: {
+    color: theme.colors.primary,
+    fontSize: theme.typography.labelSize,
+    textDecorationLine: "underline",
+  },
+  note: { textAlign: "center", marginTop: theme.spacing.titleGap },
 });
