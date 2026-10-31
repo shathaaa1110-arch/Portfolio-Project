@@ -1,10 +1,10 @@
-# Thouq database setup (DB-02 / DB-03)
+# Thouq database setup (DB-02 / DB-03 / DB-14)
 
 This workflow uses installed PostgreSQL 18, Python 3.12, SQLAlchemy/Psycopg,
 and Alembic 1.20.0. It provides separate local development and disposable test
 databases. DB-02 establishes migration tracking; DB-03 creates `users` with a
-single UUID primary key and a unique, required text `phone_number`. The remaining
-tables in `schema.sql` are drafts for later tasks, not applied migrations.
+single UUID primary key and a unique, required text `phone_number`. DB-14 adds account preferences. The remaining tables in `schema.sql` are drafts
+for later tasks, not applied migrations.
 The account diagram and column definitions are in
 [TechnicalDoc.md](../Docs/TechnicalDoc.md#users).
 
@@ -110,8 +110,8 @@ alembic -c database/alembic.ini upgrade head
 alembic -c database/alembic.ini current
 ```
 
-Expected revision: `0002_account_keys_and_phone (head)`. The migrations create
-`alembic_version` and `users` only. `upgrade head` can be rerun without recreating
+Expected revision: `0003_account_preferences (head)`. The migrations create
+`alembic_version`, `users`, and account `preferences`. `upgrade head` can be rerun without recreating
 the database. Migration files live in `database/migrations/versions/`.
 
 DB-03 starts from DB-02's empty baseline; it does not convert a database manually
@@ -142,7 +142,7 @@ python database/reset_test_db.py
 Expected output:
 
 ```text
-Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0002_account_keys_and_phone
+Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0003_account_preferences
 ```
 
 This command always selects test mode, verifies the URL and local role attributes,
@@ -191,8 +191,8 @@ curl --fail http://127.0.0.1:8000/api/v1/health
 ```
 
 Expect `{"status":"ok","database":"ok","environment":"test"}`.
-The migrated account table alone does not support complete authentication,
-preferences, or restaurant queries; their other tables belong to later tasks.
+The migrated tables support account preference storage. Complete authentication,
+preference API endpoints (#63), and restaurant queries require their own tasks.
 
 ## Troubleshooting
 
@@ -222,3 +222,61 @@ flowchart LR
 Record runtime evidence in `database/VALIDATION.md`.
 
 The restaurant dataset is not committed because its terms do not allow republishing.
+
+
+## DB-14 account preferences
+
+Migration `0003_account_preferences` reuses `users.id` and `preferences`; it does
+not create sessions, invitations, participants, or API routes. A clean database
+gets a required unique account owner. Existing shared tables keep their participant
+rows and keys, with exactly one owner per row. New numeric checks apply only to
+account rows in shared tables. Account deletion is blocked while preferences refer
+to it (no cascading data deletion).
+
+Optional budgets are INTEGER whole SAR ≥ 0, minimum ≤ maximum when both exist.
+There is no business maximum (PostgreSQL INTEGER still has its storage limit).
+Distance is unrestricted NUMERIC, finite and > 0 when supplied, including fractions.
+Both list columns are nullable `text[]`; NULL and an empty list remain distinct.
+Legacy TEXT must be a JSON array of strings or a PostgreSQL one-dimensional text-array
+literal with string elements. Scalar text, malformed values, nested lists, and null
+elements abort conversion. There is no comma-splitting or guessed cuisine mapping.
+Failed upgrades roll back; duplicate/orphan owners and invalid account numbers must
+be resolved by the data owner before retry. Never delete rows to make migration pass.
+Downgrade is deliberately refused to prevent data loss; use a reviewed forward fix.
+Offline SQL generation is unsupported: this migration inspects actual schema/data.
+
+### Existing unversioned draft database
+
+Use the database owner's migration connection, with a backup, not a restricted
+runtime role. The checked-in application credentials may inspect columns without
+being able to read or alter rows. Do not reset the development database.
+
+From the root, with the backend environment activated:
+
+```bash
+python database/adopt_existing_schema.py
+python database/adopt_existing_schema.py --stamp
+alembic -c database/alembic.ini upgrade head
+alembic -c database/alembic.ini current
+```
+
+The first command only checks that `users` has the DB-03 columns/types, primary key,
+phone uniqueness and read access. `--stamp` repeats those checks and records
+`0002_account_keys_and_phone`; it never recreates application tables. Versioned or
+incompatible account schemas are refused. DB-14 then checks/converts preferences
+transactionally. If DB-14 fails, its changes roll back and the baseline remains at
+0002; fix the reported data issue and rerun upgrade. A normally versioned database
+uses `upgrade head` directly. Fresh databases also use `upgrade head`, without adoption.
+
+### Handoff to #63
+
+Use `app.services.preferences.models.Preference` with the shared SQLAlchemy Base.
+Set/query `user_id` only from the authenticated account. Save through a transaction;
+repeated saves update that account's single row. Do not use `create_all` for migrations.
+The model intentionally maps account fields only; a legacy participant row is not
+an account default. Lists are Python string lists and distance is `Decimal`.
+Derive `is_saved` from row existence; no row is a valid new-account state. Request
+validation and endpoints remain #63. Public browsing remains unauthenticated.
+
+[Arabic learning guide](../Docs/Database-Learning.ar.md) ·
+[DB-14 issue](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/125)

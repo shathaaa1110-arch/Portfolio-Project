@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.auth.phone import InvalidPhoneError, normalize_phone, to_international
 
 
