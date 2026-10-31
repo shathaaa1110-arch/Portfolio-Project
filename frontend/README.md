@@ -120,6 +120,8 @@ Paths below are relative to `frontend`.
 | `src/features/preferences/components` | Cuisine, food, plate, seating, distance, allergy and progress UI |
 | `src/features/preferences/index.ts` | Exposes the form, screen, draft type and mock registration |
 | `assets/images/preferences` | Images for the preference choices and illustrations |
+| `assets/images/auth` | Decorative photo for the sign-up and login screens |
+| `src/features/auth/AuthHero.tsx` | Shows the photo and app name on sign-up and login |
 | `scripts/preferences.test.cjs` | Checks conversions, validation, API calls and mock read/write |
 | `src/shared/components` | Contains reusable text, input, and button components |
 | `src/shared/theme.ts` | Defines shared colors, fonts, sizes, and spacing |
