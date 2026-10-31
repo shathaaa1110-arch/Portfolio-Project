@@ -1,4 +1,82 @@
-# DB-02 validation evidence
+# Database validation evidence
+
+## DB-03 — account keys and phone storage
+
+### Changes
+
+- [Migration `0002_account_keys_and_phone`](migrations/versions/0002_account_keys_and_phone.py)
+  creates only `users`, following DB-02's empty baseline. The sole primary key is
+  UUID `id`; `phone_number` is required, unique `TEXT`.
+- [Draft schema](schema.sql) already had these account types and keys; its account
+  section now identifies the implementing migration. Group definitions are unchanged.
+- [Database diagram and account dictionary](../Docs/TechnicalDoc.md#users) now use
+  `phone_number` and the existing timestamp type, and distinguish the implemented
+  account table from draft group/application tables.
+- [PostgreSQL acceptance tests](../backend/tests/test_account_schema_integration.py)
+  check column types/keys, `+` and leading-zero preservation, duplicate phones,
+  duplicate IDs with different phones, null phones, and compatibility with the
+  actual draft `groups`/`group_members` foreign keys. Group tables in an isolated
+  schema and account rows are rolled back; no group features or Python models
+  were added. PostgreSQL temporary tables cannot reference permanent tables,
+  so the compatibility test uses transactional regular tables instead.
+
+### Observed results
+
+| Check | Result |
+| --- | --- |
+| Non-integration backend suite | **89 passed**, 9 integration cases deselected; one existing dependency deprecation warning |
+| Alembic `upgrade head --sql` | Passed; emits the empty baseline followed by `users` with UUID PK and unique required TEXT phone |
+| Alembic downgrade SQL to `0001_empty_baseline` | Passed; emits `DROP TABLE users` and revision update |
+| Clean PostgreSQL reset | Passed; recreated only `thouq_test` and applied head `0002_account_keys_and_phone` |
+| Full backend suite against migrated PostgreSQL | **98 passed**, 25 dependency deprecation warnings |
+| Live downgrade / re-upgrade | Passed; revision `0001_empty_baseline`, then `0002_account_keys_and_phone (head)` |
+| Integration suite after re-upgrade | **9 passed**, 89 deselected |
+| Cleanup / scope | Only `alembic_version` and `users` remain in public; no test schemas or account rows remain |
+
+Live validation used PostgreSQL 18.6, Python 3.14.8, and Alembic 1.20.0. 
+The warnings come from Starlette/AnyIO and FastAPI's deprecated asyncio API usage, not DB-03 failures.
+The full suite includes duplicate-phone rejection and single-ID foreign-key
+acceptance against real PostgreSQL, not just offline SQL generation.
+No development database, password values, or remote issue was changed.
+
+### Reproduce validation
+
+Configure local credentials using [README.md](README.md), then from the root:
+
+```bash
+backend/.venv/bin/python database/reset_test_db.py
+ENVIRONMENT=test backend/.venv/bin/python -m alembic -c database/alembic.ini current
+backend/.venv/bin/python -m pytest -q -c backend/pytest.ini backend/tests
+```
+
+Expected head: `0002_account_keys_and_phone`. The full suite includes seven new
+DB-03 PostgreSQL cases and the two existing database integration checks.
+To check reversibility **only on the disposable test database**, from the root:
+
+```bash
+ENVIRONMENT=test backend/.venv/bin/python -m alembic -c database/alembic.ini downgrade 0001_empty_baseline
+ENVIRONMENT=test backend/.venv/bin/python -m alembic -c database/alembic.ini upgrade head
+backend/.venv/bin/python -m pytest -q -c backend/pytest.ini backend/tests -m integration
+```
+
+Downgrade deletes account data. Do not run it against development or production.
+
+The successful offline checks used a process-local URL with the required local
+host/user/database and an unused placeholder password; no connection was attempted:
+
+```bash
+export ENVIRONMENT=test
+export TEST_DATABASE_URL='postgresql+psycopg://thouq_test:unused@127.0.0.1:5432/thouq_test'
+backend/.venv/bin/python -m pytest -q -c backend/pytest.ini backend/tests -m 'not integration'
+backend/.venv/bin/python -m alembic -c database/alembic.ini upgrade head --sql
+backend/.venv/bin/python -m alembic -c database/alembic.ini downgrade 0002_account_keys_and_phone:0001_empty_baseline --sql
+unset ENVIRONMENT TEST_DATABASE_URL
+```
+
+## DB-02 validation evidence (historical)
+
+The results below predate DB-03 and describe the environment at that time; they
+are not evidence that DB-03's live migration or new integration tests passed.
 
 Validated locally on 20 October 2026 using Python 3.12.15, PostgreSQL 18.6 client
 and Alembic 1.20.0. These are local runtime results, not a claim that a teammate
@@ -68,3 +146,46 @@ No remote issue was modified during this local implementation. The existing draf
 `schema.sql` edits were preserved. Application-table corrections, authentication
 against those tables, preferences persistence, and the Home journey require their
 subsequent tasks; the empty migration does not prove those features work.
+
+## DB-14 — account preference ownership (31 October 2026)
+
+Local implementation evidence for [#125](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/125).
+This section does not mark the issue Done or claim that #63 endpoints are implemented.
+
+- PostgreSQL test reset applied the complete migration chain to a clean database,
+  ending at `0003_account_preferences`.
+- Full backend suite: **123 passed**, with one existing Starlette/AnyIO deprecation
+  warning. Includes **25 DB-14 PostgreSQL cases** and existing auth/public browsing checks.
+- Migration cases use isolated PostgreSQL schemas and roll back their fixtures.
+  They cover populated DB-03 upgrades, guarded unversioned adoption, account-only
+  legacy tables, shared tables, retained participant records, JSON/PostgreSQL list
+  conversion, and rollback on invalid data. Real account IDs and list values are
+  compared before/after; no user-data deletion is part of migration.
+- Constraints reject duplicate/missing/nonexistent account owners, negative or
+  reversed budgets, and zero/negative/nonfinite distance. Optional values, zero
+  budgets, a large valid budget, and fractional distance work.
+- Real database persistence check commits a model save, closes its session, reads
+  it through a new connection, verifies another account has no saved set, attempts
+  an invalid update, rolls back, and reads the last valid values again. Test rows
+  are removed afterward. This proves durable storage, not a full device/login flow.
+- `.github/workflows/ci.yml` now includes a PostgreSQL 18 integration job that creates
+  the restricted disposable test role, resets/migrates the test DB, and runs the
+  integration suite.
+
+Commands (activate `backend/.venv` and configure the approved local test URL first):
+
+```bash
+python database/reset_test_db.py
+cd backend
+python -m pytest -q
+```
+
+The session's `TEST_DATABASE_URL` was initially unset. Local verification supplied
+it only to the test commands; no development credentials or tracked configuration
+were changed. The existing local test server accepted the disposable role.
+
+Read-only inspection of the configured development database found the shared draft
+schema and no `alembic_version`. Its runtime role lacks SELECT on users/preferences,
+so existing production/development row contents could not be inspected. No adoption
+or upgrade was applied there. The owner must run the documented preflight/adoption
+with a backup and sufficient permissions before deployment.

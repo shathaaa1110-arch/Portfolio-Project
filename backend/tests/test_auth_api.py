@@ -8,17 +8,16 @@ from datetime import timedelta
 
 import jwt
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.main import app
 from app.services.auth import router as auth_router
 from app.services.auth.models import OtpCode, User, utcnow
 from app.services.auth.sms import SmsSendError
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 PHONE = "0551234567"
 SECRET = "test-secret"

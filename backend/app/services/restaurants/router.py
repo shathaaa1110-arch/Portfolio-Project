@@ -5,13 +5,12 @@ Search, filters, details and personal ranking come in later tasks.
 """
 import logging
 
+from app.core.database import get_db
+from app.core.errors import ApiError
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
-from app.core.database import get_db
-from app.core.errors import ApiError
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 50

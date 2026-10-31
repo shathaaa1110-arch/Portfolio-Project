@@ -1,14 +1,14 @@
 """Run after the reset command; these checks do not reset the database."""
+from pathlib import Path
+
 import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from fastapi.testclient import TestClient
-from pathlib import Path
-from sqlalchemy import text
-
 from app.core.database import engine
 from app.main import app
+from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 pytestmark = pytest.mark.integration
 

@@ -4,14 +4,13 @@ Add `user: User = Depends(current_user)` to any endpoint that requires
 Authorization. It returns the logged-in user, or answers 401 with the
 contract codes TOKEN_EXPIRED / INVALID_TOKEN (Docs/TechnicalDoc.md, 4.3).
 """
-from fastapi import Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.orm import Session
-
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.services.auth.models import User
 from app.services.auth.tokens import TokenError, decode_access_token
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
 
 # auto_error=False: we return our own error shape instead of FastAPI's default.
 bearer = HTTPBearer(auto_error=False)

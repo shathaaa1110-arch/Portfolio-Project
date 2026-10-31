@@ -3,12 +3,11 @@
 Run locally:  uvicorn app.main:app --reload   (from the backend/ folder)
 Docs:         http://127.0.0.1:8000/docs
 """
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 settings = get_settings()
 

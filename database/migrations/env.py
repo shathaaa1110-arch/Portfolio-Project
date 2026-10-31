@@ -1,8 +1,11 @@
 """Use the same database selection as the API; never store credentials here."""
 from alembic import context
+from app.core.config import (  # pyright: ignore[reportMissingImports]
+    get_database_connect_args,
+    get_database_url,
+    validate_test_database_url,
+)
 from sqlalchemy import create_engine, pool
-
-from app.core.config import get_database_connect_args, get_database_url, validate_test_database_url
 
 config = context.config
 # Only the reset helper supplies this attribute; revalidate its disposable target.
@@ -21,8 +24,8 @@ else:
     )
     engine = create_engine(url, poolclass=pool.NullPool, connect_args=connect_args)
     try:
-        with engine.connect() as connection:
-            context.configure(connection=connection, target_metadata=target_metadata)
+        with engine.connect() as conn:
+            context.configure(connection=conn, target_metadata=target_metadata)
             with context.begin_transaction():
                 context.run_migrations()
     finally:

@@ -5,6 +5,7 @@ from app.services.auth.models import User
 from tests.test_auth_api import ctx, request_code, verify  # noqa: F401 (ctx is a fixture)
 from tests.test_session import login, make_token
 
+
 def test_me_returns_own_profile(ctx):
     token = login(ctx)
     r = ctx.client.get(

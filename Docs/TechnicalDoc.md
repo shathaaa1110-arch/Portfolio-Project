@@ -326,11 +326,11 @@ The same information also appears as a card inside the app, so a member who has 
 
 ### Database design
 
-The database is relational (PostgreSQL) and has nine tables. Four ideas shape it:
+The database is relational (PostgreSQL). Applied migrations provide accounts and account preferences; the other tables below remain the broader release design. Four ideas shape it:
 
 - **People and occasions are separate.** A group holds its members. An outing holds everything that changes from one occasion to the next. An outing can also stand alone, with no group, as a one-off session.
 - **`participants` is the central table.** It has one row per person per outing, for members and guests alike, and carries that person's attendance. Their preferences for the outing and their votes point to this row.
-- **Preferences have one table for two uses.** A row in `preferences` belongs either to an account (saved defaults) or to a participant (one outing). Joining an outing copies the saved row into a new one, so editing it never changes the account.
+- **Preferences have one table for two uses in the planned full release.** A row in `preferences` belongs either to an account (saved defaults) or to a participant (one outing). Joining an outing copies the saved row into a new one, so editing it never changes the account.
 - **A plan is not a table of its own.** The plan of an outing is the set of its `plan_items` rows.
 
 ```mermaid
@@ -346,15 +346,14 @@ erDiagram
     RESTAURANTS ||--o{ PLAN_ITEMS : "appears in"
     PARTICIPANTS ||--o{ VOTES : "casts"
     PLAN_ITEMS ||--o{ VOTES : "receives"
-    USERS |o--o| PREFERENCES : "saves"
-    PARTICIPANTS |o--o| PREFERENCES : "sets for the outing"
+    USERS ||--o| PREFERENCES : "saves (DB-14)"
 
     USERS {
         uuid id PK
         text name
-        text phone UK
+        text phone_number UK
         text push_token
-        timestamptz created_at
+        timestamp created_at
     }
     GROUPS {
         uuid id PK
@@ -390,12 +389,11 @@ erDiagram
     PREFERENCES {
         uuid id PK
         uuid user_id FK, UK
-        uuid participant_id FK, UK
         text[] liked_cuisines
         text[] allergies
         int budget_min
         int budget_max
-        int max_distance_km
+        numeric max_distance_km
         text seating_needs
     }
     RESTAURANTS {
@@ -443,13 +441,19 @@ How to read the lines: `||` means exactly one, `o{` means zero or many, and `o|`
 
 One row per registered account. Guests have no row here.
 
+DB-03 implements this table in migration `0002_account_keys_and_phone`.
+`id` is the sole primary key; all account foreign keys reference `users(id)`.
+Phone numbers are stored as text to preserve `+` and leading zeros, with a
+separate unique constraint. Existing group references remain compatible; the
+other tables in this diagram remain draft designs, not tables created by DB-03.
+
 | Column | Type | Required | Notes |
 |---|---|---|---|
-| id | uuid | yes | Primary key |
+| id | uuid | yes | Sole primary key, supplied by the application |
 | name | text | yes | |
-| phone | text | yes | Unique. Used to log in |
+| phone_number | text | yes | Unique. Used to log in; not part of the primary key |
 | push_token | text | no | Device token for push notifications |
-| created_at | timestamptz | yes | |
+| created_at | timestamp | yes | Without time zone, matching the existing SQL schema |
 
 #### `groups`
 
@@ -514,18 +518,28 @@ One row per person per outing. A member's row points to their account; a guest's
 
 #### `preferences`
 
-One row per set of preferences. The row belongs to an account or to a participant, never both.
+DB-14 implements one optional saved set per account, owned by `users.id`. Clean
+installs require `user_id`; they do not create `participant_id` or session tables.
+Existing shared databases retain participant rows and their exclusive-owner check,
+unique keys and foreign keys. Their account rows have `participant_id IS NULL`.
+Session expansion remains #12 (Sprint 2), not delivered by this migration.
+
+Migration `0003_account_preferences` converts unambiguous JSON string arrays or
+PostgreSQL array literals in legacy TEXT columns to `text[]`, preserving IDs and
+values. Invalid ownership, invalid account numbers, or ambiguous lists abort the
+transaction without deleting data. See the [migration/adoption guide](../database/README.md#db-14-account-preferences).
+The diagram shows the clean Sprint 1 preference shape; the legacy-only participant
+relationship is preserved in existing databases, not required by clean installs.
 
 | Column | Type | Required | Notes |
 |---|---|---|---|
 | id | uuid | yes | Primary key |
-| user_id | uuid | no | Foreign key to `users`. Unique. Set for saved defaults |
-| participant_id | uuid | no | Foreign key to `participants`. Unique. Set for one outing |
-| liked_cuisines | text[] | no | Cuisine codes |
+| user_id | uuid | yes | Unique foreign key to `users.id`; legacy participant rows alone may leave it null |
+| liked_cuisines | text[] | no | Category keys from the account contract; #63 validates keys |
 | allergies | text[] | no | Shown to the group as a combined warning, without the participant's name |
-| budget_min | integer | no | Lower end of the budget range per person in SAR |
-| budget_max | integer | no | Upper end of the range. The engine filters on the lowest `budget_max` in the group |
-| max_distance_km | integer | no | Farthest the participant will go from the meeting area. The engine uses the shortest limit in the group |
+| budget_min | integer | no | Whole SAR per person, ≥ 0; ≤ budget_max when both are present. No business maximum |
+| budget_max | integer | no | Whole SAR per person, ≥ 0. No business maximum |
+| max_distance_km | numeric | no | Finite positive number, including fractional kilometres; no business maximum |
 | seating_needs | text | no | For example family seating or a private room. Stored and shown; not yet used by the recommendation engine |
 
 #### `restaurants`
@@ -1527,7 +1541,12 @@ Response `200`
 | 20 | PUT | `/outings/{outing_id}/preferences` | 8, 9 |
 | 21 | POST | `/outings/{outing_id}/preferences/ready` | 11 |
 
-`preferences` rows belong either to an account (`user_id` set) or to one outing's participant (`participant_id` set), never both, matching the database rule in Section 2.
+Account storage is supplied by DB-14; these GET/PUT endpoints remain #63 work.
+The server derives `user_id` from authentication and always filters by that ID;
+clients cannot choose an owner. `is_saved` derives from row existence, not a stored
+column. Legacy participant rows must never be selected as account defaults.
+See the [approved account contract](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/8).
+Outing endpoints below remain Sprint 2 work.
 
 #### Get saved preferences
 
@@ -1540,7 +1559,7 @@ Response `200`
 ```json
 {
   "is_saved": true,
-  "liked_cuisines": ["italian", "japanese"],
+  "liked_cuisines": ["saudi_gulf", "grill"],
   "allergies": ["peanuts"],
   "budget_min": 50,
   "budget_max": 150,
@@ -1559,7 +1578,7 @@ Requires: Authorization
 
 Creates the row on first use, updates it afterwards (`user_id` is unique).
 
-Request: same shape as the response above.
+Request: preference fields from the response above, without `is_saved`. All fields are optional. Budget values are whole SAR ≥ 0 with minimum ≤ maximum; distance is a finite number > 0. Lists map to PostgreSQL `text[]`. Seating text is limited to 200 characters by #63 request validation. A failed save preserves the last valid saved values.
 
 Response `200`
 ```json
