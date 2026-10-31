@@ -1,22 +1,17 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Image } from "expo-image";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiError } from "@/shared/api/errors";
 import { AppButton, AppInput, AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { requestCode } from "./api";
+import { AuthHero } from "./AuthHero";
 import { errorMessage } from "./authErrors";
 import { goBack, goToVerify } from "./navigation";
 
 // Arabic digits are allowed here; the server converts them to 0-9
 const PHONE_PATTERN = /^[0٠][5٥][0-9٠-٩]{8}$/;
-
-// Decorative photo from the UX-01 design, already cropped and darkened like the design
-const HERO_IMAGE = require("../../../assets/images/auth/sign-up-hero.jpg");
-const HERO_HEIGHT = 155; // From the UX-01 design
-const HERO_BRAND_SIZE = 58; // From the UX-01 design
 
 export function SignUpScreen() {
   const [name, setName] = useState("");
@@ -67,10 +62,7 @@ export function SignUpScreen() {
           <AppText>رجوع</AppText>
         </Pressable>
 
-        <View style={styles.hero}>
-          <Image source={HERO_IMAGE} style={styles.heroImage} contentFit="cover" />
-          <AppText style={styles.heroBrand}>ذوق</AppText>
-        </View>
+        <AuthHero />
 
         <AppText style={styles.eyebrow}>جمعة حلوة، تبدأ هنا</AppText>
         <AppText variant="title" style={styles.title}>خلّنا نتعرّف عليك.</AppText>
@@ -131,27 +123,6 @@ const styles = StyleSheet.create({
     minHeight: theme.sizes.touchTargetMin,
     justifyContent: "center",
     marginBottom: theme.spacing.labelGap,
-  },
-
-  hero: {
-    height: HERO_HEIGHT,
-    borderRadius: theme.radii.card,
-    overflow: "hidden",
-    marginBottom: theme.spacing.fieldGap,
-  },
-
-  heroImage: {
-    width: "100%",
-    height: "100%",
-  },
-
-  heroBrand: {
-    position: "absolute",
-    start: theme.spacing.fieldGap,
-    bottom: theme.spacing.actionGap,
-    fontFamily: theme.typography.fontFamilyBold,
-    fontSize: HERO_BRAND_SIZE,
-    color: theme.colors.onPrimary,
   },
 
   // Small green line above the title, as in the design
