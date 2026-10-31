@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiError } from "@/shared/api/errors";
 import { AppButton, AppInput, AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
@@ -10,6 +12,11 @@ import { goBack, goToVerify } from "./navigation";
 
 // Arabic digits are allowed here; the server converts them to 0-9
 const PHONE_PATTERN = /^[0٠][5٥][0-9٠-٩]{8}$/;
+
+// Decorative photo from the UX-01 design, already cropped and darkened like the design
+const HERO_IMAGE = require("../../../assets/images/auth/sign-up-hero.jpg");
+const HERO_HEIGHT = 155; // From the UX-01 design
+const HERO_BRAND_SIZE = 58; // From the UX-01 design
 
 export function SignUpScreen() {
   const [name, setName] = useState("");
@@ -50,60 +57,103 @@ export function SignUpScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Pressable style={styles.back} onPress={goBack}>
-        <AppText>رجوع</AppText>
-      </Pressable>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
+        <Pressable style={styles.back} onPress={goBack}>
+          <AppText>رجوع</AppText>
+        </Pressable>
 
-      <AppText style={styles.eyebrow}>جمعة حلوة، تبدأ هنا</AppText>
-      <AppText variant="title" style={styles.title}>خلّنا نتعرّف عليك.</AppText>
-      <AppText style={styles.subtitle}>حسابك لتنظيم الجلسات. أصحابك يقدرون ينضمون بالدعوة.</AppText>
+        <View style={styles.hero}>
+          <Image source={HERO_IMAGE} style={styles.heroImage} contentFit="cover" />
+          <AppText style={styles.heroBrand}>ذوق</AppText>
+        </View>
 
-      <AppText variant="label" style={styles.label}>اسمك</AppText>
-      <AppInput style={styles.input} placeholder="كيف نناديك؟" value={name} onChangeText={setName} />
-      {nameError !== "" && <AppText style={styles.fieldError}>{nameError}</AppText>}
+        <AppText style={styles.eyebrow}>جمعة حلوة، تبدأ هنا</AppText>
+        <AppText variant="title" style={styles.title}>خلّنا نتعرّف عليك.</AppText>
+        <AppText style={styles.subtitle}>حسابك لتنظيم الجلسات. أصحابك يقدرون ينضمون بالدعوة.</AppText>
 
-      <AppText variant="label" style={styles.label}>رقم الجوال</AppText>
-      <AppInput
-        style={styles.input}
-        keyboardType="phone-pad"
-        textContentType="telephoneNumber"
-        placeholder="05xxxxxxxx"
-        maxLength={10}
-        value={phone}
-        onChangeText={setPhone}
-      />
-      {/* One line under the phone field: the error when there is one, otherwise the hint */}
-      <AppText style={phoneError !== "" ? styles.fieldError : styles.hint}>
-        {phoneError !== "" ? phoneError : "نرسل رمزًا للتحقق من الرقم."}
-      </AppText>
+        <AppText variant="label" style={styles.label}>اسمك</AppText>
+        <AppInput style={styles.input} placeholder="كيف نناديك؟" value={name} onChangeText={setName} />
+        {nameError !== "" && <AppText style={styles.fieldError}>{nameError}</AppText>}
 
-      {error !== "" && <AppText style={styles.error}>{error}</AppText>}
+        <AppText variant="label" style={styles.label}>رقم الجوال</AppText>
+        <AppInput
+          style={styles.input}
+          keyboardType="phone-pad"
+          textContentType="telephoneNumber"
+          placeholder="05xxxxxxxx"
+          maxLength={10}
+          value={phone}
+          onChangeText={setPhone}
+        />
+        {/* One line under the phone field: the error when there is one, otherwise the hint */}
+        <AppText style={phoneError !== "" ? styles.fieldError : styles.hint}>
+          {phoneError !== "" ? phoneError : "نرسل رمزًا للتحقق من الرقم."}
+        </AppText>
 
-      <AppButton
-        title={loading ? "جاري الإرسال..." : "إرسال رمز التحقق"}
-        style={styles.button}
-        disabled={loading}
-        onPress={handleSubmit}
-      />
+        {error !== "" && <AppText style={styles.error}>{error}</AppText>}
 
-      <Pressable style={styles.link} onPress={() => router.replace("/login")}>
-        <AppText style={styles.linkText}>عندك حساب؟ تسجيل الدخول</AppText>
-      </Pressable>
+        <AppButton
+          title={loading ? "جاري الإرسال..." : "إرسال رمز التحقق"}
+          style={styles.button}
+          disabled={loading}
+          onPress={handleSubmit}
+        />
 
-      <AppText style={styles.note}>تقدر تتصفح المطاعم وتنضم كضيف بدون حساب.</AppText>
-    </View>
+        <Pressable style={styles.link} onPress={() => router.replace("/login")}>
+          <AppText style={styles.linkText}>عندك حساب؟ تسجيل الدخول</AppText>
+        </Pressable>
+
+        <AppText style={styles.note}>تقدر تتصفح المطاعم وتنضم كضيف بدون حساب.</AppText>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    padding: theme.spacing.pagePadding,
-    justifyContent: "center",
     backgroundColor: theme.colors.background,
   },
-  back: { position: "absolute", top: theme.spacing.titleGap * 2, start: theme.spacing.pagePadding },
+
+  // The design flows from the top; scrolling keeps the form reachable on small phones
+  content: {
+    padding: theme.spacing.pagePadding,
+  },
+
+  // Stays until the shared header from the design is ready
+  back: {
+    alignSelf: "flex-start",
+    minHeight: theme.sizes.touchTargetMin,
+    justifyContent: "center",
+    marginBottom: theme.spacing.labelGap,
+  },
+
+  hero: {
+    height: HERO_HEIGHT,
+    borderRadius: theme.radii.card,
+    overflow: "hidden",
+    marginBottom: theme.spacing.fieldGap,
+  },
+
+  heroImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  heroBrand: {
+    position: "absolute",
+    start: theme.spacing.fieldGap,
+    bottom: theme.spacing.actionGap,
+    fontFamily: theme.typography.fontFamilyBold,
+    fontSize: HERO_BRAND_SIZE,
+    color: theme.colors.onPrimary,
+  },
+
   // Small green line above the title, as in the design
   eyebrow: {
     fontFamily: theme.typography.fontFamilyBold,
