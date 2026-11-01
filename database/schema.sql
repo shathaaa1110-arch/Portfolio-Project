@@ -1,4 +1,5 @@
--- users table
+-- users table (DB-03: migration 0002_account_keys_and_phone)
+-- Account references use id alone; phone_number is text, not part of the primary key.
 CREATE TABLE IF NOT EXISTS users (
     id uuid PRIMARY KEY,
     name TEXT NOT NULL,
