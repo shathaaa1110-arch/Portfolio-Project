@@ -3,7 +3,6 @@ import uuid
 from datetime import timedelta
 
 import jwt
-
 from app.core.config import get_settings
 from app.services.auth.models import utcnow
 

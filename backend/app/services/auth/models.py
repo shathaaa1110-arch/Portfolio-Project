@@ -6,10 +6,9 @@ database tasks (DB-03, DB-08); these classes only map to it.
 import uuid
 from datetime import datetime, timezone
 
+from app.core.database import Base
 from sqlalchemy import Integer, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
-
-from app.core.database import Base
 
 
 def utcnow() -> datetime:

@@ -3,7 +3,6 @@ import importlib.util
 from pathlib import Path
 
 import pytest
-
 from app.core.config import Settings, get_database_url, validate_test_database_url
 
 SAFE = "postgresql+psycopg://thouq_test:dummy@127.0.0.1:5432/thouq_test"
