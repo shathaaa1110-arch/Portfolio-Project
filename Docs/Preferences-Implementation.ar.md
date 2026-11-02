@@ -32,7 +32,7 @@
 | `index.ts` | المدخل العام للنموذج والشاشة وأدوات التجربة |
 
 `application/ApplicationRoot.tsx` يسجل الردود عند تفعيل Mock فقط.
-`application/AccountPlaceholderPage.tsx` يضيف زر التفضيلات للحساب المسجل.
+`features/auth/AccountScreen.tsx` يضيف صف التفضيلات للحساب المسجل.
 `architecture.json` يصرح بـ`preferences -> auth` لقراءة الجلسة من المدخل العام.
 
 ## رحلة البيانات

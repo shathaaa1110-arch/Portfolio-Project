@@ -11,9 +11,27 @@ type AuthBody = { phone?: string; code?: string; name?: string };
 // Last time a code was sent to each phone, to copy the backend's 60-second limit
 const lastSentAt = new Map<string, number>();
 
-// The account that verified last; GET /users/me returns it in mock mode
+// The mock token carries the account, so GET /users/me knows who is asking, even after a reload.
+// The real server finds the account from its token in the same way
+const MOCK_TOKEN_PREFIX = "mock-token";
 type MockAccount = { id: string; name: string; phone: string };
-let currentAccount: MockAccount | null = null;
+
+function mockTokenFor(phone: string, name: string): string {
+  return `${MOCK_TOKEN_PREFIX}|${phone}|${encodeURIComponent(name)}`;
+}
+
+// Returns the account inside a mock token, or null for any other token
+function accountFromMockToken(token = ""): MockAccount | null {
+  const [prefix, phone, name] = token.split("|");
+  if (prefix !== MOCK_TOKEN_PREFIX || !phone || !name) {
+    return null;
+  }
+  try {
+    return { id: `mock-${phone}`, name: decodeURIComponent(name), phone };
+  } catch {
+    return null;
+  }
+}
 
 // Same cleanup as the backend: Arabic digits become 0-9, then the format is checked
 function normalizePhone(raw = ""): string {
@@ -62,22 +80,23 @@ export function registerAuthMocks(): void {
       throw new ApiError(422, "NAME_REQUIRED", "Name is required to create a new account.");
     }
 
-    currentAccount = { id: "1", name: isExisting ? "Test User" : name!.trim(), phone };
+    const accountName = isExisting ? "Test User" : name!.trim();
 
     return {
-      token: "mock-token",
+      token: mockTokenFor(phone, accountName),
       expires_in_seconds: 2592000,
-      user: { id: currentAccount.id, name: currentAccount.name, has_saved_preferences: isExisting },
+      user: { id: `mock-${phone}`, name: accountName, has_saved_preferences: isExisting },
     };
   });
 
-  registerMock("POST", "/auth/logout", () => {
-    currentAccount = null;
-    return null;
-  });
+  registerMock("POST", "/auth/logout", () => null);
 
-  // Mock memory is empty after a reload, so fall back to the returning test account
-  registerMock("GET", "/users/me", () => {
-    return currentAccount ?? { id: "1", name: "Test User", phone: EXISTING_PHONE };
+  // A token from before this format, or any unknown token, asks the user to log in again
+  registerMock("GET", "/users/me", (_body, token) => {
+    const account = accountFromMockToken(token);
+    if (!account) {
+      throw new ApiError(401, "INVALID_TOKEN", "Please log in again.");
+    }
+    return account;
   });
 }

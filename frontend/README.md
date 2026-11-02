@@ -96,14 +96,15 @@ Paths below are relative to `frontend`.
 | `src/app/(tabs)/_layout.tsx` | Opens the main tab layout |
 | `src/app/(tabs)/index.tsx` | Opens Home at `/` |
 | `src/app/(tabs)/saved.tsx` | Opens the Saved placeholder |
-| `src/app/(tabs)/account.tsx` | Opens the Account placeholder |
+| `src/app/(tabs)/account.tsx` | Opens the My account screen |
 | `src/app/sign-up.tsx` | Opens the sign-up screen |
 | `src/app/preferences.tsx` | Opens account preferences |
 | `src/application/ApplicationRoot.tsx` | Loads fonts and composes the root navigation |
 | `src/application/MainTabs.tsx` | Defines the three bottom tabs |
 | `src/application/HomePage.tsx` | Composes the Home header, search field, session preview, and list |
 | `src/application/SavedPlaceholderPage.tsx` | Temporary Saved page |
-| `src/application/AccountPlaceholderPage.tsx` | Shows the session, preferences entry, and sign-out |
+| `src/features/auth/AccountScreen.tsx` | Shows the name and phone from the server, links to preferences and Saved, and signs out |
+| `src/features/auth/accountActions.ts` | Decides which actions My account shows; sign-out stays when loading fails |
 | `src/features/restaurants/api.ts` | Requests the first 20 restaurants through the shared API client |
 | `src/features/restaurants/useRestaurants.ts` | Stores restaurant data and manages loading, errors, and retry |
 | `src/features/restaurants/RestaurantList.tsx` | Filters and displays restaurants and list states |
@@ -121,6 +122,7 @@ Paths below are relative to `frontend`.
 | `src/features/preferences/index.ts` | Exposes the form, screen, draft type and mock registration |
 | `assets/images/preferences` | Images for the preference choices and illustrations |
 | `scripts/preferences.test.cjs` | Checks conversions, validation, API calls and mock read/write |
+| `scripts/auth.test.cjs` | Checks sign-out without a connection, My account actions and the mock account after reload |
 | `src/shared/components` | Contains reusable text, input, and button components |
 | `src/shared/theme.ts` | Defines shared colors, fonts, sizes, and spacing |
 | `assets/images/food-illustration.png` | General food image used by restaurant cards |
@@ -207,6 +209,8 @@ A failed initial load does not open an empty form that could overwrite saved dat
 5. Sign out before restoring `EXPO_PUBLIC_USE_MOCK=false` and restarting Expo.
 
 Mock preferences use one test account and live only in memory. Reload clears them.
+The mock account keeps its name and phone after reload, because the mock token carries them.
+A session saved before this change is asked to log in again.
 No real SMS is sent in mock mode. Restaurants have no registered mock here, so
 Home can show a request error while this explicit test mode is enabled.
 The app never switches to mocks automatically after a real API failure.
@@ -216,6 +220,7 @@ Run these checks from the repository root:
 ```sh
 npm run check
 node --test frontend/scripts/preferences.test.cjs
+node --test frontend/scripts/auth.test.cjs
 git diff --check
 git diff --cached --check
 ```
