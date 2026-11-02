@@ -65,4 +65,3 @@ def test_api_reads_rows_from_the_test_transaction(db_session, api_client, secret
 
     assert response.status_code == 200
     assert response.json() == {"id": str(USER_ID), "name": NAME, "phone": PHONE}
-    

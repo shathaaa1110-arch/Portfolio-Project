@@ -77,4 +77,3 @@ def synthetic_restaurants():
     """Synthetic restaurant rows; feature tests insert them once their migration exists."""
     with SYNTHETIC_RESTAURANTS.open(encoding="utf-8") as file:
         return json.load(file)["restaurants"]
-    
