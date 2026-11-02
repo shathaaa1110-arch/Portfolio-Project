@@ -8,7 +8,6 @@ development does not spend SMS credits. The code is never logged in
 import logging
 
 import httpx
-
 from app.core.config import get_settings
 from app.services.auth.phone import to_international
 

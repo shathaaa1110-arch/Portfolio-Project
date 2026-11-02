@@ -146,3 +146,46 @@ No remote issue was modified during this local implementation. The existing draf
 `schema.sql` edits were preserved. Application-table corrections, authentication
 against those tables, preferences persistence, and the Home journey require their
 subsequent tasks; the empty migration does not prove those features work.
+
+## DB-14 — account preference ownership (31 October 2026)
+
+Local implementation evidence for [#125](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/125).
+This section does not mark the issue Done or claim that #63 endpoints are implemented.
+
+- PostgreSQL test reset applied the complete migration chain to a clean database,
+  ending at `0003_account_preferences`.
+- Full backend suite: **123 passed**, with one existing Starlette/AnyIO deprecation
+  warning. Includes **25 DB-14 PostgreSQL cases** and existing auth/public browsing checks.
+- Migration cases use isolated PostgreSQL schemas and roll back their fixtures.
+  They cover populated DB-03 upgrades, guarded unversioned adoption, account-only
+  legacy tables, shared tables, retained participant records, JSON/PostgreSQL list
+  conversion, and rollback on invalid data. Real account IDs and list values are
+  compared before/after; no user-data deletion is part of migration.
+- Constraints reject duplicate/missing/nonexistent account owners, negative or
+  reversed budgets, and zero/negative/nonfinite distance. Optional values, zero
+  budgets, a large valid budget, and fractional distance work.
+- Real database persistence check commits a model save, closes its session, reads
+  it through a new connection, verifies another account has no saved set, attempts
+  an invalid update, rolls back, and reads the last valid values again. Test rows
+  are removed afterward. This proves durable storage, not a full device/login flow.
+- `.github/workflows/ci.yml` now includes a PostgreSQL 18 integration job that creates
+  the restricted disposable test role, resets/migrates the test DB, and runs the
+  integration suite.
+
+Commands (activate `backend/.venv` and configure the approved local test URL first):
+
+```bash
+python database/reset_test_db.py
+cd backend
+python -m pytest -q
+```
+
+The session's `TEST_DATABASE_URL` was initially unset. Local verification supplied
+it only to the test commands; no development credentials or tracked configuration
+were changed. The existing local test server accepted the disposable role.
+
+Read-only inspection of the configured development database found the shared draft
+schema and no `alembic_version`. Its runtime role lacks SELECT on users/preferences,
+so existing production/development row contents could not be inspected. No adoption
+or upgrade was applied there. The owner must run the documented preflight/adoption
+with a backup and sufficient permissions before deployment.

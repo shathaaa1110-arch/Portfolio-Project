@@ -1,12 +1,11 @@
 """Tests for GET /api/v1/restaurants (BE-32). SQLite in memory, no login."""
 import pytest
+from app.core.database import get_db
+from app.main import app
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-from app.core.database import get_db
-from app.main import app
 
 TABLE = """
 CREATE TABLE restaurants (

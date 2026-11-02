@@ -57,24 +57,26 @@ CREATE TABLE IF NOT EXISTS participants (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- preferences table
+-- Account preferences (DB-14: migration 0003_account_preferences).
+-- Clean installs do not depend on participants. Existing shared tables retain
+-- their participant ownership columns/keys; expansion belongs to #12, Sprint 2.
 CREATE TABLE IF NOT EXISTS preferences (
     id uuid PRIMARY KEY,
-    user_id uuid,
-    participant_id uuid,
-    liked_cuisines TEXT,
-    allergies TEXT,
+    user_id uuid NOT NULL,
+    liked_cuisines TEXT[],
+    allergies TEXT[],
     budget_min INTEGER,
     budget_max INTEGER,
-    max_distance_km INTEGER,
+    max_distance_km NUMERIC,
     seating_needs TEXT,
     CONSTRAINT preferences_user_unique UNIQUE (user_id),
-    CONSTRAINT preferences_participant_unique UNIQUE (participant_id),
-    CONSTRAINT preferences_exactly_one_owner CHECK (
-        (user_id IS NULL) <> (participant_id IS NULL)
-    ),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (participant_id) REFERENCES participants(id)
+    CONSTRAINT preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT preferences_budget_min_nonnegative CHECK (budget_min >= 0),
+    CONSTRAINT preferences_budget_max_nonnegative CHECK (budget_max >= 0),
+    CONSTRAINT preferences_budget_order CHECK (budget_min <= budget_max),
+    CONSTRAINT preferences_distance_positive CHECK (
+        max_distance_km > 0 AND max_distance_km::text NOT IN ('NaN', 'Infinity', '-Infinity')
+    )
 );
 
 -- restaurants table

@@ -1,26 +1,25 @@
 """Recreate only the approved local test database and migrate it to head."""
-from pathlib import Path
 import os
 import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
 import psycopg
-from psycopg import sql
 from alembic import command
 from alembic.config import Config
+from app.core.config import Settings, validate_test_database_url  # pyright: ignore[reportMissingImports]
+from psycopg import sql
 from sqlalchemy.engine import URL
-
-from app.core.config import Settings, validate_test_database_url
 
 
 def reset_test_database(value: str | URL | None) -> str:
     url = validate_test_database_url(value)  # Must precede every connection.
-    connection_values = dict(
-        host=url.host, hostaddr=url.host, port=url.port, user=url.username, password=url.password,
-        connect_timeout=5,
-    )
+    connection_values = {
+        "host": url.host, "hostaddr": url.host, "port": url.port, "user": url.username, "password": url.password,
+        "connect_timeout": 5,
+    }
     with psycopg.connect(dbname="postgres", autocommit=True, **connection_values) as conn:
         role = conn.execute(
             "SELECT rolsuper, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = current_user"

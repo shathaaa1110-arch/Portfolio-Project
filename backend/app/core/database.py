@@ -5,11 +5,9 @@ the session is closed when the request ends.
 """
 from collections.abc import Iterator
 
+from app.core.config import get_database_connect_args, get_database_url
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
-
-from app.core.config import get_database_connect_args, get_database_url
-
 
 engine = create_engine(
     get_database_url(),
