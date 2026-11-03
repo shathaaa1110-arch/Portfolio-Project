@@ -9,7 +9,6 @@
     "userInterfaceStyle": "automatic",
     "ios": {
   "icon": "./assets/expo.icon",
-  "bundleIdentifier": "com.shathaalanazi.thouq.dev",
   "infoPlist": {
     "ExpoLocalization_supportsRTL": true,
     "ExpoLocalization_forcesRTL": true
@@ -39,8 +38,14 @@
           "imageWidth": 76
         }
       ],
-      "expo-localization",
-      "expo-secure-store"
+    "expo-localization",
+"expo-secure-store",
+[
+  "expo-location",
+  {
+    "locationWhenInUsePermission": "يستخدم ذوق موقعك لاقتراح المطاعم القريبة ضمن المسافة التي تختارها."
+  }
+]
     ],
     "extra": {
       "supportsRTL": true,

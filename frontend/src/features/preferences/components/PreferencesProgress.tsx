@@ -1,3 +1,4 @@
+import { layoutDirection } from "@/shared/layout";
 import { StyleSheet, View } from "react-native";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
 
   track: {
     // Start the first step on the right.
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     gap: theme.spacing.labelGap,
   },

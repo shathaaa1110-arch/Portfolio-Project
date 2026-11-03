@@ -1,5 +1,6 @@
+import { layoutDirection } from "@/shared/layout";
 import { useState } from "react";
-import { Keyboard, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getDraftError, type PreferencesDraft } from "./model";
 import { FoodPlate } from "./components/FoodPlate";
@@ -40,7 +41,7 @@ export function PreferencesForm({
   const [stepIndex, setStepIndex] = useState(0);
   const currentStep = preferenceSteps[stepIndex];
 
-// All six steps are ready to preview.
+// All six steps share one draft, even when a step is unmounted.
 const lastReadyStepIndex = preferenceSteps.length - 1;
 
   // Keep choices when moving between steps.
@@ -129,7 +130,7 @@ const [allergyChoices, setAllergyChoices] =
   style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         automaticallyAdjustKeyboardInsets
-        keyboardDismissMode="on-drag"
+        keyboardDismissMode={Platform.OS === "web" ? "none" : "on-drag"}
         keyboardShouldPersistTaps="handled"
       >
         {/* Keep the introduction together. */}
@@ -197,12 +198,7 @@ const [allergyChoices, setAllergyChoices] =
 )}
 
 {/* Show the plate for food choices. */}
-<View
-  style={[
-    styles.section,
-    { display: currentStep.id === "food" ? "flex" : "none" },
-  ]}
->
+{currentStep.id === "food" && <View style={styles.section}>
 
   <FoodPlate selectedFoodTypes={selectedFoodTypes} />
 
@@ -219,7 +215,7 @@ const [allergyChoices, setAllergyChoices] =
   ))}
 </View>
 
-</View>
+</View>}
 
 {/* Show seating choices only in the seating step. */}
 {currentStep.id === "seating" && (
@@ -237,12 +233,7 @@ const [allergyChoices, setAllergyChoices] =
 )}
 
 {/* Set the budget range per person. */}
-      <View
-  style={[
-    styles.section,
-    { display: currentStep.id === "budget" ? "flex" : "none" },
-  ]}
->
+      {currentStep.id === "budget" && <View style={styles.section}>
   {/* Show the table illustration from the design. */}
 <Image
   source={require(
@@ -346,7 +337,7 @@ placeholder={isBudgetUnlimited ? "—" : "120"}
 
             <AppText>بدون حد للميزانية</AppText>
           </Pressable>
-        </View>
+        </View>}
 
         {/* Show distance fields in the fifth step. */}
         {currentStep.id === "distance" && (
@@ -436,7 +427,7 @@ placeholder={isBudgetUnlimited ? "—" : "120"}
 const styles = StyleSheet.create({
     budgetOption: {
     // Keep the checkbox on the right.
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     alignItems: "center",
     gap: theme.spacing.labelGap,
@@ -468,7 +459,7 @@ const styles = StyleSheet.create({
     // Use the full width and anchor the arrow.
     width: "100%",
     position: "relative",
-    direction: "ltr",
+    ...layoutDirection("ltr"),
   },
 
   nextArrow: {
@@ -482,7 +473,7 @@ const styles = StyleSheet.create({
 
     cuisineGrid: {
     // Start from the right and show two cards per row.
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     flexWrap: "wrap",
     justifyContent: "space-between",
@@ -514,7 +505,7 @@ const styles = StyleSheet.create({
 
  options: {
   // Start from the right and keep even spaces between cards.
-  direction: "ltr",
+  ...layoutDirection("ltr"),
   flexDirection: "row-reverse",
   flexWrap: "wrap",
   justifyContent: "space-between",
@@ -529,7 +520,7 @@ const styles = StyleSheet.create({
 
     budgetRow: {
     // Place the minimum on the right.
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     gap: theme.spacing.actionGap,
   },

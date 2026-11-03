@@ -1,3 +1,4 @@
+import { layoutDirection } from "@/shared/layout";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Image, type ImageSource } from "expo-image";
 import { SymbolView } from "expo-symbols";
@@ -76,7 +77,7 @@ const styles = StyleSheet.create({
     gap: 6,
     alignItems: "center",
     position: "relative",
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     borderWidth: theme.borders.control,
     borderColor: theme.colors.border,
     borderRadius: theme.radii.field,

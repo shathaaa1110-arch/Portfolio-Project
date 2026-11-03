@@ -2,54 +2,46 @@
 
 [Arabic architecture and learning guide](../Docs/Frontend-Architecture.ar.md)
 
-## Current implementation
+## Current implementation — 2 November 2026
 
-The app opens on the public Home screen without requiring sign-in.
+Home is public and includes the approved hero, greeting/location, search,
+Today's suggestion, and restaurant cards. Outing planning is marked Coming soon.
+Saved uses Fahad's `savedRestaurants` feature. The current Account composition
+shows the session, preferences, and sign-out; it is not the unmerged account PR.
 
-The bottom tabs contain Home, Saved, and Account. Saved is a placeholder.
-Account reads the session, shows the user name, and provides preferences and sign-out actions.
+Home requests one page of 20 restaurants with `limit/offset`, without a token.
+Next/Previous sit at the list footer; pull-to-refresh reloads the current page.
+Failures keep the last successful page with retry. Initial failures display an
+error state. There is no automatic fallback to mock data.
 
-The Home screen includes:
+Search is prepared for server-side `search` filtering before pagination, with
+a 350 ms typing delay and stale-response protection. The deployed API checked
+on 2 November exposes only `limit/offset`, so
+`EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false` remains the default. Home hides the
+search field while it is disabled. The “ألقى مطعم” button scrolls to the restaurant
+rows using the measured header height; it does not focus a hidden search input.
+Enable the flag only after the server actually filters and returns matching totals.
 
-- Arabic welcome text using the shared fonts and theme.
-- A text field that searches restaurant names and cuisines.
-- A session card with a disabled "Start session" button marked "Coming soon".
-- A restaurant list with a general food illustration.
-- Loading, empty, and error states.
-- An optional retry button.
+Cards use illustrative category photos, Eastern Arabic numbers, and map links.
+Details open in a separate bottom sheet, with one back action. Price/distance
+appear only when valid values exist; opening details makes no extra API call.
+There are no opening hours or voting controls.
 
-Search filters the restaurant data already passed to the list.
-It does not send a search request to a server.
+GPS is requested only from the location chooser. A district alternative uses
+server IDs from `GET /districts`; browsing remains possible without location.
+Personal suggestions require saved account preferences and a valid API reply.
+Today's choice displays the server's Arabic reason; the remaining results can
+also be opened. Failed services do not become fabricated recommendations.
 
-## Restaurant data and current limits
+The six-step preferences flow reads and writes `/users/me/preferences`.
+After login, incomplete accounts enter preferences; completed accounts enter
+Home. Successful saving updates the same session's completion flag and returns
+to Home for fresh preferences/recommendations. Failed saves keep the answers.
+Initial load failures offer retry/browse rather than an empty replacement form.
 
-Home loads the first 20 restaurants from `GET /restaurants?limit=20`
-through the shared API client. This endpoint does not need a login token.
-
-`api.ts` sends the request.
-`useRestaurants.ts` stores the results and manages loading, success,
-error, and retry states.
-
-The retry button sends a new request to the server.
-A failed request shows an error; it does not switch to sample data.
-
-Search filters only the restaurants already loaded on the device.
-It does not search the full database. Pagination is not implemented yet.
-
-The food image is illustrative and does not represent a specific restaurant.
-
-Sample data remains in `mocks.ts`, but Home no longer uses it.
-Home currently needs `EXPO_PUBLIC_USE_MOCK=false`; a restaurant response
-has not been registered in the shared mock transport.
-
-Sign-up, login, and phone verification screens are implemented.
-They use the shared API client and support explicit mock mode.
-
-Account uses the session helpers and the sign-out button.
-The preferences button opens `/preferences` for a signed-in account.
-
-End-to-end authentication and SMS testing for this combined frontend,
-preferences, and session creation remain pending.
+The deployed OpenAPI checked on 2 November does not yet expose preferences,
+recommendations, or districts. See the
+[Arabic delivery checklist and backend dependencies](../Docs/Frontend-Delivery-2026-11-02.ar.md).
 
 ## Install and run
 
@@ -73,6 +65,7 @@ Open that file and make sure it contains:
 ```dotenv
 EXPO_PUBLIC_API_URL=https://thouq-api.onrender.com/api/v1
 EXPO_PUBLIC_USE_MOCK=false
+EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false
 ```
 
 Restart Expo after changing these settings.
@@ -81,6 +74,10 @@ Commit `.env.example` so the team can copy the setup.
 Keep `.env.local` on each developer's device; Git ignores it.
 
 Press `i` in the Expo terminal to open the iOS Simulator.
+
+The personal iOS bundle identifier was removed from the shared app config.
+Agree on a team identifier and signing setup before producing a shared native build.
+Simulator/Expo Go success does not complete issue #58.
 
 For a phone, use the QR code with the compatible app on the same
 Wi-Fi network, or follow the development build's connection method.
@@ -95,25 +92,33 @@ Paths below are relative to `frontend`.
 |---|---|
 | `src/app/(tabs)/_layout.tsx` | Opens the main tab layout |
 | `src/app/(tabs)/index.tsx` | Opens Home at `/` |
-| `src/app/(tabs)/saved.tsx` | Opens the Saved placeholder |
+| `src/app/(tabs)/saved.tsx` | Opens the Saved screen |
 | `src/app/(tabs)/account.tsx` | Opens the Account placeholder |
 | `src/app/sign-up.tsx` | Opens the sign-up screen |
 | `src/app/preferences.tsx` | Opens account preferences |
 | `src/application/ApplicationRoot.tsx` | Loads fonts and composes the root navigation |
 | `src/application/MainTabs.tsx` | Defines the three bottom tabs |
-| `src/application/HomePage.tsx` | Composes the Home header, search field, session preview, and list |
-| `src/application/SavedPlaceholderPage.tsx` | Temporary Saved page |
+| `src/application/HomePage.tsx` | Composes Home, search, location, recommendations, and paginated list |
+| `src/application/SavedPlaceholderPage.tsx` | Composes the Saved feature |
 | `src/application/AccountPlaceholderPage.tsx` | Shows the session, preferences entry, and sign-out |
-| `src/features/restaurants/api.ts` | Requests the first 20 restaurants through the shared API client |
+| `src/features/restaurants/api.ts` | Requests and validates one page of 20 restaurants at the supplied offset |
 | `src/features/restaurants/useRestaurants.ts` | Stores restaurant data and manages loading, errors, and retry |
-| `src/features/restaurants/RestaurantList.tsx` | Filters and displays restaurants and list states |
-| `src/features/restaurants/components/RestaurantCard.tsx` | Displays one restaurant |
+| `src/features/restaurants/RestaurantList.tsx` | Displays server results, cards, and list states without page-local filtering |
+| `src/features/restaurants/components/RestaurantCard.tsx` | Displays a compact restaurant card and opens its separate details sheet |
+| `src/features/restaurants/components/RestaurantDetails.tsx` | Shows restaurant details in a sliding modal without reflowing the list |
+| `src/features/restaurants/components/RestaurantMapLink.tsx` | Validates and opens the supplied external map URL |
+| `src/features/restaurants/presentation.ts` | Formats cuisine labels, Eastern Arabic numbers, and valid optional spend bounds |
+| `src/features/restaurants/components/RestaurantPagination.tsx` | Shows page navigation and the counter at the list footer |
 | `src/features/restaurants/types.ts` | Defines the restaurant data used by the UI |
 | `src/features/restaurants/mocks.ts` | Provides sample data for development |
 | `src/features/restaurants/index.ts` | Exposes the feature's public exports |
+| `src/features/personalSuggestions` | District picker, API validation, recommendation state and stale-response isolation |
+| `src/application/useHomePreferences.ts` | Refreshes saved preferences when Home focuses or refreshes |
+| `src/application/HomeTodayPick.tsx` | Composes the featured and remaining personal recommendations |
 | `src/features/auth` | Contains account screens, API calls, mocks and session helpers |
 | `src/features/preferences/AccountPreferencesScreen.tsx` | Loads the account, reads preferences, and handles save requests |
 | `src/features/preferences/PreferencesForm.tsx` | Displays the six-step form without account or network calls |
+| `src/features/preferences/errors.ts` | Maps API field and request failures to Arabic messages |
 | `src/features/preferences/model.ts` | Validates and converts form answers to and from the API shape |
 | `src/features/preferences/api.ts` | Sends authenticated GET and PUT preference requests |
 | `src/features/preferences/mocks.ts` | Provides one explicit in-memory test account |
@@ -122,10 +127,15 @@ Paths below are relative to `frontend`.
 | `assets/images/preferences` | Images for the preference choices and illustrations |
 | `assets/images/auth` | Decorative photo for the sign-up and login screens |
 | `src/features/auth/AuthHero.tsx` | Shows the photo and app name on sign-up and login |
+| `scripts/preferences-flow.test.cjs` | Tests routing, form steps, session ownership and save/retry |
+| `scripts/discovery-flow.test.cjs` | Tests hook races, page recovery, recommendation rendering, search visibility and the Home discovery action |
+| `scripts/home-recommendations.test.cjs` | Tests recommendation and district request contracts |
 | `scripts/preferences.test.cjs` | Checks conversions, validation, API calls and mock read/write |
+| `scripts/restaurants-api.test.cjs` | Checks page requests, invalid replies, error preservation and mock compatibility; included in npm run check |
 | `src/shared/components` | Contains reusable text, input, and button components |
+| `src/shared/layout.ts` | Maps layout direction to the supported native/web style |
 | `src/shared/theme.ts` | Defines shared colors, fonts, sizes, and spacing |
-| `assets/images/food-illustration.png` | General food image used by restaurant cards |
+| `assets/images/food-illustration.png` | Fallback food illustration when no category image matches |
 | `assets/fonts` | Contains the Arabic fonts and their license |
 
 The shared HTTP client is implemented in `src/shared/api`.
@@ -151,8 +161,10 @@ npm run check
 git diff --check
 ```
 
-`npm run check` runs TypeScript, architecture boundary checks,
-and seven tests for the architecture checker.
+`npm run check` runs TypeScript, architecture boundary checks and 49 tests:
+7 architecture, 10 restaurant/API/presentation, 18 preference, and 14 discovery
+and recommendation tests. Component tests use real React state/effects with
+stubbed services. The test renderer emits a deprecation notice; it is a dev-only dependency.
 
 ### Web review — 24 October 2026
 
@@ -172,70 +184,61 @@ Tested locally at `http://127.0.0.1:8081/` using the shared API.
 Home uses platform-specific RTL styles for the search and session card.
 Web tab labels have more vertical space; native tab sizing is unchanged.
 
-### Remaining checks
+### Current verification — 2 November 2026
 
-- Review the updated layout on a physical iPhone.
-- Review narrow browser layouts and tab order.
-- Configure and run ESLint.
-- Test preference save/reload on a real device after backend #63 is deployed.
-- Enable automatic post-login preferences routing only after that integration passes.
+- TypeScript, architecture boundaries, and all 47 tests passed.
+- Production web export passed and generated 12 static routes outside the repository.
+- iPhone 17 Pro Simulator / iOS 26.4 displayed real public restaurants.
+  Details opened as a bottom sheet and returned to the same list position.
+- A 402 px web viewport displayed Home, next/previous pages, the details sheet,
+  and the server-search unavailable state.
+- An isolated mock web copy exercised new-account routing, all six preference
+  steps, Arabic budget/distance validation, Other allergy validation, successful
+  save, return to Home, and reopening the stored test choices.
+- These checks do not establish persistence on Neon, live personalized results,
+  a physical-iPhone/Android pass, or the shared iPhone development build.
 
-This review did not send an SMS or test a new login session.
-It does not complete the shared development build task.
+### Preferences assets and behavior
 
-## Account preferences — 28 October 2026
+The 46 preference PNGs now total 6,374,647 bytes, down from 88,276,877 bytes
+across 47 originals. Card/plate images are at most 600 px, and the budget/distance
+illustrations are 1000 px wide. Names, PNG format, and transparency remain.
+Unused `grills-plate.png` was removed. Only the current form step mounts its images.
 
-The form covers cuisines, food types, seating, budget, distance, and allergies.
-Existing cards, plate illustrations, and the six-step layout remain in use.
-Next advances a step. The final button validates all answers and submits once.
-A save request shows progress. Success appears only after a successful response.
-A failed save keeps the form answers and allows retry.
+The form accepts Arabic/Persian digits, budget and distance no-limit choices,
+and up to 20 allergy values of 50 characters each. There is no business budget
+ceiling added by this UI. Unknown saved allergy/seating text is preserved.
+The current contract stores allergy arrays, not an explicit unanswered/null
+state; an empty array is not displayed as confirmed no allergies on reload.
 
-`PreferencesForm` receives `initialValue`, `onSubmit` and `onExit`.
-It can be reused by a future guest/session flow without account API calls.
-That guest/session flow is not implemented here.
+The draft survives step navigation and request failures while mounted. It is
+not persisted across leaving/reloading the app or restarting login.
+See the [Arabic preference guide](../Docs/Preferences-Implementation.ar.md).
 
-`AccountPreferencesScreen` loads the session via the public auth entrypoint,
-then reads and writes `/users/me/preferences` using the shared client.
-The `preferences -> auth` dependency is declared in `architecture.json`.
-A failed initial load does not open an empty form that could overwrite saved data.
+### Isolated local testing
 
-### Local testing
+Use a separate test copy, edit its `.env.local`, and restart Expo. Do not rely
+only on shell environment overrides: Expo may still read the file values.
 
-1. Sign out, then set `EXPO_PUBLIC_USE_MOCK=true` in `.env.local` and restart Expo.
-2. Log in with the existing auth fixture: phone `0500000001`, code `123456`.
-3. Open Account, then Preferences. Complete the steps and save.
-4. Return to Account and reopen Preferences to read the saved test answers.
-5. Sign out before restoring `EXPO_PUBLIC_USE_MOCK=false` and restarting Expo.
-
-Mock preferences use one test account and live only in memory. Reload clears them.
-No real SMS is sent in mock mode. Restaurants have no registered mock here, so
-Home can show a request error while this explicit test mode is enabled.
-The app never switches to mocks automatically after a real API failure.
-
-Run these checks from the repository root:
-
-```sh
-npm run check
-node --test frontend/scripts/preferences.test.cjs
-git diff --check
-git diff --cached --check
+```dotenv
+EXPO_PUBLIC_USE_MOCK=true
+EXPO_PUBLIC_API_URL=http://127.0.0.1:1/api/v1
+EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false
 ```
 
-### Verification and remaining integration
+The unreachable local API URL prevents accidental production requests from
+this copy. The mock verification code is `123456`. Mock preferences are for
+one account and live in memory; reload clears them. Home uses three explicit
+mock restaurant fixtures. The real app keeps `EXPO_PUBLIC_USE_MOCK=false`.
 
-The prepared candidate passed TypeScript, architecture checks, and focused
-conversion/API/mock tests on 28 October 2026. UI save/reload tests on iPhone and
-web still need to be run after applying the change.
+### Remaining integration and device checks
 
-On that date, the deployed GET `/users/me/preferences` and
-GET `/users/me/recommendations?limit=10` returned 404. Neither path appeared in
-the deployed OpenAPI document. This does not prove real persistence or personal
-recommendations. Do not mark those flows complete based on the mock tests.
+Publish and validate preferences, recommendations, districts, and global search
+with the backend owners. Repeat save/reopen/account-isolation tests against
+the real API before accepting the end-to-end issues. Search's feature flag
+must remain false until server filtering is verified.
 
-`PREFERENCES_READY` stays false in `auth/navigation.ts` until real integration
-passes. The manual Account entry is available. Home remains public and general.
-
-The contract stores an allergy list but has no explicit "no allergies" flag.
-An empty list is therefore not presented as a confirmed no-allergy answer on
-reload. See the [Arabic implementation and contract notes](../Docs/Preferences-Implementation.ar.md).
+Review the final flow on a physical iPhone and Android. Issue #58 additionally
+needs a shared app identifier, Apple signing, and installation on the required
+team devices. ESLint setup is separate from the currently passing check suite.
+No database or ERD changes are included.
