@@ -31,11 +31,14 @@ LIST_SQL = text(
 )
 COUNT_SQL = text("SELECT COUNT(*) FROM restaurants")
 
-# A name match uses the trigram index on search_text (migration 0004). A cuisine match
-# compares the comma-separated codes with the codes whose names contain the term.
-SEARCH_WHERE = """
+# A name match uses the trigram index on search_text; a cuisine match compares the
+# comma-separated codes with the codes whose names contain the term, using the expression
+# index. Both indexes come from migration 0004, and the cuisine expression below must stay
+# identical to its CUISINE_CODES, or PostgreSQL falls back to scanning every row.
+CUISINE_CODES = "regexp_split_to_array(cuisine, '\\s*,\\s*')"
+SEARCH_WHERE = f"""
     WHERE search_text LIKE :pattern ESCAPE '\\'
-       OR regexp_split_to_array(cuisine, '\\s*,\\s*') && CAST(:codes AS TEXT[])
+       OR {CUISINE_CODES} && CAST(:codes AS TEXT[])
 """
 SEARCH_SQL = text(
     "SELECT id, name_ar, name_en, cuisine, district, price_tier, rating, maps_url FROM restaurants"

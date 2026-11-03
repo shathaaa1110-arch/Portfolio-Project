@@ -162,17 +162,27 @@ def test_search_too_long_is_rejected(api):
     assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
-def test_the_index_is_used_for_name_search(api):
-    """With a large table PostgreSQL should search the trigram index, not every row."""
+def test_the_api_search_uses_the_indexes(api):
+    """The API's own WHERE clause must use both indexes, not scan every row."""
+    from app.services.restaurants import router
     _, _, migrate, conn = api
     conn.execute(sa.text(
         "INSERT INTO restaurants (id, name_ar, cuisine, district, price_tier, maps_url) "
-        "SELECT g, 'مطعم ' || g, 'saudi', 'حي', 2, 'https://maps' FROM generate_series(1, 20000) g"))
+        "SELECT g, 'مطعم ' || g, CASE WHEN g % 50 = 0 THEN 'shawarma, grill_bbq' ELSE 'saudi' END, "
+        "'حي', 2, 'https://maps' FROM generate_series(1, 20000) g"))
     migrate()
     conn.execute(sa.text("ANALYZE restaurants"))
-    plan = "\n".join(r[0] for r in conn.execute(sa.text(
-        "EXPLAIN SELECT id FROM restaurants WHERE search_text LIKE '%مطعم 1234%'")))
-    assert "ix_restaurants_search_text" in plan
+    for term in ["شاورما", "مطعم 1234"]:
+        params = {"pattern": search.like_pattern(term), "codes": search.codes_for(term)}
+        sql = "EXPLAIN SELECT id FROM restaurants" + router.SEARCH_WHERE
+        plan = "\n".join(r[0] for r in conn.execute(sa.text(sql), params))
+        assert "Seq Scan" not in plan, plan
+        assert "ix_restaurants_search_text" in plan and "ix_restaurants_cuisine_codes" in plan
+
+
+def test_router_and_migration_use_the_same_cuisine_expression():
+    from app.services.restaurants import router
+    assert router.CUISINE_CODES == _migration().CUISINE_CODES
 
 
 def test_every_dataset_code_has_an_arabic_name():
