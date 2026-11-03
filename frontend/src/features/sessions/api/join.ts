@@ -1,4 +1,5 @@
 import { request } from "@/shared/api/client";
+import { invalidResponseError } from "@/shared/api/errors";
 
 // The stages an outing moves through.
 export type OutingStatus = "invite" | "preferences" | "voting" | "tiebreak" | "result";
@@ -28,11 +29,24 @@ export type GuestJoinResponse = {
 };
 
 // Find the outing behind an invite code (proposed route, BE-09 #64).
-export function lookupInvite(code: string) {
-  return request<InvitePreview>(
+export async function lookupInvite(code: string): Promise<InvitePreview> {
+  const preview = await request<InvitePreview>(
     "GET",
     `/outings/by-code/${encodeURIComponent(code)}`,
   );
+
+  // A response missing what the screen shows is an error, not a session.
+  if (
+    !preview ||
+    typeof preview.name !== "string" ||
+    typeof preview.organizer_name !== "string" ||
+    typeof preview.district !== "string" ||
+    typeof preview.status !== "string" ||
+    !Number.isSafeInteger(preview.participants_count)
+  ) {
+    throw invalidResponseError(200);
+  }
+  return preview;
 }
 
 // Join as a signed-in user; repeating it keeps one participation.
