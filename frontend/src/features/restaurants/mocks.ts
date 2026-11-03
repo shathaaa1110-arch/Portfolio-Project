@@ -30,10 +30,14 @@ export const previewRestaurants: RestaurantSummary[] = [
 
 // Fake list response for mock mode, using the preview restaurants.
 export function registerRestaurantMocks(): void {
-  registerMock("GET", "/restaurants?limit=20",() =>({
+  const firstPage = () => ({
     restaurants: previewRestaurants,
     total: previewRestaurants.length,
     limit: 20,
     offset: 0,
-  }));
+  });
+
+  registerMock("GET", "/restaurants?limit=20&offset=0", firstPage);
+  // Keep the original URL working for existing callers.
+  registerMock("GET", "/restaurants?limit=20", firstPage);
 }

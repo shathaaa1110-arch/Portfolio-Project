@@ -66,7 +66,7 @@ export function SignUpScreen() {
 
         <AppText style={styles.eyebrow}>جمعة حلوة، تبدأ هنا</AppText>
         <AppText variant="title" style={styles.title}>خلّنا نتعرّف عليك.</AppText>
-        <AppText style={styles.subtitle}>حسابك لتنظيم الجلسات. أصحابك يقدرون ينضمون بالدعوة.</AppText>
+        <AppText style={styles.subtitle}>احفظ تفضيلاتك، واكتشف مطاعم تناسب ذوقك.</AppText>
 
         <AppText variant="label" style={styles.label}>اسمك</AppText>
         <AppInput style={styles.input} placeholder="كيف نناديك؟" value={name} onChangeText={setName} />
@@ -100,7 +100,7 @@ export function SignUpScreen() {
           <AppText style={styles.linkText}>عندك حساب؟ تسجيل الدخول</AppText>
         </Pressable>
 
-        <AppText style={styles.note}>تقدر تتصفح المطاعم وتنضم كضيف بدون حساب.</AppText>
+        <AppText style={styles.note}>تقدر تتصفح المطاعم بدون حساب.</AppText>
       </ScrollView>
     </SafeAreaView>
   );

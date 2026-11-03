@@ -1,294 +1,172 @@
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-} from "react-native";
+import { layoutDirection } from "@/shared/layout";
+import { useRef, useState, type ComponentRef } from "react";
+import { router } from "expo-router";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState } from "react";
-import {
-  RestaurantList,
-  useRestaurants,
-} from "@/features/restaurants";
+import { SymbolView } from "expo-symbols";
+import { RestaurantList, RestaurantPagination, useRestaurants, type RestaurantSummary } from "@/features/restaurants";
+import { type RecommendationLocation } from "@/features/personalSuggestions";
+import { SaveRestaurantButton, useSavedRestaurants } from "@/features/savedRestaurants";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
-import { SymbolView } from "expo-symbols";
-
-import { SaveRestaurantButton, useSavedRestaurants } from "@/features/savedRestaurants";
+import { HomeIntro } from "./HomeIntro";
+import { HomeLocationBar } from "./HomeLocationBar";
+import { HomeTodayPick } from "./HomeTodayPick";
 
 export function HomePage() {
-  // Keep the current search text.
+  const searchInputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Load restaurants and track the request.
-  const { restaurants, status, retry } = useRestaurants();
-
-  // Saved restaurants of the signed-in account, for the save buttons.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [pickerRequest, setPickerRequest] = useState(0);
+  const [location, setLocation] = useState<RecommendationLocation>({ kind: "none" });
+  const {
+    restaurants, status, retry, pageNumber, pageCount, isLoading,
+    isRefreshing, error, canGoNext, canGoPrevious, nextPage, previousPage, refresh,
+  } = useRestaurants(searchQuery);
   const savedList = useSavedRestaurants();
 
-  // Place the page introduction above the restaurant cards.
-  const header = (
-    <View style={styles.header}>
-      <View style={styles.section}>
-        <AppText variant="label" style={styles.arabicText}>
-          كل جمعة، لها ذوق
-        </AppText>
+  function renderSave(restaurant: RestaurantSummary) {
+    return <SaveRestaurantButton iconOnly onImage restaurantId={restaurant.id}
+      saved={savedList.isSaved(restaurant.id)}
+      onChange={saved => savedList.setSaved(restaurant, saved)} />;
+  }
 
-        <AppText
-          variant="title"
-          accessibilityRole="header"
-          style={styles.arabicText}
-        >
-          وش تشتهون اليوم؟
-        </AppText>
+  const header = <View style={styles.header}>
+    <HomeIntro onFindRestaurant={() => searchInputRef.current?.focus()} />
 
-        <AppText style={styles.arabicText}>
-          اكتشف المطاعم، واجمع أصحابك على اختيار واحد.
-        </AppText>
-      </View>
-
-                     {/* Search the restaurant data available on this page. */}
+    <View style={styles.searchGroup}>
       <View style={styles.searchField}>
-        <SymbolView
-          name={{
-            ios: "magnifyingglass",
-            android: "search",
-            web: "search",
-          }}
-          size={22}
-          tintColor={theme.colors.searchText}
-          accessible={false}
-        />
-
-        <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="ابحث عن مطعم أو مطبخ"
-          placeholderTextColor={theme.colors.searchText}
-          accessibilityLabel="ابحث عن مطعم أو مطبخ"
-          returnKeyType="search"
-          autoCorrect={false}
-          autoCapitalize="none"
-          clearButtonMode="while-editing"
-          style={styles.searchInput}
-        />
-      </View>
-
-             {/* Session preview; creation will be added later. */}
-      <View style={styles.sessionCard}>
-        <View style={styles.sessionContent}>
-          <AppText
-            variant="label"
-            style={[styles.arabicText, styles.sessionCaption]}
-          >
-            الجمعة أحلى مع بعض
-          </AppText>
-
-          <AppText
-            variant="title"
-            accessibilityRole="header"
-            style={[styles.arabicText, styles.sessionTitle]}
-          >
-            نختار وين نتعشّى؟
-          </AppText>
-
-          <View style={styles.sessionActions}>
-            {/* Keep this action unavailable during the preview. */}
-            <Pressable
-              disabled
-              accessibilityRole="button"
-              accessibilityLabel="ابدأ جلسة، قريبًا"
-              accessibilityState={{ disabled: true }}
-              style={styles.sessionButton}
-            >
-              <AppText
-                variant="button"
-                style={styles.sessionButtonText}
-              >
-                ابدأ جلسة
-              </AppText>
-
-              <SymbolView
-                name={{ ios: "plus", android: "add", web: "add" }}
-                size={18}
-                tintColor={theme.colors.primary}
-                accessible={false}
-              />
-            </Pressable>
-
-            <AppText variant="label" style={styles.sessionCaption}>
-              قريبًا
-            </AppText>
-          </View>
-        </View>
-
-        <SymbolView
-          name={{
-            ios: "fork.knife",
-            android: "restaurant",
-            web: "restaurant",
-          }}
-          size={44}
-          tintColor={theme.colors.sessionAccent}
-          accessible={false}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <AppText
-          variant="title"
-          accessibilityRole="header"
-          style={[styles.arabicText, styles.sectionTitle]}
-        >
-          على ذوق المدينة
-        </AppText>
-
-        <AppText style={styles.arabicText}>
-          تصفّح عام للمطاعم، غير مخصّص حسب تفضيلاتك.
-        </AppText>
-
-                {/* Explain the current search scope. */}
-        <AppText style={styles.arabicText}>
-          البحث ضمن المطاعم المعروضة.
-        </AppText>
+        <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }}
+          size={23} tintColor={theme.colors.primary} accessible={false} />
+        <TextInput ref={searchInputRef} value={searchQuery} onChangeText={setSearchQuery}
+          placeholder="مطعم أو مطبخ على بالك؟" placeholderTextColor={theme.colors.searchText}
+          accessibilityLabel="ابحث في كل المطاعم" returnKeyType="search"
+          autoCorrect={false} autoCapitalize="none"
+          style={styles.searchInput} />
+        {!!searchQuery && <Pressable accessibilityRole="button" accessibilityLabel="مسح البحث"
+          onPress={() => setSearchQuery("")} style={styles.clearSearch}>
+          <AppText>مسح</AppText>
+        </Pressable>}
       </View>
     </View>
-  );
 
-  return (
+    <HomeTodayPick location={location} renderAction={renderSave} refreshKey={refreshKey}
+      onChooseLocation={() => setPickerRequest(value => value + 1)} />
+
+    <View style={styles.section}>
+      <View style={styles.sectionHeading}>
+        <AppText variant="title" accessibilityRole="header" style={styles.sectionTitle}>{searchQuery.trim() ? "نتائج البحث" : "اكتشف المطاعم"}</AppText>
+        <Pressable accessibilityRole="button" onPress={() => router.push("/preferences")} style={styles.preferences}>
+          <AppText style={styles.preferencesText}>تفضيلاتي</AppText>
+          <SymbolView name={{ ios: "slider.horizontal.3", android: "tune", web: "tune" }}
+            size={18} tintColor={theme.colors.primary} accessible={false} />
+        </Pressable>
+      </View>
+      <AppText style={styles.caption}>تصفّح المطاعم، واكتشف مكانك القادم.</AppText>
+    </View>
+  </View>;
+
+   return (
     <SafeAreaView
       edges={["top", "left", "right"]}
       style={styles.screen}
     >
-      {/* Scroll the introduction and cards together. */}
+      <HomeLocationBar onLocationChange={setLocation} pickerRequest={pickerRequest} />
+
+{status === "ready" && error && (
+  <View style={styles.listError}>
+    <AppText accessibilityRole="alert" style={styles.listErrorText}>
+      {error}
+    </AppText>
+
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="إعادة محاولة تحميل المطاعم"
+      accessibilityState={{ disabled: isLoading }}
+      disabled={isLoading}
+      onPress={retry}
+      style={({ pressed }) => [
+        styles.listRetry,
+        pressed && { opacity: 0.7 },
+      ]}
+    >
+      <AppText style={styles.listRetryText}>
+        إعادة المحاولة
+      </AppText>
+    </Pressable>
+  </View>
+)}
       <RestaurantList
         header={header}
         restaurants={restaurants}
         searchQuery={searchQuery}
         status={status}
+        errorMessage={error}
         onRetry={retry}
-        renderAction={(restaurant) => (
-          <SaveRestaurantButton
-            restaurantId={restaurant.id}
-            saved={savedList.isSaved(restaurant.id)}
-            onChange={(isNowSaved) => savedList.setSaved(restaurant, isNowSaved)}
-          />
-        )}
+        pageKey={pageNumber}
+        refreshing={isRefreshing}
+        onRefresh={() => { refresh(); setRefreshKey(value => value + 1); savedList.retry(); }}
+        renderAction={renderSave}
+        footer={
+          status === "ready" && pageCount > 0 ? (
+            <RestaurantPagination
+              pageNumber={pageNumber}
+              pageCount={pageCount}
+              isLoading={isLoading}
+              error={null}
+              canGoNext={canGoNext}
+              canGoPrevious={canGoPrevious}
+              onNext={nextPage}
+              onPrevious={previousPage}
+              onRetry={retry}
+            />
+          ) : undefined
+        }
       />
-
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
 
-  header: {
-    // Separate the introduction from the list heading.
-    gap: theme.spacing.titleGap,
-  },
+  listError: {
+  ...layoutDirection("ltr"),
+  flexDirection: "row-reverse",
+  alignItems: "center",
+  gap: 12,
+  paddingHorizontal: 20,
+  paddingVertical: 8,
+  backgroundColor: theme.colors.surface,
+  borderBottomWidth: 1,
+  borderBottomColor: theme.colors.border,
+},
+listErrorText: {
+  flex: 1,
+  color: theme.colors.error,
+  textAlign: "right",
+  writingDirection: "rtl",
+},
+listRetry: {
+  minHeight: theme.sizes.touchTargetMin,
+  justifyContent: "center",
+  paddingHorizontal: 8,
+},
+listRetryText: {
+  color: theme.colors.primary,
+  fontFamily: theme.typography.fontFamilyBold,
+  textDecorationLine: "underline",
+},
 
-  section: {
-    // Keep related text close together.
-    gap: theme.spacing.labelGap,
-  },
-
-  arabicText: {
-    writingDirection: "rtl",
-    textAlign: "auto",
-  },
-
-    searchField: {
-    // Arrange the icon and text from right to left.
-    flexDirection: "row",
-        // Use the supported RTL style on each platform.
-    ...Platform.select({
-      web: { writingDirection: "rtl" as const },
-      default: { direction: "rtl" as const },
-    }),
-    alignItems: "center",
-    gap: theme.spacing.labelGap,
-
-    // Use a soft background and rounded corners.
-    backgroundColor: theme.colors.searchBackground,
-    borderRadius: theme.radii.field,
-    minHeight: theme.sizes.controlMinHeight,
-    paddingHorizontal: theme.spacing.inputPaddingHorizontal,
-    paddingVertical: theme.spacing.inputPaddingVertical,
-  },
-
-   searchInput: {
-    // Use the brand font for editable text.
-    flex: 1,
-    fontFamily: theme.typography.fontFamily,
-    fontSize: theme.typography.inputSize,
-    color: theme.colors.text,
-    writingDirection: "rtl",
-    textAlign: "auto",
-    padding: 0,
-  },
-
-    sessionCard: {
-    // Place the content on the right and the icon on the left.
-    flexDirection: "row",
-        // Use the supported RTL style on each platform.
-    ...Platform.select({
-      web: { writingDirection: "rtl" as const },
-      default: { direction: "rtl" as const },
-    }),
-    alignItems: "center",
-    gap: theme.spacing.actionGap,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radii.card,
-    padding: theme.spacing.cardPadding,
-  },
-
-  sessionContent: {
-    // Use the space beside the food icon.
-    flex: 1,
-    gap: theme.spacing.labelGap,
-  },
-
-  sessionTitle: {
-    fontSize: theme.typography.sessionTitleSize,
-    color: theme.colors.onPrimary,
-  },
-
-  sessionCaption: {
-    color: theme.colors.sessionAccent,
-  },
-
-  sessionActions: {
-    // Allow the hint to wrap on narrow screens.
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: theme.spacing.actionGap,
-  },
-
-  sessionButton: {
-    // Keep the button text and plus icon together.
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: theme.spacing.labelGap,
-    backgroundColor: theme.colors.sessionAccent,
-    borderRadius: theme.radii.button,
-    minHeight: theme.sizes.controlMinHeight,
-    paddingHorizontal: theme.spacing.buttonPaddingHorizontal,
-    paddingVertical: theme.spacing.buttonPaddingVertical,
-  },
-
-  sessionButtonText: {
-    // Keep the text readable on the light background.
-    color: theme.colors.primary,
-  },
-  sectionTitle: {
-    fontSize: theme.typography.sectionTitleSize,
-  },
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  header: { ...layoutDirection("ltr"), gap: 20 },
+  searchGroup: { gap: 4 },
+  searchField: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 10, backgroundColor: theme.colors.searchBackground, borderRadius: 22, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8 },
+  searchInput: { flex: 1, minHeight: 38, fontFamily: theme.typography.fontFamily, fontSize: 16, color: theme.colors.text, writingDirection: "rtl", textAlign: "right", padding: 0 },
+  clearSearch: { minHeight: 44, justifyContent: "center", paddingHorizontal: 6 },
+  section: { gap: 2 },
+  sectionHeading: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 },
+  sectionTitle: { fontSize: 23, lineHeight: 34, textAlign: "right", writingDirection: "rtl" },
+  preferences: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 6, minHeight: 44 },
+  preferencesText: { fontSize: 14, textDecorationLine: "underline", writingDirection: "rtl" },
+  caption: { fontSize: 14, lineHeight: 24, color: "#626D5E", textAlign: "right", writingDirection: "rtl" },
 });

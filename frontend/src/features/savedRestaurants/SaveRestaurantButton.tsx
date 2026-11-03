@@ -1,3 +1,4 @@
+import { layoutDirection } from "@/shared/layout";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
@@ -11,6 +12,8 @@ import { removeSavedRestaurant, saveRestaurant } from "./api";
 type SaveRestaurantButtonProps = {
   restaurantId: number;
   saved: boolean;
+  iconOnly?: boolean;
+  onImage?: boolean;
   // The screen updates its list after the server confirms.
   onChange: (saved: boolean) => void;
 };
@@ -19,6 +22,8 @@ export function SaveRestaurantButton({
   restaurantId,
   saved,
   onChange,
+  iconOnly = false,
+  onImage = false,
 }: SaveRestaurantButtonProps) {
   // Blocks repeated taps while a request is running.
   const [busy, setBusy] = useState(false);
@@ -62,10 +67,12 @@ export function SaveRestaurantButton({
       accessibilityLabel={saved ? "إزالة من المحفوظة" : "حفظ المطعم"}
       accessibilityState={{ selected: saved, busy }}
       style={({ pressed }) => [
-        styles.button,
-        saved && styles.savedButton,
-        (pressed || busy) && styles.pressed,
-      ]}
+  styles.button,
+  iconOnly && styles.iconButton,
+  saved && !(iconOnly && onImage) && styles.savedButton,
+  iconOnly && onImage && styles.onImage,
+  (pressed || busy) && styles.pressed,
+]}
     >
       {/* A filled heart means the restaurant is saved. */}
       <SymbolView
@@ -75,16 +82,18 @@ export function SaveRestaurantButton({
             : { ios: "heart", android: "favorite_border", web: "favorite_border" }
         }
         size={18}
-        tintColor={saved ? theme.colors.onPrimary : theme.colors.primary}
+        tintColor={saved || (iconOnly && onImage) ? theme.colors.onPrimary : theme.colors.primary}
         accessible={false}
       />
 
-      <AppText
-        variant="label"
-        style={saved ? styles.savedText : styles.text}
-      >
-        {saved ? "محفوظ" : "حفظ"}
-      </AppText>
+{!iconOnly && (
+  <AppText
+    variant="label"
+    style={saved ? styles.savedText : styles.text}
+  >
+    {saved ? "محفوظ" : "حفظ"}
+  </AppText>
+)}
     </Pressable>
   );
 }
@@ -93,7 +102,7 @@ const styles = StyleSheet.create({
   button: {
     // A small pill instead of a full-width button.
     flexDirection: "row",
-    direction: "rtl",
+    ...layoutDirection("rtl"),
     alignItems: "center",
     alignSelf: "flex-start",
     gap: theme.spacing.labelGap,
@@ -105,6 +114,18 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.button,
   },
 
+  iconButton: {
+  width: theme.sizes.touchTargetMin,
+  height: theme.sizes.touchTargetMin,
+  minHeight: theme.sizes.touchTargetMin,
+  paddingHorizontal: 0,
+  paddingVertical: 0,
+  justifyContent: "center",
+  backgroundColor: theme.colors.surface,
+  borderWidth: 0,
+  borderRadius: 22,
+},
+  onImage: { backgroundColor: "transparent" },
   savedButton: {
     backgroundColor: theme.colors.primary,
   },
