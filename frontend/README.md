@@ -17,8 +17,9 @@ error state. There is no automatic fallback to mock data.
 Search is prepared for server-side `search` filtering before pagination, with
 a 350 ms typing delay and stale-response protection. The deployed API checked
 on 2 November exposes only `limit/offset`, so
-`EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false` remains the default. Typed searches
-show an unavailable message instead of filtering only the loaded page.
+`EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false` remains the default. Home hides the
+search field while it is disabled. The “ألقى مطعم” button scrolls to the restaurant
+rows using the measured header height; it does not focus a hidden search input.
 Enable the flag only after the server actually filters and returns matching totals.
 
 Cards use illustrative category photos, Eastern Arabic numbers, and map links.
@@ -127,7 +128,7 @@ Paths below are relative to `frontend`.
 | `assets/images/auth` | Decorative photo for the sign-up and login screens |
 | `src/features/auth/AuthHero.tsx` | Shows the photo and app name on sign-up and login |
 | `scripts/preferences-flow.test.cjs` | Tests routing, form steps, session ownership and save/retry |
-| `scripts/discovery-flow.test.cjs` | Tests hook races, page recovery and recommendation rendering |
+| `scripts/discovery-flow.test.cjs` | Tests hook races, page recovery, recommendation rendering, search visibility and the Home discovery action |
 | `scripts/home-recommendations.test.cjs` | Tests recommendation and district request contracts |
 | `scripts/preferences.test.cjs` | Checks conversions, validation, API calls and mock read/write |
 | `scripts/restaurants-api.test.cjs` | Checks page requests, invalid replies, error preservation and mock compatibility; included in npm run check |
@@ -160,8 +161,8 @@ npm run check
 git diff --check
 ```
 
-`npm run check` runs TypeScript, architecture boundary checks and 47 tests:
-7 architecture, 10 restaurant/API/presentation, 18 preference, and 12 discovery
+`npm run check` runs TypeScript, architecture boundary checks and 49 tests:
+7 architecture, 10 restaurant/API/presentation, 18 preference, and 14 discovery
 and recommendation tests. Component tests use real React state/effects with
 stubbed services. The test renderer emits a deprecation notice; it is a dev-only dependency.
 

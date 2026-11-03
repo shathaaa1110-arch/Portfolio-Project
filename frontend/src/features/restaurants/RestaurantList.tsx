@@ -31,6 +31,7 @@ type RestaurantListProps = {
   onRetry?: () => void;
   errorMessage?: string | null;
   pageKey?: number;
+  scrollToResultsRequest?: number;
 refreshing?: boolean;
 onRefresh?: () => void;
     // Optional control for each card, added by the screen that shows the list.
@@ -47,6 +48,7 @@ export function RestaurantList({
   errorMessage,
   renderAction,
   pageKey,
+  scrollToResultsRequest = 0,
   refreshing = false,
   onRefresh,
 }: RestaurantListProps) {
@@ -56,7 +58,18 @@ export function RestaurantList({
 const columns = width < 360 || fontScale > 1.25 ? 1 : 2;
 
   const listRef = useRef<FlatList<RestaurantSummary[]>>(null);
+  const headerHeight = useRef(0);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  // The Home discovery button reaches the rows without opening a keyboard.
+  useEffect(() => {
+    if (scrollToResultsRequest > 0) {
+      listRef.current?.scrollToOffset({
+        offset: headerHeight.current,
+        animated: true,
+      });
+    }
+  }, [scrollToResultsRequest]);
 
   // نرجع لأعلى القائمة بعد نجاح الانتقال لصفحة مختلفة.
   useEffect(() => {
@@ -154,7 +167,11 @@ key={`restaurants-${columns}`}
           </View>)}
         </View>
       )}
-      ListHeaderComponent={header}
+      ListHeaderComponent={header ? (
+        <View onLayout={event => { headerHeight.current = event.nativeEvent.layout.height; }}>
+          {header}
+        </View>
+      ) : undefined}
       ListFooterComponent={footer}
       ListFooterComponentStyle={footer ? styles.footer : undefined}
       ListHeaderComponentStyle={styles.header}

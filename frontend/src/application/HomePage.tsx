@@ -1,5 +1,5 @@
 import { layoutDirection } from "@/shared/layout";
-import { useRef, useState, type ComponentRef } from "react";
+import { useState } from "react";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,13 +8,14 @@ import { RestaurantList, RestaurantPagination, useRestaurants, type RestaurantSu
 import { type RecommendationLocation } from "@/features/personalSuggestions";
 import { SaveRestaurantButton, useSavedRestaurants } from "@/features/savedRestaurants";
 import { AppText } from "@/shared/components";
+import { RESTAURANT_SEARCH_ENABLED } from "@/shared/api/config";
 import { theme } from "@/shared/theme";
 import { HomeIntro } from "./HomeIntro";
 import { HomeLocationBar } from "./HomeLocationBar";
 import { HomeTodayPick } from "./HomeTodayPick";
 
 export function HomePage() {
-  const searchInputRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const [browseRequest, setBrowseRequest] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [pickerRequest, setPickerRequest] = useState(0);
@@ -32,13 +33,13 @@ export function HomePage() {
   }
 
   const header = <View style={styles.header}>
-    <HomeIntro onFindRestaurant={() => searchInputRef.current?.focus()} />
+    <HomeIntro onFindRestaurant={() => setBrowseRequest(value => value + 1)} />
 
-    <View style={styles.searchGroup}>
+    {RESTAURANT_SEARCH_ENABLED && <View style={styles.searchGroup}>
       <View style={styles.searchField}>
         <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }}
           size={23} tintColor={theme.colors.primary} accessible={false} />
-        <TextInput ref={searchInputRef} value={searchQuery} onChangeText={setSearchQuery}
+        <TextInput value={searchQuery} onChangeText={setSearchQuery}
           placeholder="مطعم أو مطبخ على بالك؟" placeholderTextColor={theme.colors.searchText}
           accessibilityLabel="ابحث في كل المطاعم" returnKeyType="search"
           autoCorrect={false} autoCapitalize="none"
@@ -48,7 +49,7 @@ export function HomePage() {
           <AppText>مسح</AppText>
         </Pressable>}
       </View>
-    </View>
+    </View>}
 
     <HomeTodayPick location={location} renderAction={renderSave} refreshKey={refreshKey}
       onChooseLocation={() => setPickerRequest(value => value + 1)} />
@@ -104,6 +105,7 @@ export function HomePage() {
         errorMessage={error}
         onRetry={retry}
         pageKey={pageNumber}
+        scrollToResultsRequest={browseRequest}
         refreshing={isRefreshing}
         onRefresh={() => { refresh(); setRefreshKey(value => value + 1); savedList.retry(); }}
         renderAction={renderSave}

@@ -38,7 +38,7 @@ export function HomeIntro({ onFindRestaurant }: HomeIntroProps) {
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="ألقى مطعم، افتح البحث"
+          accessibilityLabel="ألقى مطعم، تصفّح قائمة المطاعم"
           onPress={onFindRestaurant}
           style={({ pressed }) => [
             styles.action,

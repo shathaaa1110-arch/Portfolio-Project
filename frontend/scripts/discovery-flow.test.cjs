@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { load, render, deferred, act, plain, native, shared } = require("./helpers/render-feature.cjs");
 const errors = load("shared/api/errors.ts");
+const React = require("react");
 const response = (offset = 0, total = 43, name = "مطعم") => ({
   total, offset, limit: 20,
   restaurants: Array.from({ length: Math.max(0, Math.min(20, total - offset)) }, (_, i) => ({ id: offset + i + 1, name_ar: name })),
@@ -152,4 +153,80 @@ test("Home offers the rest of the recommendations and a location recovery action
   await act(async () => h.root.findByType("Pressable").props.onPress());
   assert.equal(chosen, 1);
   await h.close();
+});
+
+async function homeSearchHarness(searchEnabled) {
+  const queries = [], scrolls = [];
+  const theme = load("shared/theme.ts");
+  function FlatList({ ref, ...props }) {
+    React.useImperativeHandle(ref, () => ({ scrollToOffset: options => scrolls.push(plain(options)) }), []);
+    return React.createElement("FlatList", props, props.ListHeaderComponent);
+  }
+  const views = { ...native, FlatList, TextInput: "TextInput" };
+  const { RestaurantList } = load("features/restaurants/RestaurantList.tsx", {
+    "react-native": views, "@/shared/components": shared, "@/shared/theme": theme,
+    "./components/RestaurantCard": { RestaurantCard: "RestaurantCard" },
+  });
+  const { HomeIntro } = load("application/HomeIntro.tsx", {
+    "react-native": views, "@/shared/components": shared, "@/shared/theme": theme,
+    "expo-image": { Image: "Image" }, "expo-symbols": { SymbolView: "SymbolView" },
+  });
+  const { HomePage } = load("application/HomePage.tsx", {
+    "react-native": views, "expo-router": { router: {} },
+    "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
+    "expo-symbols": { SymbolView: "SymbolView" },
+    "@/shared/components": shared, "@/shared/theme": theme,
+    "@/shared/api/config": { RESTAURANT_SEARCH_ENABLED: searchEnabled },
+    "@/features/restaurants": {
+      RestaurantList, RestaurantPagination: "RestaurantPagination",
+      useRestaurants(query) {
+        queries.push(query);
+        return { ...response(), status: "ready", pageNumber: 1, pageCount: 3, error: null };
+      },
+    },
+    "@/features/savedRestaurants": { SaveRestaurantButton: "SaveRestaurantButton", useSavedRestaurants: () => ({}) },
+    "./HomeIntro": { HomeIntro },
+    "./HomeLocationBar": { HomeLocationBar: () => null },
+    "./HomeTodayPick": { HomeTodayPick: () => null },
+  });
+  const screen = await render(HomePage);
+  scrolls.length = 0;
+  return {
+    screen, queries, scrolls,
+    measureHeader(height) {
+      screen.root.findByType("FlatList").props.ListHeaderComponent.props.onLayout({ nativeEvent: { layout: { height } } });
+    },
+    browse() {
+      return act(async () => screen.root.findByProps({ accessibilityLabel: "ألقى مطعم، تصفّح قائمة المطاعم" }).props.onPress());
+    },
+  };
+}
+
+test("Home hides unsupported search and its discovery button scrolls to the restaurants repeatedly", async () => {
+  const h = await homeSearchHarness(false);
+  assert.equal(h.screen.root.findAllByType("TextInput").length, 0);
+  h.measureHeader(480);
+  await h.browse();
+  assert.deepEqual(h.scrolls, [{ offset: 480, animated: true }]);
+  h.measureHeader(560);
+  await h.browse();
+  assert.deepEqual(h.scrolls[1], { offset: 560, animated: true });
+  assert(h.queries.every(query => query === ""));
+  assert.equal(h.screen.root.findByType("FlatList").props.data.flat().length, 20);
+  await h.screen.close();
+});
+
+test("Home exposes global search only when supported, forwards Arabic text and can clear it", async () => {
+  const h = await homeSearchHarness(true);
+  const input = h.screen.root.findByType("TextInput");
+  await act(async () => input.props.onChangeText("شذ"));
+  assert.equal(h.queries.at(-1), "شذ");
+  assert.equal(h.screen.root.findByType("TextInput").props.value, "شذ");
+  h.measureHeader(620);
+  await h.browse();
+  assert.deepEqual(h.scrolls.at(-1), { offset: 620, animated: true });
+  assert.equal(h.queries.at(-1), "شذ");
+  await act(async () => h.screen.root.findByProps({ accessibilityLabel: "مسح البحث" }).props.onPress());
+  assert.equal(h.queries.at(-1), "");
+  await h.screen.close();
 });
