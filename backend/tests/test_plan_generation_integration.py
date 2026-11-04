@@ -11,7 +11,7 @@ import pytest
 import sqlalchemy as sa
 from app.core.database import engine
 from app.main import app
-from app.services.plan.router import hours_from_summary
+from app.services.plan.candidates import hours_from_summary
 from fastapi.testclient import TestClient
 from tests.test_outing_state_integration import _session, secret  # noqa: F401
 from tests.test_outings_join_integration import _add_outing, _add_user, _bearer, fresh_limits  # noqa: F401

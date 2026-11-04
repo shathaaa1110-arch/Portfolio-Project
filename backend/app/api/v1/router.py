@@ -5,6 +5,7 @@ from app.services.auth.users import router as users_router
 from app.services.outings.join import router as join_router
 from app.services.outings.router import router as outings_router
 from app.services.outings.state import router as outing_state_router
+from app.services.plan.personal import router as personal_recommendations_router
 from app.services.plan.router import router as plan_router
 from app.services.preferences.account import router as account_preferences_router
 from app.services.preferences.router import router as preferences_router
@@ -23,6 +24,7 @@ api_router.include_router(outing_state_router)
 api_router.include_router(preferences_router)
 api_router.include_router(account_preferences_router)
 api_router.include_router(plan_router)
+api_router.include_router(personal_recommendations_router)
 api_router.include_router(restaurants_router)
 api_router.include_router(districts_router)
 api_router.include_router(voting_router)

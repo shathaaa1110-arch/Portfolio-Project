@@ -1795,7 +1795,7 @@ or `PREFERENCES_NOT_OPEN` (the organizer has not started the preferences stage),
 | 22 | GET | `/outings/{outing_id}/plan` | 11 |
 | 23 | GET | `/restaurants/{restaurant_id}` | 21, 26 |
 | 24 | GET | `/restaurants` | 22 |
-| 25 | POST | `/recommendations/personal` | 23, 31 |
+| 25 | GET | `/users/me/recommendations` | 23, 31 |
 
 #### Get an outing's plan
 
@@ -1910,25 +1910,28 @@ Response `503` — the restaurants table cannot be read
 #### Personal recommendation
 
 ```http
-POST /recommendations/personal
+GET /users/me/recommendations?limit=10&lat=24.69&lon=46.68
+GET /users/me/recommendations?limit=10&district_id=00100001141
 ```
-Requires: Authorization
+Requires: Authorization (an account; a guest pass is refused)
 
-Calls the recommendation engine with the caller's saved preferences and this request's inputs. Returns a result without storing it (`User.viewSuggestions()`).
+Runs the same engine and candidate rules as the group plan with one person: the caller's saved
+preferences, at the current Riyadh time. Coordinates win over `district_id`; with neither, no
+distances are shown. Nothing is stored (`User.viewSuggestions()`). `limit` is 1 to 20, default 10.
 
-Request
-```json
-{ "mood": "something_new", "budget_max": 150, "max_distance_km": 10 }
-```
-
-Response `200`
+Response `200`, best first; an empty list means nothing open now matches
 ```json
 {
   "restaurants": [
-    { "id": 101, "name_ar": "string", "match_score": 91, "reason": "string" }
+    { "id": 101, "name_ar": "string", "name_en": "string", "cuisines": ["italian"], "district": "string",
+      "price_tier": 2, "rating": 4.5, "maps_url": "string", "spend_low": 40, "spend_high": 80,
+      "match_score": 91, "reason": "string", "distance_km": 1.2 }
   ]
 }
 ```
+
+Response `422` — a distance limit is saved but no location was sent (`LOCATION_REQUIRED`), or only one of `lat`/`lon`
+Response `404` — `district_id` is not a known district (`DISTRICT_NOT_FOUND`)
 
 ### 4.8 Voting API
 
@@ -2063,11 +2066,11 @@ Every Must Have and Should Have story (Section 0) maps to at least one endpoint 
 | 20 | `GET /groups/{id}`, `GET /outings/{id}` (participant list) |
 | 21 | `GET /restaurants/{id}` (`reason` field) |
 | 22 | `GET /restaurants?search=` |
-| 23 | `POST /recommendations/personal` |
+| 23 | `GET /users/me/recommendations` |
 | 24 | `DELETE /outings/{id}/participants/{pid}`, `DELETE /groups/{id}/members/{uid}` |
 | 25 | `POST /auth/push-token`; notifications sent by the group/outing, plan, and voting services |
 | 26 | `maps_url` field on `restaurants` and on the result |
-| 31 | `mood` input on `POST /recommendations/personal` |
+| 31 | `mood` input on `GET /users/me/recommendations` (not built) |
 
 ### 4.11 API architecture
 
@@ -2680,7 +2683,7 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `GET /outings/{id}/plan` | Plan returned (200) | No plan yet (404) |
 | `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
 | `GET /restaurants` | List returned (200), empty list (200) | Bad `limit` (422), database unavailable (503) |
-| `POST /recommendations/personal` | Suggestions returned (200) | No auth (401) |
+| `GET /users/me/recommendations` | Suggestions returned (200), empty list (200) | No auth or guest pass (401), distance limit without a location (422), unknown district (404) |
 | `POST /outings/{id}/votes` | Vote recorded (200) | Wrong stage (409), not a participant (403) |
 | `POST /outings/{id}/end-voting` | Result settled (200) | Not organizer (403) |
 | `POST /outings/{id}/tiebreak-vote` | Recorded (200) | Not in tiebreak (409), already voted (409) |
