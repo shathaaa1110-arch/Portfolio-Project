@@ -209,6 +209,7 @@ Portfolio-Project/
     │   ├── preferences-flow.test.cjs
     │   ├── home-recommendations.test.cjs
     │   ├── discovery-flow.test.cjs
+    │   ├── join-flow.test.cjs
     │   └── helpers/render-feature.cjs
     └── src/
         ├── app/
@@ -217,6 +218,7 @@ Portfolio-Project/
         │   ├── login.tsx
         │   ├── verify-phone.tsx
         │   ├── preferences.tsx
+        │   ├── join.tsx
         │   └── (tabs)/
         │       ├── _layout.tsx
         │       ├── index.tsx
@@ -280,6 +282,12 @@ Portfolio-Project/
         │   │   ├── SavedRestaurantsScreen.tsx
         │   │   ├── SaveRestaurantButton.tsx
         │   │   └── index.ts (وبقية ملفات الميزة)
+        │   ├── sessions/
+        │   │   ├── api/join.ts
+        │   │   ├── JoinSessionScreen.tsx
+        │   │   ├── guestPass.ts
+        │   │   ├── mocks.ts
+        │   │   └── index.ts
         │   └── restaurants/
         │       ├── api.ts
         │       ├── useRestaurants.ts
@@ -318,6 +326,7 @@ Portfolio-Project/
 - `HomePage`: يجمع مقدمة الرئيسية والبحث والموقع والتوصيات والقائمة ويشترك في تحديثها.
 - `HomeTodayPick`: يركب حالات التفضيلات والموقع ونتائج التوصيات.
 - `personalSuggestions`: طلبات الأحياء والتوصيات، عزل الردود المتأخرة ومنتقي الموقع.
+- `sessions`: الانضمام برمز: معاينة الدعوة، وانضمام العضو بحسابه والضيف باسمه فقط، وحفظ رمز الضيف لكل دعوة حتى لا ينضم مرتين.
 - `restaurants/api.ts`: يطلب صفحة محددة من ٢٠ مطعمًا عبر أداة الاتصال المشتركة دون رمز دخول، ويتحقق من الرد. يطلب أول صفحة عند عدم تمرير offset.
 - `useRestaurants.ts`: يدير البحث المؤجل وصفحة النتائج وحالة الطلب، ويحمي من الردود المتأخرة ويوفر إعادة المحاولة.
 - `RestaurantList`: عرض نتائج الخادم والبطاقات وحالات القائمة دون فلترة محلية للبحث.
@@ -438,8 +447,8 @@ flowchart LR
 ## حدود الاستيراد وفحصها
 
 الأسهم التالية تعني «يستورد من».
-الميزات الموجودة هي `auth` و`restaurants` و`preferences` و`savedRestaurants` و`personalSuggestions`.
-يعتمد `preferences` على `auth`، و`savedRestaurants` على `restaurants` و`auth`، و`personalSuggestions` على `restaurants`. الاعتماديات معلنة في `architecture.json` وتستخدم المداخل العامة.
+الميزات الموجودة هي `auth` و`restaurants` و`preferences` و`savedRestaurants` و`personalSuggestions` و`sessions`.
+يعتمد `preferences` على `auth`، و`savedRestaurants` على `restaurants` و`auth`، و`personalSuggestions` على `restaurants`، و`sessions` على `auth`. الاعتماديات معلنة في `architecture.json` وتستخدم المداخل العامة.
 يبقى النموذج نفسه قابلًا لإعادة الاستخدام دون طلبات حساب؛ غلاف الحساب هو الذي يستدعي أدوات الجلسة.
 
 ```mermaid

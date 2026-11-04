@@ -231,6 +231,10 @@ this copy. The mock verification code is `123456`. Mock preferences are for
 one account and live in memory; reload clears them. Home uses three explicit
 mock restaurant fixtures. The real app keeps `EXPO_PUBLIC_USE_MOCK=false`.
 
+Join-by-code test codes: `TEST` opens a session, `MAXX` is full, `SHUT` is
+closed, and any other code is invalid. A guest who joined is remembered per
+code, so use a private window to join again as a new guest.
+
 ### Remaining integration and device checks
 
 Publish and validate preferences, recommendations, districts, and global search

@@ -487,7 +487,7 @@ One row per occasion, whether a one-off session or one of a group's outings.
 | organizer_id | uuid | yes | Foreign key to `users`: the person who runs this outing |
 | name | text | yes | Given by the organizer, for example "Thursday dinner" |
 | status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result`. The first three and the last match the four stages shown in the app |
-| invite_code | text | yes | Four letters and digits. Unique among outings that are still open. Carried by the invite link |
+| invite_code | text | yes | Four characters: capital letters and digits without 0, O, 1, I or L, so they are not confused. Matched in any letter case. Unique among outings that are still open. Carried by the invite link |
 | starts_at | timestamptz | yes | Date and time set by the organizer. The meal (breakfast, lunch, afternoon, dinner, late night) is worked out from it and matched against the restaurants' `meal_fit` columns |
 | district | text | yes | Meeting area chosen by the organizer. Distances are measured from its centre, taken as the average position of the restaurants in that district, so no separate districts table is needed |
 | tiebreak_ends_at | timestamptz | no | Set when a tie-break starts: the moment the 30 seconds end |
@@ -964,9 +964,9 @@ sequenceDiagram
     G->>A: Open the link or type the code
     A->>API: GET /outings/by-code/{code}
     API->>DB: Find the open outing with this code
-    API-->>A: 200 session name and organizer
+    API-->>A: 200 preview, and whether a new person can join
     G->>A: Enter a name and tap Join
-    A->>API: POST /outings/{id}/join
+    A->>API: POST /outings/{invite_code}/join-guest
     API->>DB: Read the stage and the participant count
     alt Stage is invite or preferences, and fewer than 8 people
         API->>DB: Insert participant with the guest name
@@ -1357,6 +1357,7 @@ Response `200`
 | # | Method | Path | Story |
 | -- | ------ | ---- | ----- |
 | 10 | POST | `/outings/session` | 4, 5 |
+| 10a | GET | `/outings/by-code/{code}` | 6, 7 |
 | 11 | POST | `/outings/{invite_code}/join` | 6 |
 | 12 | POST | `/outings/{invite_code}/join-guest` | 7 |
 | 13 | GET | `/outings/{outing_id}` | 10, 20 |
@@ -1386,6 +1387,36 @@ Response `201`
 
 Internally, this endpoint and group creation (4.4) share the same outing-creation logic; only the presence of a `group_id` differs. See Section 6, Technical Justifications.
 
+#### Look up an invite code
+
+```http
+GET /outings/by-code/{code}
+```
+Requires: nothing (a guest has no token yet)
+
+Returns a short preview, so the join screen can show the session before anyone joins. The code is matched in any letter case. `can_join` and `join_blocked_reason` follow the same rules as joining, so the 8-person limit is checked on the server only. `organizer_name` is the organizer's first name.
+
+Response `200`
+```json
+{
+  "outing_id": "uuid",
+  "name": "string",
+  "organizer_name": "string",
+  "starts_at": "timestamptz",
+  "district": "string",
+  "status": "invite",
+  "participants_count": 3,
+  "can_join": true,
+  "join_blocked_reason": null
+}
+```
+`join_blocked_reason` is `null`, `OUTING_FULL` or `JOINING_CLOSED`: the same codes that joining returns with `409`.
+
+Response `404` — no open outing has this code, or its outing has finished
+```json
+{ "error": { "code": "OUTING_NOT_FOUND", "message": "No open outing has this invite code." } }
+```
+
 #### Join with an invite code
 
 ```http
@@ -1397,7 +1428,7 @@ Joining is accepted only while the outing's status is `invite` or `preferences`,
 
 Response `200`
 ```json
-{ "outing_id": "uuid", "status": "invite" }
+{ "outing_id": "uuid", "participant_id": "uuid", "status": "invite" }
 ```
 
 Response `409`
@@ -1447,6 +1478,7 @@ Response `200`
   "district": "string",
   "invite_code": "string",
   "tiebreak_ends_at": "timestamptz | null",
+  "me": { "participant_id": "uuid", "is_organizer": true },
   "participants": [
     {
       "participant_id": "uuid",
@@ -1457,6 +1489,13 @@ Response `200`
     }
   ]
 }
+```
+
+`me` is the caller's own participant, so the app can mark its row and show organizer actions from `me.is_organizer` and `status`.
+
+Response `403` — the caller is not a participant of this outing
+```json
+{ "error": { "code": "NOT_A_PARTICIPANT", "message": "You are not a participant of this outing." } }
 ```
 
 #### Confirm or decline attendance
