@@ -9,8 +9,9 @@ import { theme } from "@/shared/theme";
 import { joinOuting, joinOutingAsGuest, lookupInvite, type InvitePreview } from "./api/join";
 import { loadGuestPass, saveGuestPass } from "./guestPass";
 
-// The design uses 4 characters; Asem confirms the server format in BE-08.
+// Invite codes are 4 characters, as agreed with Asem for BE-08.
 const CODE_LENGTH = 4;
+// Shown on the card only; the server enforces the limit.
 const MAX_PARTICIPANTS = 8;
 
 // Messages from the design for sessions that cannot take new people.
@@ -48,16 +49,16 @@ export function JoinSessionScreen() {
     try {
       const found = await lookupInvite(code);
       const signedIn = await loadSession();
-      // A guest who joined with this code before comes back instead of joining twice.
+      // A guest who joined this same outing before comes back instead of joining twice.
       const savedPass = signedIn === null ? await loadGuestPass(code) : null;
-      // Members and returning guests may already be inside a full or closed session.
-      const problem = signedIn === null && savedPass === null ? joinProblem(found) : "";
-      if (problem !== "") {
-        setError(problem);
+      const returning = savedPass !== null && savedPass.outing_id === found.outing_id;
+      // The server decides who can join; members and returning guests may already be inside.
+      if (signedIn === null && !returning && !found.can_join) {
+        setError(found.join_blocked_reason === "OUTING_FULL" ? FULL_MESSAGE : CLOSED_MESSAGE);
       } else {
         setAccount(signedIn);
         setPreview(found);
-        setJoined(savedPass !== null);
+        setJoined(returning);
       }
     } catch (e) {
       setError(lookupErrorMessage(e));
@@ -81,7 +82,7 @@ export function JoinSessionScreen() {
         await joinOuting(code, account.token);
       } else {
         const pass = await joinOutingAsGuest(code, name);
-        await saveGuestPass(code, pass);      
+        await saveGuestPass(code, pass);
       }
       setJoined(true);
     } catch (e) {
@@ -197,17 +198,6 @@ function cleanCode(text: string): string {
 // Show numbers with Arabic digits, like the rest of the app.
 function arabicNumber(value: number): string {
   return value.toLocaleString("ar-SA-u-nu-arab");
-}
-
-// Explain why a guest cannot join this session, or return "" when they can.
-function joinProblem(preview: InvitePreview): string {
-  if (preview.status !== "invite" && preview.status !== "preferences") {
-    return CLOSED_MESSAGE;
-  }
-  if (preview.participants_count >= MAX_PARTICIPANTS) {
-    return FULL_MESSAGE;
-  }
-  return "";
 }
 
 // Turn a lookup failure into the design's Arabic message.
