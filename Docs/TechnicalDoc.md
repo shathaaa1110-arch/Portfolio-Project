@@ -637,8 +637,10 @@ Enforced by the API, because they depend on the state of the outing:
 - A vote is accepted only while the status is `voting`, and only for a plan item of the same outing.
 - A tie-break vote is accepted only while the status is `tiebreak`, before `tiebreak_ends_at`, for one of the tied plan items, and once per participant.
 - Joining is accepted only while the status is `invite` or `preferences`.
+- A join locks the outing's row before it counts the participants, so two people joining at the same moment cannot pass the limit of 8. Starting voting and generating the plan lock the same row, so they never overlap a join. A new participant starts not ready.
 - Only the organizer can start the preferences stage, start voting early, and end voting early.
 - A guest's token is valid for one outing only.
+- Requests that carry an invite code, and guest joins, are limited per client address (Section 4.5).
 - The API never returns one participant's preferences to another. Allergies are returned as a single combined list for the outing, with no names attached.
 
 Indexes on `restaurants.district` and on the spend columns keep the recommendation engine's filters fast.
@@ -976,7 +978,7 @@ sequenceDiagram
     participant DB as PostgreSQL
  
     O->>A: Enter session name, time, and area
-    A->>API: POST /outings
+    A->>API: POST /outings/session
     API->>DB: Insert outing (status invite, new code) and organizer as participant
     API-->>A: 201 outing with its invite code
     A-->>O: Waiting room with the code
@@ -985,10 +987,10 @@ sequenceDiagram
     G->>A: Open the link or type the code
     A->>API: GET /outings/by-code/{code}
     API->>DB: Find the open outing with this code
-    API-->>A: 200 session name and organizer
+    API-->>A: 200 session name, organizer, and whether joining is open
     G->>A: Enter a name and tap Join
-    A->>API: POST /outings/{id}/join
-    API->>DB: Read the stage and the participant count
+    A->>API: POST /outings/{code}/join-guest
+    API->>DB: Lock the outing, then read the stage and the participant count
     alt Stage is invite or preferences, and fewer than 8 people
         API->>DB: Insert participant with the guest name
         API-->>A: 201 participant and temporary token
@@ -1006,7 +1008,7 @@ sequenceDiagram
  
 - The guest first asks which session the code belongs to, sees its name, and only then joins.
 - The API server checks the stage and the number of people before adding anyone. A full session, or one where voting has started, answers with 409.
-- A registered user joins in the same way, sending their token instead of a name. No temporary token is issued, and when the outing belongs to a group the user also becomes a member.
+- A registered user joins in the same way through `POST /outings/{code}/join`, sending their token instead of a name. No temporary token is issued, and when the outing belongs to a group the user also becomes a member.
 - The loop at the end is how the organizer's screen learns that someone joined: the app asks for the outing's state every few seconds.
 ### 3.3 Vote, settle a tie, and announce the result
  
@@ -1430,19 +1432,67 @@ Response `200`, by Arabic name. `name_en` is left out when unknown.
 
 Internally, this endpoint and group creation (4.4) share the same outing-creation logic; only the presence of a `group_id` differs. See Section 6, Technical Justifications.
 
+#### Look up an invite code
+
+```http
+GET /outings/by-code/{invite_code}
+```
+Requires: nothing (the join screen calls it before the person has joined)
+
+Finds the open outing with this code (any stage before `result`) so the join screen can show it before joining. The code is not case-sensitive and surrounding spaces are ignored. Nothing about the participants is returned except their number, and the organizer appears by first name only.
+
+Response `200`
+```json
+{
+  "outing_id": "uuid",
+  "name": "عشاء الخميس",
+  "organizer_name": "عاصم",
+  "starts_at": "2026-11-05T17:00:00+00:00",
+  "district": "00100001141",
+  "status": "invite",
+  "participants_count": 3,
+  "can_join": true,
+  "join_blocked_reason": null
+}
+```
+`join_blocked_reason` is `null`, `OUTING_FULL`, or `JOINING_CLOSED`, the same codes the join endpoints answer with. `district` is an `id` from `GET /districts`.
+
+Response `404`
+```json
+{ "error": { "code": "OUTING_NOT_FOUND", "message": "No open outing has this code. Check the code and try again." } }
+```
+
+Response `429` — too many tries with a code from the same address
+```json
+{ "error": { "code": "RATE_LIMITED", "message": "Too many tries. Please wait and try again.", "retry_after_seconds": 120 } }
+```
+
+Limits per client address, counted over the last 10 minutes:
+
+| Limit | Applies to | Why |
+| ----- | ---------- | --- |
+| 30 requests that carry a code | This lookup and both join endpoints together | Guessing a code by trying many is slow |
+| 10 guest joins | `POST /outings/{invite_code}/join-guest` | Filling an outing with fake guests is slow |
+
+A group joining from one network shares one address, and 8 people fit inside both limits. A refused request is not counted. Behind Render's proxy, the server setting `CLIENT_IP_HEADER` names the header that carries the caller's real address; it is empty locally. The counts are kept in the server's memory, which holds while the API runs as one process; they move to the database or Redis before it runs as several.
+
 #### Join with an invite code
 
 ```http
 POST /outings/{invite_code}/join
 ```
-Requires: Authorization
+Requires: Authorization (Bearer only)
 
-Joining is accepted only while the outing's status is `invite` or `preferences`, and only while it has fewer than 8 participants. If the outing belongs to a group, the caller is also added to `group_members` if not already a member. The caller's saved preferences, if any, are copied into a new row scoped to this outing.
+Joining is accepted only while the outing's status is `invite` or `preferences`, and only while it has fewer than 8 participants. The caller is added as a confirmed participant who is not ready yet. If the outing belongs to a group, the caller is also added to `group_members` if not already a member. The caller's saved preferences, if any, are copied into a new row scoped to this outing.
+
+Joining again returns the same participant and adds nobody, even after joining has closed. If that participant had declined, joining again confirms their attendance while joining is still open.
 
 Response `200`
 ```json
-{ "outing_id": "uuid", "status": "invite" }
+{ "outing_id": "uuid", "participant_id": "uuid", "status": "invite" }
 ```
+
+Responses `404` (`OUTING_NOT_FOUND`) and `429` (`RATE_LIMITED`) are the same as in the lookup above.
 
 Response `409`
 ```json
@@ -1458,19 +1508,22 @@ or
 ```http
 POST /outings/{invite_code}/join-guest
 ```
-Requires: nothing (this is the one endpoint with no token; a guest has none yet)
+Requires: nothing (a guest has no token yet)
 
-Same checks as joining above. Creates a participant row with no `user_id` and issues a temporary guest token, valid for this outing only, accepted by every endpoint a guest needs (preferences, voting, viewing the plan and the result).
+Same checks as joining above. Creates a confirmed participant row with no `user_id` that is not ready yet, and issues a temporary guest token, valid for this outing only, accepted by every endpoint a guest needs (preferences, voting, viewing the plan and the result). The token expires one day after the outing's `starts_at`. A guest has no account, so every call adds a new participant.
 
 Request
 ```json
 { "guest_name": "string" }
 ```
+`guest_name` is 1–40 characters after surrounding spaces are removed.
 
 Response `201`
 ```json
 { "outing_id": "uuid", "participant_id": "uuid", "guest_token": "jwt", "status": "invite" }
 ```
+
+Responses `404`, `409` and `429` are the same as for joining with an account.
 
 #### Outing state (polling)
 
