@@ -93,14 +93,15 @@ Paths below are relative to `frontend`.
 | `src/app/(tabs)/_layout.tsx` | Opens the main tab layout |
 | `src/app/(tabs)/index.tsx` | Opens Home at `/` |
 | `src/app/(tabs)/saved.tsx` | Opens the Saved screen |
-| `src/app/(tabs)/account.tsx` | Opens the Account placeholder |
+| `src/app/(tabs)/account.tsx` | Opens the My account screen |
 | `src/app/sign-up.tsx` | Opens the sign-up screen |
 | `src/app/preferences.tsx` | Opens account preferences |
 | `src/application/ApplicationRoot.tsx` | Loads fonts and composes the root navigation |
 | `src/application/MainTabs.tsx` | Defines the three bottom tabs |
 | `src/application/HomePage.tsx` | Composes Home, search, location, recommendations, and paginated list |
 | `src/application/SavedPlaceholderPage.tsx` | Composes the Saved feature |
-| `src/application/AccountPlaceholderPage.tsx` | Shows the session, preferences entry, and sign-out |
+| `src/features/auth/AccountScreen.tsx` | Shows the name and phone from the server, links to preferences and Saved, and signs out |
+| `src/features/auth/accountActions.ts` | Decides which actions My account shows; sign-out stays when loading fails |
 | `src/features/restaurants/api.ts` | Requests and validates one page of 20 restaurants at the supplied offset |
 | `src/features/restaurants/useRestaurants.ts` | Stores restaurant data and manages loading, errors, and retry |
 | `src/features/restaurants/RestaurantList.tsx` | Displays server results, cards, and list states without page-local filtering |
@@ -131,6 +132,7 @@ Paths below are relative to `frontend`.
 | `scripts/discovery-flow.test.cjs` | Tests hook races, page recovery, recommendation rendering, search visibility and the Home discovery action |
 | `scripts/home-recommendations.test.cjs` | Tests recommendation and district request contracts |
 | `scripts/preferences.test.cjs` | Checks conversions, validation, API calls and mock read/write |
+| `scripts/auth.test.cjs` | Checks sign-out without a connection, My account actions and the mock account after reload |
 | `scripts/restaurants-api.test.cjs` | Checks page requests, invalid replies, error preservation and mock compatibility; included in npm run check |
 | `src/shared/components` | Contains reusable text, input, and button components |
 | `src/shared/layout.ts` | Maps layout direction to the supported native/web style |
@@ -230,6 +232,27 @@ The unreachable local API URL prevents accidental production requests from
 this copy. The mock verification code is `123456`. Mock preferences are for
 one account and live in memory; reload clears them. Home uses three explicit
 mock restaurant fixtures. The real app keeps `EXPO_PUBLIC_USE_MOCK=false`.
+
+The mock account keeps its name and phone after reload because its token carries
+them. An unknown or older mock token requires signing in again. This does not
+make mock preferences persistent; those still live in memory. No real SMS is
+sent in mock mode, and the app never switches to mocks after a real API failure.
+
+Run these checks from the repository root after resolving the merge:
+
+```sh
+npm run check
+node --test frontend/scripts/auth.test.cjs
+git diff --check
+git diff --cached --check
+```
+
+### Account merge verification — 4 November 2026
+
+After reconciling the account PR with deployment, `npm run check` passed
+(TypeScript, architecture boundaries and 49 tests), and the four account tests
+passed separately. Documentation keeps the current Home and preferences flow
+and describes AccountScreen. This check did not repeat device or live API tests.
 
 ### Remaining integration and device checks
 

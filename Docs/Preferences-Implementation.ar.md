@@ -31,6 +31,8 @@
 | `mocks.ts` | حساب اختبار واحد في الذاكرة عند تشغيل الوضع التجريبي صراحة |
 | `index.ts` | المدخل العام الذي تستخدمه بقية الميزات |
 
+`application/ApplicationRoot.tsx` يسجل الردود عند تفعيل Mock فقط.
+`features/auth/AccountScreen.tsx` يضيف صف التفضيلات للحساب المسجل.
 `app/preferences.tsx` يفتح الشاشة. `auth/session.ts` يحدّث علامة الحفظ دون تغيير حساب آخر. `application/useHomePreferences.ts` يعيد قراءة التفضيلات عند العودة للرئيسية. الاعتماد `preferences -> auth` معلن في `architecture.json`.
 
 ## رحلة البيانات
