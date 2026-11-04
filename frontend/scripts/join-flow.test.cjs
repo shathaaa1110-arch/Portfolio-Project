@@ -10,7 +10,7 @@ const INVALID = "رمز الدعوة غير صالح. راجعه مع المنظ
 const JOINED = "تم انضمامك إلى «عشاء الخميس».";
 const open = {
   outing_id: "o1", name: "عشاء الخميس", organizer_name: "سارة", starts_at: "2026-11-05T19:00:00+03:00",
-  district: "الملقا", status: "invite", participants_count: 3, can_join: true, join_blocked_reason: null,
+  district: "012", status: "invite", participants_count: 3, can_join: true, join_blocked_reason: null,
 };
 const full = { ...open, participants_count: 8, can_join: false, join_blocked_reason: "OUTING_FULL" };
 const closed = { ...open, status: "voting", can_join: false, join_blocked_reason: "JOINING_CLOSED" };
@@ -124,10 +124,13 @@ test("members and returning guests of the same outing are not blocked by the pre
   assert(texts(root).includes(FULL));
 });
 
-test("a guest needs a name, joins with the trimmed name and the pass is saved", async () => {
-  const { Screen, calls } = joinScreen();
+test("a guest sees a clean card, needs a name, joins with the trimmed name and the pass is saved", async () => {
+  const { Screen, calls } = joinScreen({ preview: { ...open, organizer_name: null } });
   const { root } = await render(Screen);
   await lookUp(root);
+  assert(texts(root).includes("دعوة من المنظّم"));
+  assert(!texts(root).some(text => text.includes("012")));
+  assert.equal(inputs(root)[0].props.maxLength, 40);
   await press(root.findByType("AppButton"));
   assert(texts(root).includes("اكتب اسمك قبل الانضمام."));
   assert.equal(calls.guest.length, 0);
@@ -176,6 +179,7 @@ test("the API wrapper encodes the code and rejects responses the screen cannot u
     "@/shared/api/errors": errors,
   });
   assert.equal((await api(open).lookupInvite("A B")).outing_id, "o1");
+  assert.equal((await api({ ...open, organizer_name: null }).lookupInvite("TEST")).organizer_name, null);
   assert.equal(paths[0], "GET /outings/by-code/A%20B");
 
   const { can_join, ...noDecision } = open;

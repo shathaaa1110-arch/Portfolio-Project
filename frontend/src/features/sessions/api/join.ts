@@ -11,8 +11,10 @@ export type JoinBlockedReason = "OUTING_FULL" | "JOINING_CLOSED";
 export type InvitePreview = {
   outing_id: string;
   name: string;
-  organizer_name: string;
+  // The organizer's first name; null when their account has no name yet.
+  organizer_name: string | null;
   starts_at: string;
+  // A districts.id, not a name to show.
   district: string;
   status: OutingStatus;
   participants_count: number;
@@ -47,7 +49,7 @@ export async function lookupInvite(code: string): Promise<InvitePreview> {
     !preview ||
     typeof preview.outing_id !== "string" ||
     typeof preview.name !== "string" ||
-    typeof preview.organizer_name !== "string" ||
+    (preview.organizer_name !== null && typeof preview.organizer_name !== "string") ||
     typeof preview.district !== "string" ||
     typeof preview.status !== "string" ||
     !Number.isSafeInteger(preview.participants_count) ||

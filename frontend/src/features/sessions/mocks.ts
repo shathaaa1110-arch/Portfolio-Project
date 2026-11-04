@@ -8,7 +8,7 @@ const sample: InvitePreview = {
   name: "عشاء الخميس",
   organizer_name: "سارة",
   starts_at: "2026-11-05T19:00:00+03:00",
-  district: "الملقا",
+  district: "012",
   status: "invite",
   participants_count: 3,
   can_join: true,

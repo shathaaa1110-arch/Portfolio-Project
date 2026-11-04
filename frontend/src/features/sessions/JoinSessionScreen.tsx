@@ -13,6 +13,8 @@ import { loadGuestPass, saveGuestPass } from "./guestPass";
 const CODE_LENGTH = 4;
 // Shown on the card only; the server enforces the limit.
 const MAX_PARTICIPANTS = 8;
+// Same limit as the server for a guest name (BE-09).
+const MAX_NAME_LENGTH = 40;
 
 // Messages from the design for sessions that cannot take new people.
 const FULL_MESSAGE = "اكتملت الجلسة: ٨ من ٨. لا يوجد مكان متاح الآن.";
@@ -147,9 +149,8 @@ export function JoinSessionScreen() {
         ) : (
           <>
             <View style={styles.card}>
-              <AppText style={styles.eyebrow}>دعوة من {preview.organizer_name}</AppText>
+              <AppText style={styles.eyebrow}>دعوة من {preview.organizer_name ?? "المنظّم"}</AppText>
               <AppText style={styles.cardTitle}>{preview.name}</AppText>
-              <AppText>{preview.district}</AppText>
               <AppText>
                 {`${arabicNumber(preview.participants_count)} من ${arabicNumber(MAX_PARTICIPANTS)} مشاركين`}
               </AppText>
@@ -162,6 +163,7 @@ export function JoinSessionScreen() {
                 <AppText variant="label" style={styles.label}>اسمك في الجلسة</AppText>
                 <AppInput
                   placeholder="اكتب الاسم اللي يعرفونك فيه"
+                  maxLength={MAX_NAME_LENGTH}
                   value={guestName}
                   onChangeText={setGuestName}
                 />
