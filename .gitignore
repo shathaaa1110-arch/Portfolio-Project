@@ -5,3 +5,6 @@
 __pycache__/
 venv/
 .venv/
+
+# Private restaurant dataset: its terms do not allow republishing
+database/private/

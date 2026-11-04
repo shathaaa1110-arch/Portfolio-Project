@@ -178,6 +178,15 @@ ENVIRONMENT=test python -m pytest -m integration
 The integration health test requires a real `database: ok` result; the ordinary
 health unit tests mock both reachable and unreachable results.
 
+Shared test helpers live in `backend/tests/conftest.py` (QA-01, #56).
+`db_connection` runs each integration test in one transaction that is rolled back
+afterwards. `db_session` and `api_client` keep commits and rollbacks from the code
+under test inside a savepoint, so nothing is left behind. CI runs the integration
+suite twice on the same database to prove it. `synthetic_restaurants` loads
+`backend/tests/data/synthetic_restaurants.json`: fake names, `example.com` links
+and gaps in every optional column. It follows `database/schema.sql` until the
+restaurants migration exists.
+
 To inspect a real test API, from `backend/`:
 
 ```bash
@@ -222,6 +231,8 @@ flowchart LR
 Record runtime evidence in `database/VALIDATION.md`.
 
 The restaurant dataset is not committed because its terms do not allow republishing.
+
+Keep your local copy in `database/private/`, which Git ignores.
 
 
 ## DB-14 account preferences

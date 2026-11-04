@@ -75,3 +75,8 @@ jobs:
       - name: Verify PostgreSQL migrations and persistence
         working-directory: backend
         run: python -m pytest -q -m integration
+
+      # QA-01: a second run on the same database proves tests leave no data behind
+      - name: Run the integration suite again on the same database
+        working-directory: backend
+        run: python -m pytest -q -m integration
