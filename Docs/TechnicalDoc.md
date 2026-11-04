@@ -1385,7 +1385,7 @@ Response `200`
 | 13 | GET | `/outings/{outing_id}` | 10, 20 |
 | 14 | POST | `/outings/{outing_id}/attendance` | 19 |
 | 15 | POST | `/outings/{outing_id}/start-preferences` | 10 |
-| 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 |
+| 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 (generates the plan, D05) |
 | 17 | DELETE | `/outings/{outing_id}/participants/{participant_id}` | 24 |
 
 #### Create a one-off session
@@ -1560,7 +1560,7 @@ Response `200`
 ```
 - `me` is the caller's own participant, so the app can mark its row.
 - `readiness` counts the confirmed participants who are ready, and all confirmed participants.
-- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage. It is empty for everyone else, and in stages whose organizer actions are not built yet.
+- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage, and `start_voting` in the `preferences` stage once everyone confirmed is ready. It is empty for everyone else, and in stages whose organizer actions are not built yet.
 - `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.
 - A guest token is accepted for its own outing only, and stops working once the guest is removed.
 
@@ -1621,19 +1621,36 @@ Response `409`
 { "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing cannot move from the voting stage to the preferences stage." } }
 ```
 
-#### Start voting early
+#### Generate the plan and open voting
 
 ```http
 POST /outings/{outing_id}/start-voting
 ```
 Requires: Authorization, caller must be the organizer
 
-Generates the plan immediately, without waiting for every participant to mark their preferences ready. Participants who are not ready are excluded from the plan's calculation but can still vote once it exists. Moves `status` to `voting`.
+Generates the plan and moves `status` from `preferences` to `voting` (BE-17). Following release decision D05, it is accepted only when every confirmed participant is ready; marking ready never generates the plan by itself. Readiness and membership are checked under the outing's row lock, the same lock a join takes, so a person who joins at that moment is never left out. The plan items and the stage change are saved in one transaction, and voting closes joining and answers.
 
-Response `200`
+The engine (BE-14, BE-15) uses every confirmed participant's answers, the outing's district centre and its start time in Riyadh time. Restaurants whose opening days are not fully known are left out (D04). Up to 5 places are saved in `plan_items`, in rank order, with the Arabic reason.
+
+Asking again once voting is open returns the stored plan; nothing is generated twice.
+
+Response `200`: the plan, in the same shape as `GET /outings/{outing_id}/plan`, with `"status": "voting"`.
+
+Response `200`, no matching restaurant: nothing is saved, no limit is relaxed (D04), and the outing stays in `preferences`, so people can change their answers and the organizer can try again.
 ```json
-{ "outing_id": "uuid", "status": "voting" }
+{ "outing_id": "uuid", "status": "preferences", "allergy_warning": [], "plan_items": [],
+  "message": "No restaurant matches everyone's conditions. Change some answers and try again." }
 ```
+
+Response `403`: `ORGANIZER_ONLY`.
+
+Response `409`
+```json
+{ "error": { "code": "NOT_EVERYONE_READY", "message": "Wait until everyone is ready.", "ready_count": 2, "total_count": 3 } }
+```
+or `INVALID_STATUS_TRANSITION` before the preferences stage.
+
+One round per outing for now; separate rounds for a retry come with DB-07 (#14) and BE-31 (#90).
 
 #### Remove a participant from an outing
 
@@ -1786,26 +1803,31 @@ GET /outings/{outing_id}/plan
 ```
 Requires: Authorization
 
-Returns the suggested restaurants in rank order, with the group's combined allergy warning (no names attached, as decided in Section 0).
+Returns the stored suggestions in rank order, the same for every participant, with the group's combined allergy warning (no names attached, as decided in Section 0). Accepts a login or a guest token.
 
 Response `200`
 ```json
 {
   "outing_id": "uuid",
+  "status": "voting",
   "allergy_warning": ["peanuts", "shellfish"],
   "plan_items": [
     {
       "plan_item_id": "uuid",
       "rank": 1,
       "match_score": 87,
-      "reason": "string",
+      "reason": "يناسب ذوقك، ضمن ميزانيتك ويبعد 1.9 كم",
       "restaurant": {
         "id": 101,
         "name_ar": "string",
+        "name_en": "string",
         "cuisines": ["italian"],
         "district": "string",
         "price_tier": 3,
         "rating": 4.6,
+        "spend_low": 40,
+        "spend_high": 90,
+        "maps_url": "string",
         "distance_km": 2.3
       }
     }
@@ -1813,6 +1835,8 @@ Response `200`
 }
 ```
 `distance_km` is computed at request time from the outing's `district` centre; it is not stored.
+
+Response `409`: `PLAN_NOT_READY` before the plan is generated. Response `403`: `NOT_A_PARTICIPANT`.
 
 #### Restaurant details
 
