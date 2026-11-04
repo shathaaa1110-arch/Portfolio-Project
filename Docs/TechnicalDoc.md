@@ -1544,6 +1544,8 @@ Response `200`
   "district": "string",
   "invite_code": "string",
   "tiebreak_ends_at": "timestamptz | null",
+  "me": { "participant_id": "uuid", "is_organizer": true },
+  "actions": ["start_preferences"],
   "participants": [
     {
       "participant_id": "uuid",
@@ -1554,6 +1556,20 @@ Response `200`
     }
   ]
 }
+```
+- `me` is the caller's own participant, so the app can mark its row.
+- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage. It is empty for everyone else, and in stages whose organizer actions are not built yet.
+- `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.
+- A guest token is accepted for its own outing only, and stops working once the guest is removed.
+
+Response `403`
+```json
+{ "error": { "code": "NOT_A_PARTICIPANT", "message": "You are not part of this outing." } }
+```
+
+Response `404`
+```json
+{ "error": { "code": "OUTING_NOT_FOUND", "message": "This outing does not exist." } }
 ```
 
 #### Confirm or decline attendance
@@ -1586,7 +1602,7 @@ POST /outings/{outing_id}/start-preferences
 ```
 Requires: Authorization, caller must be the organizer
 
-Moves `status` from `invite` to `preferences`.
+Moves `status` from `invite` to `preferences`. Asking again once the outing is in `preferences` answers `200` and changes nothing, so a double tap is safe. The allowed moves between stages are kept in one place (`outings/stages.py`); a stage is reached only from the one before it, never backwards. The request locks the outing's row, like a join, so it never overwrites a stage that another request has just changed.
 
 Response `200`
 ```json
@@ -1600,7 +1616,7 @@ Response `403`
 
 Response `409`
 ```json
-{ "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing is not in the invite stage." } }
+{ "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing cannot move from the voting stage to the preferences stage." } }
 ```
 
 #### Start voting early
