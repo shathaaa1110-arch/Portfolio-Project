@@ -7,6 +7,7 @@ import { ApiError } from "@/shared/api/errors";
 import { AppButton, AppInput, AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { joinOuting, joinOutingAsGuest, lookupInvite, type InvitePreview } from "./api/join";
+import { loadGuestPass, saveGuestPass } from "./guestPass";
 
 // The design uses 4 characters; Asem confirms the server format in BE-08.
 const CODE_LENGTH = 4;
@@ -47,13 +48,16 @@ export function JoinSessionScreen() {
     try {
       const found = await lookupInvite(code);
       const signedIn = await loadSession();
-      // A member may already be inside a full or closed session, so the server decides for them.
-      const problem = signedIn === null ? joinProblem(found) : "";
+      // A guest who joined with this code before comes back instead of joining twice.
+      const savedPass = signedIn === null ? await loadGuestPass(code) : null;
+      // Members and returning guests may already be inside a full or closed session.
+      const problem = signedIn === null && savedPass === null ? joinProblem(found) : "";
       if (problem !== "") {
         setError(problem);
       } else {
         setAccount(signedIn);
         setPreview(found);
+        setJoined(savedPass !== null);
       }
     } catch (e) {
       setError(lookupErrorMessage(e));
@@ -76,7 +80,8 @@ export function JoinSessionScreen() {
       if (account !== null) {
         await joinOuting(code, account.token);
       } else {
-        await joinOutingAsGuest(code, name);
+        const pass = await joinOutingAsGuest(code, name);
+        await saveGuestPass(code, pass);      
       }
       setJoined(true);
     } catch (e) {
