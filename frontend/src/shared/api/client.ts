@@ -13,7 +13,7 @@ type RequestOptions = {
 
 export async function request<T>(method: Method, path: string, options: RequestOptions = {}): Promise<T> {
   if (USE_MOCK) {
-    return mockTransport<T>(method, path, options.body);
+    return mockTransport<T>(method, path, options.body, options.token);
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };

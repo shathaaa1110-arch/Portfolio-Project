@@ -33,7 +33,7 @@
 | Integration suite after re-upgrade | **9 passed**, 89 deselected |
 | Cleanup / scope | Only `alembic_version` and `users` remain in public; no test schemas or account rows remain |
 
-Live validation used PostgreSQL 18.6, Python 3.14.8, and Alembic 1.20.0. 
+Live validation used PostgreSQL 18.6, Python 3.14.8, and Alembic 1.20.0.
 The warnings come from Starlette/AnyIO and FastAPI's deprecated asyncio API usage, not DB-03 failures.
 The full suite includes duplicate-phone rejection and single-ID foreign-key
 acceptance against real PostgreSQL, not just offline SQL generation.

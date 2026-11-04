@@ -2,6 +2,7 @@
 export { SignUpScreen } from "./SignUpScreen";
 export { LoginScreen } from "./LoginScreen";
 export { VerifyPhoneScreen } from "./VerifyPhoneScreen";
+export { AccountScreen } from "./AccountScreen";
 
 // Allow the application to set up mock responses.
 export { registerAuthMocks } from "./mocks";

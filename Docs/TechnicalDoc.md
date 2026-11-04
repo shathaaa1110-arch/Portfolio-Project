@@ -347,6 +347,8 @@ erDiagram
     PARTICIPANTS ||--o{ VOTES : "casts"
     PLAN_ITEMS ||--o{ VOTES : "receives"
     USERS ||--o| PREFERENCES : "saves (DB-14)"
+    PARTICIPANTS ||--o| PREFERENCES : "answers for one outing"
+    DISTRICTS ||--o{ OUTINGS : "meeting area of"
 
     USERS {
         uuid id PK
@@ -389,6 +391,7 @@ erDiagram
     PREFERENCES {
         uuid id PK
         uuid user_id FK, UK
+        uuid participant_id FK, UK
         text[] liked_cuisines
         text[] allergies
         int budget_min
@@ -415,6 +418,13 @@ erDiagram
         jsonb opening_hours
         text summary
         text maps_url
+    }
+    DISTRICTS {
+        text id PK
+        text name_ar
+        text name_en
+        numeric latitude
+        numeric longitude
     }
     PLAN_ITEMS {
         uuid id PK
@@ -489,7 +499,7 @@ One row per occasion, whether a one-off session or one of a group's outings.
 | status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result`. The first three and the last match the four stages shown in the app |
 | invite_code | text | yes | Four characters: capital letters and digits without 0, O, 1, I or L, so they are not confused. Matched in any letter case. Unique among outings that are still open. Carried by the invite link |
 | starts_at | timestamptz | yes | Date and time set by the organizer. The meal (breakfast, lunch, afternoon, dinner, late night) is worked out from it and matched against the restaurants' `meal_fit` columns |
-| district | text | yes | Meeting area chosen by the organizer. Distances are measured from its centre, taken as the average position of the restaurants in that district, so no separate districts table is needed |
+| district | text | yes | Meeting area chosen by the organizer: an `id` from `districts`. Distances are measured from that district's centre |
 | tiebreak_ends_at | timestamptz | no | Set when a tie-break starts: the moment the 30 seconds end |
 | created_at | timestamptz | yes | |
 
@@ -513,7 +523,7 @@ One row per person per outing. A member's row points to their account; a guest's
 | outing_id | uuid | yes | Foreign key to `outings` |
 | user_id | uuid | no | Foreign key to `users`. Empty for a guest |
 | guest_name | text | no | Required when `user_id` is empty |
-| attendance | text | yes | `pending`, `confirmed`, or `declined`. Joining from the invite link sets it to `confirmed` |
+| attendance | text | yes | `pending`, `confirmed`, or `declined` (checked by the database). Joining from the invite link sets it to `confirmed` |
 | preferences_done | boolean | yes | True once the participant taps "Ready to vote". The plan is generated when it is true for everyone |
 
 #### `preferences`
@@ -566,6 +576,17 @@ A reduced copy of the team's Riyadh restaurants dataset: open places only, with 
 | summary | text | no | Shown on the restaurant details screen |
 | maps_url | text | yes | Opened by the app |
 
+#### `districts`
+
+The Riyadh districts an organizer or a user without location can choose from. Loaded by migration `0005` from `database/seed/riyadh_districts.json` (171 districts); read-only for the app.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| id | text | yes | Primary key, the dataset's district code, for example `00100001141` |
+| name_ar | text | yes | Shown in the app |
+| name_en | text | no | |
+| latitude, longitude | numeric | yes | The district centre. Used for distances; not sent to the app |
+
 #### `plan_items`
 
 One row per restaurant suggested for an outing.
@@ -616,8 +637,10 @@ Enforced by the API, because they depend on the state of the outing:
 - A vote is accepted only while the status is `voting`, and only for a plan item of the same outing.
 - A tie-break vote is accepted only while the status is `tiebreak`, before `tiebreak_ends_at`, for one of the tied plan items, and once per participant.
 - Joining is accepted only while the status is `invite` or `preferences`.
+- A join locks the outing's row before it counts the participants, so two people joining at the same moment cannot pass the limit of 8. Starting voting and generating the plan lock the same row, so they never overlap a join. A new participant starts not ready.
 - Only the organizer can start the preferences stage, start voting early, and end voting early.
 - A guest's token is valid for one outing only.
+- Requests that carry an invite code, and guest joins, are limited per client address (Section 4.5).
 - The API never returns one participant's preferences to another. Allergies are returned as a single combined list for the outing, with no names attached.
 
 Indexes on `restaurants.district` and on the spend columns keep the recommendation engine's filters fast.
@@ -955,7 +978,7 @@ sequenceDiagram
     participant DB as PostgreSQL
  
     O->>A: Enter session name, time, and area
-    A->>API: POST /outings
+    A->>API: POST /outings/session
     API->>DB: Insert outing (status invite, new code) and organizer as participant
     API-->>A: 201 outing with its invite code
     A-->>O: Waiting room with the code
@@ -985,7 +1008,7 @@ sequenceDiagram
  
 - The guest first asks which session the code belongs to, sees its name, and only then joins.
 - The API server checks the stage and the number of people before adding anyone. A full session, or one where voting has started, answers with 409.
-- A registered user joins in the same way, sending their token instead of a name. No temporary token is issued, and when the outing belongs to a group the user also becomes a member.
+- A registered user joins in the same way through `POST /outings/{code}/join`, sending their token instead of a name. No temporary token is issued, and when the outing belongs to a group the user also becomes a member.
 - The loop at the end is how the organizer's screen learns that someone joined: the app asks for the outing's state every few seconds.
 ### 3.3 Vote, settle a tie, and announce the result
  
@@ -1373,16 +1396,39 @@ POST /outings/session
 ```
 Requires: Authorization
 
-Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant.
+Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant. The outing, its code and its organizer are saved in one transaction.
 
 Request
 ```json
-{ "name": "string", "starts_at": "timestamptz", "district": "string" }
+{ "name": "string", "starts_at": "2026-11-05T20:00:00+03:00", "district": "00100001141" }
 ```
+`name` is 1–60 characters. `starts_at` must carry its time zone, must not have passed, and must be within 60 days. `district` is an `id` from `GET /districts`.
 
 Response `201`
 ```json
-{ "outing_id": "uuid", "invite_code": "string", "status": "invite" }
+{ "outing_id": "uuid", "invite_code": "K7QX", "invite_url": "string | null", "status": "invite" }
+```
+`invite_url` is the shareable link: the server setting `INVITE_BASE_URL` followed by the code. It is `null` while that setting is empty; the app then shares the code.
+
+Response `422`
+```json
+{ "error": { "code": "INVALID_START_TIME", "message": "The start time has already passed." } }
+```
+or
+```json
+{ "error": { "code": "UNKNOWN_DISTRICT", "message": "Choose a district from the list." } }
+```
+
+#### List districts
+
+```http
+GET /districts
+```
+Requires: nothing
+
+Response `200`, by Arabic name. `name_en` is left out when unknown.
+```json
+{ "districts": [ { "id": "00100001141", "name_ar": "العليا", "name_en": "Al Olaya" } ] }
 ```
 
 Internally, this endpoint and group creation (4.4) share the same outing-creation logic; only the presence of a `group_id` differs. See Section 6, Technical Justifications.
@@ -1400,36 +1446,54 @@ Response `200`
 ```json
 {
   "outing_id": "uuid",
-  "name": "string",
-  "organizer_name": "string",
-  "starts_at": "timestamptz",
-  "district": "string",
+  "name": "عشاء الخميس",
+  "organizer_name": "عاصم",
+  "starts_at": "2026-11-05T17:00:00+00:00",
+  "district": "00100001141",
   "status": "invite",
   "participants_count": 3,
   "can_join": true,
   "join_blocked_reason": null
 }
 ```
-`join_blocked_reason` is `null`, `OUTING_FULL` or `JOINING_CLOSED`: the same codes that joining returns with `409`.
+`join_blocked_reason` is `null`, `OUTING_FULL`, or `JOINING_CLOSED`, the same codes the join endpoints answer with. `district` is an `id` from `GET /districts`.
 
-Response `404` — no open outing has this code, or its outing has finished
+Response `404`
 ```json
-{ "error": { "code": "OUTING_NOT_FOUND", "message": "No open outing has this invite code." } }
+{ "error": { "code": "OUTING_NOT_FOUND", "message": "No open outing has this code. Check the code and try again." } }
 ```
+
+Response `429` — too many tries with a code from the same address
+```json
+{ "error": { "code": "RATE_LIMITED", "message": "Too many tries. Please wait and try again.", "retry_after_seconds": 120 } }
+```
+
+Limits per client address, counted over the last 10 minutes:
+
+| Limit | Applies to | Why |
+| ----- | ---------- | --- |
+| 30 requests that carry a code | This lookup and both join endpoints together | Guessing a code by trying many is slow |
+| 10 guest joins | `POST /outings/{invite_code}/join-guest` | Filling an outing with fake guests is slow |
+
+A group joining from one network shares one address, and 8 people fit inside both limits. A refused request is not counted. Behind Render's proxy, the server setting `CLIENT_IP_HEADER` names the header that carries the caller's real address; it is empty locally. The counts are kept in the server's memory, which holds while the API runs as one process; they move to the database or Redis before it runs as several.
 
 #### Join with an invite code
 
 ```http
 POST /outings/{invite_code}/join
 ```
-Requires: Authorization
+Requires: Authorization (Bearer only)
 
-Joining is accepted only while the outing's status is `invite` or `preferences`, and only while it has fewer than 8 participants. If the outing belongs to a group, the caller is also added to `group_members` if not already a member. The caller's saved preferences, if any, are copied into a new row scoped to this outing.
+Joining is accepted only while the outing's status is `invite` or `preferences`, and only while it has fewer than 8 participants. The caller is added as a confirmed participant who is not ready yet. If the outing belongs to a group, the caller is also added to `group_members` if not already a member. The caller's saved preferences, if any, are copied into a new row scoped to this outing.
+
+Joining again returns the same participant and adds nobody, even after joining has closed. If that participant had declined, joining again confirms their attendance while joining is still open.
 
 Response `200`
 ```json
 { "outing_id": "uuid", "participant_id": "uuid", "status": "invite" }
 ```
+
+Responses `404` (`OUTING_NOT_FOUND`) and `429` (`RATE_LIMITED`) are the same as in the lookup above.
 
 Response `409`
 ```json
@@ -1445,19 +1509,22 @@ or
 ```http
 POST /outings/{invite_code}/join-guest
 ```
-Requires: nothing (this is the one endpoint with no token; a guest has none yet)
+Requires: nothing (a guest has no token yet)
 
-Same checks as joining above. Creates a participant row with no `user_id` and issues a temporary guest token, valid for this outing only, accepted by every endpoint a guest needs (preferences, voting, viewing the plan and the result).
+Same checks as joining above. Creates a confirmed participant row with no `user_id` that is not ready yet, and issues a temporary guest token, valid for this outing only, accepted by every endpoint a guest needs (preferences, voting, viewing the plan and the result). The token expires one day after the outing's `starts_at`. A guest has no account, so every call adds a new participant.
 
 Request
 ```json
 { "guest_name": "string" }
 ```
+`guest_name` is 1–40 characters after surrounding spaces are removed.
 
 Response `201`
 ```json
 { "outing_id": "uuid", "participant_id": "uuid", "guest_token": "jwt", "status": "invite" }
 ```
+
+Responses `404`, `409` and `429` are the same as for joining with an account.
 
 #### Outing state (polling)
 
@@ -1479,6 +1546,7 @@ Response `200`
   "invite_code": "string",
   "tiebreak_ends_at": "timestamptz | null",
   "me": { "participant_id": "uuid", "is_organizer": true },
+  "actions": ["start_preferences"],
   "participants": [
     {
       "participant_id": "uuid",
@@ -1489,6 +1557,20 @@ Response `200`
     }
   ]
 }
+```
+- `me` is the caller's own participant, so the app can mark its row.
+- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage. It is empty for everyone else, and in stages whose organizer actions are not built yet.
+- `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.
+- A guest token is accepted for its own outing only, and stops working once the guest is removed.
+
+Response `403`
+```json
+{ "error": { "code": "NOT_A_PARTICIPANT", "message": "You are not part of this outing." } }
+```
+
+Response `404`
+```json
+{ "error": { "code": "OUTING_NOT_FOUND", "message": "This outing does not exist." } }
 ```
 
 `me` is the caller's own participant, so the app can mark its row and show organizer actions from `me.is_organizer` and `status`.
@@ -1528,7 +1610,7 @@ POST /outings/{outing_id}/start-preferences
 ```
 Requires: Authorization, caller must be the organizer
 
-Moves `status` from `invite` to `preferences`.
+Moves `status` from `invite` to `preferences`. Asking again once the outing is in `preferences` answers `200` and changes nothing, so a double tap is safe. The allowed moves between stages are kept in one place (`outings/stages.py`); a stage is reached only from the one before it, never backwards. The request locks the outing's row, like a join, so it never overwrites a stage that another request has just changed.
 
 Response `200`
 ```json
@@ -1542,7 +1624,7 @@ Response `403`
 
 Response `409`
 ```json
-{ "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing is not in the invite stage." } }
+{ "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing cannot move from the voting stage to the preferences stage." } }
 ```
 
 #### Start voting early
@@ -2322,7 +2404,7 @@ ORG_TOKEN=$(echo "$VERIFY" | python3 -c "import sys,json; print(json.load(sys.st
 SESSION=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/session" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ORG_TOKEN" \
-  -d '{"name": "Thursday dinner", "starts_at": "2026-10-22T19:00:00+03:00", "district": "Al Olaya"}')
+  -d '{"name": "Thursday dinner", "starts_at": "2026-12-01T19:00:00+03:00", "district": "00100001141"}')
 HTTP_CODE=$(echo "$SESSION" | tail -1)
 BODY=$(echo "$SESSION" | head -1)
 [ "$HTTP_CODE" = "201" ] || { echo "FAIL: create session expected 201, got $HTTP_CODE"; exit 1; }
