@@ -21,9 +21,10 @@ ALLOWED_MOVES = {
 }
 
 # What the organizer can do in each stage, as the action names the app shows buttons for.
-# Only actions whose endpoints exist are listed; BE-17 and BE-19 add start_voting and end_voting.
+# Only actions whose endpoints exist are listed. start_voting needs everyone ready (D05).
 ORGANIZER_ACTIONS = {
     INVITE: ["start_preferences"],
+    PREFERENCES: ["start_voting"],
 }
 
 
@@ -42,8 +43,11 @@ def move(outing: Outing, to: str) -> bool:
     return True
 
 
-def organizer_actions(status: str) -> list[str]:
-    return list(ORGANIZER_ACTIONS.get(status, []))
+def organizer_actions(status: str, all_ready: bool = False) -> list[str]:
+    actions = list(ORGANIZER_ACTIONS.get(status, []))
+    if "start_voting" in actions and not all_ready:
+        actions.remove("start_voting")
+    return actions
 
 
 def readiness(db: Session, outing_id: uuid.UUID) -> tuple[int, int]:
