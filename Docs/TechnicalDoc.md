@@ -1752,16 +1752,16 @@ Requires: Authorization (Bearer or guest)
 
 Sets `preferences_done = true` for the caller's participant row. Accepted only in the `preferences` stage, and only once the caller has a saved copy (an empty one counts). Asking again once ready answers `200` and changes nothing. `ready_count` and `total_count` count confirmed participants only; someone who declined does not hold the plan back.
 
-If every confirmed participant is now ready, this call triggers plan generation (`Outing.generatePlan()`, BE-17) and moves the outing to `voting`. Until BE-17 is built, `all_ready` is reported and the outing stays in `preferences`.
+This call never generates the plan, even for the last person. `all_ready: true` tells the organizer that the plan can now be generated; the organizer then generates it (BE-17). This follows release decision D05: the last Ready does not start generation by itself.
 
 Response `200` — others still pending
 ```json
 { "participant_id": "uuid", "preferences_done": true, "all_ready": false, "outing_status": "preferences", "ready_count": 1, "total_count": 3 }
 ```
 
-Response `200` — last one, plan generated
+Response `200` — everyone is ready; the outing waits for the organizer
 ```json
-{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "voting", "ready_count": 3, "total_count": 3 }
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "preferences", "ready_count": 3, "total_count": 3 }
 ```
 
 Response `409`

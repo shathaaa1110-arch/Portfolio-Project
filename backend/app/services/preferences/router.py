@@ -11,6 +11,9 @@ Members and guests are treated the same. The account's saved defaults are never 
 Saving is open in the invite and preferences stages; marking ready in the preferences stage.
 Both lock the outing's row like a join, so they never overlap the stage change that closes
 them or the plan generation (BE-17).
+
+Marking ready never generates the plan. Once everyone is ready, the organizer generates it
+(release decision D05, BE-17); the last Ready does not start it by itself.
 """
 import logging
 import uuid
@@ -123,8 +126,7 @@ def mark_ready(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
             db.flush()
         counts = _counts(db, outing)
         all_ready = counts["total_count"] > 0 and counts["ready_count"] == counts["total_count"]
-        # BE-17 adds here: when all_ready, generate the plan and move the outing to voting,
-        # still inside this transaction and under the same lock.
+        # all_ready only tells the organizer they can generate now; nothing is generated here (D05).
         db.commit()
     except SQLAlchemyError:
         db.rollback()
