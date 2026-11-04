@@ -2,6 +2,8 @@
 
 BE-09 (join), BE-10 (guests) and BE-11 (stages) build on these two classes.
 Times are timezone-aware (timestamptz); store and compare them as aware datetimes.
+Anything that adds people to an outing or changes its stage locks the outing's row first
+(SELECT ... FOR UPDATE), as join.py does, so the two never overlap.
 """
 import uuid
 from datetime import datetime, timezone
