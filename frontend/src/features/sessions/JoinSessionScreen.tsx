@@ -203,6 +203,10 @@ function arabicNumber(value: number): string {
 // Turn a lookup failure into the design's Arabic message.
 function lookupErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 404) {
+    // A 404 without the server's error code means the join route is not live yet (before BE-09).
+    if (error.code === "UNKNOWN_ERROR") {
+      return "الانضمام برمز غير متاح حاليًا، وسيتوفر قريبًا.";
+    }
     return "رمز الدعوة غير صالح. راجعه مع المنظّم.";
   }
   return "تعذّر التحقق من الدعوة. حاول مرة ثانية.";
