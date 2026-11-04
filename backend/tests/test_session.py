@@ -3,7 +3,6 @@ import uuid
 from datetime import timedelta
 
 import jwt
-
 from app.services.auth.models import User, utcnow
 from tests.test_auth_api import SECRET, ctx, request_code, verify  # noqa: F401  (ctx is a fixture)
 

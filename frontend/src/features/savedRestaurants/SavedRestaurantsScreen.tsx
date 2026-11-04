@@ -53,6 +53,9 @@ export function SavedRestaurantsScreen() {
               cuisines={restaurant.cuisines}
               district={restaurant.district}
               rating={restaurant.rating}
+              mapsUrl={restaurant.maps_url}
+              spendLow={restaurant.spend_low}
+              spendHigh={restaurant.spend_high}
               action={
                 <SaveRestaurantButton
                   restaurantId={restaurant.id}

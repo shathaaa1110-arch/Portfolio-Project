@@ -15,5 +15,6 @@ export {
   clearSession,
   isSessionEnded,
   loadSession,
+  markPreferencesSaved,
   type AuthSession,
 } from "./session";

@@ -1,8 +1,7 @@
 import pytest
-from fastapi.testclient import TestClient
-
-from app.main import app
 from app.api.v1 import health
+from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 

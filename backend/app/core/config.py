@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 # Secret used to sign login tokens and hash verification codes. Never commit it.
     secret_key: str = ""
 
+# Start of the shareable invite link; the code is added at the end, e.g. https://example.com/join
+# Empty means the API returns invite_url: null and the app shares the code only.
+    invite_base_url: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

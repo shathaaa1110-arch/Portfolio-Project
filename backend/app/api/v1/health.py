@@ -1,7 +1,6 @@
-from fastapi import APIRouter
-
 from app.core.config import get_settings
 from app.core.database import database_is_up
+from fastapi import APIRouter
 
 router = APIRouter(tags=["health"])
 

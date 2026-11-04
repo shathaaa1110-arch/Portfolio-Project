@@ -60,6 +60,14 @@ export async function clearSession(): Promise<void> {
   await storage.remove(SESSION_KEY);
 }
 
+// Update only the account whose save just succeeded.
+export async function markPreferencesSaved(token: string): Promise<boolean> {
+  const session = await loadSession();
+  if (!session || session.token !== token) return false;
+  await saveSession({ ...session, hasSavedPreferences: true });
+  return true;
+}
+
 // Logs out on the server when possible, then always deletes the local session
 export async function signOut(): Promise<void> {
   const session = await loadSession();

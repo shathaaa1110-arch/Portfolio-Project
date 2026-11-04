@@ -1,3 +1,4 @@
+import { layoutDirection } from "@/shared/layout";
 import { Keyboard, Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
 
   inputWrapper: {
     position: "relative",
-    direction: "ltr",
+    ...layoutDirection("ltr"),
   },
 
   input: {
@@ -210,7 +211,7 @@ const styles = StyleSheet.create({
 
   choices: {
     // Arrange the shortcuts from right to left.
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     gap: theme.spacing.labelGap,
     marginVertical: theme.spacing.labelGap,
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
   },
 
   noLimit: {
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     alignItems: "center",
     gap: theme.spacing.labelGap,

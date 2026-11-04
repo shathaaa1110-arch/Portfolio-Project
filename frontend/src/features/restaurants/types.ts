@@ -5,4 +5,8 @@ export type RestaurantSummary = {
   cuisines: string[];
   district: string;
   rating: number | null;
+  maps_url?: string | null;
+  // Optional until the API exposes the database spend range.
+  spend_low?: number | null;
+  spend_high?: number | null;
 };

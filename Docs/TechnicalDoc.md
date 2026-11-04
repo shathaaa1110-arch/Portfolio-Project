@@ -326,11 +326,11 @@ The same information also appears as a card inside the app, so a member who has 
 
 ### Database design
 
-The database is relational (PostgreSQL) and has nine tables. Four ideas shape it:
+The database is relational (PostgreSQL). Applied migrations provide accounts and account preferences; the other tables below remain the broader release design. Four ideas shape it:
 
 - **People and occasions are separate.** A group holds its members. An outing holds everything that changes from one occasion to the next. An outing can also stand alone, with no group, as a one-off session.
 - **`participants` is the central table.** It has one row per person per outing, for members and guests alike, and carries that person's attendance. Their preferences for the outing and their votes point to this row.
-- **Preferences have one table for two uses.** A row in `preferences` belongs either to an account (saved defaults) or to a participant (one outing). Joining an outing copies the saved row into a new one, so editing it never changes the account.
+- **Preferences have one table for two uses in the planned full release.** A row in `preferences` belongs either to an account (saved defaults) or to a participant (one outing). Joining an outing copies the saved row into a new one, so editing it never changes the account.
 - **A plan is not a table of its own.** The plan of an outing is the set of its `plan_items` rows.
 
 ```mermaid
@@ -346,15 +346,16 @@ erDiagram
     RESTAURANTS ||--o{ PLAN_ITEMS : "appears in"
     PARTICIPANTS ||--o{ VOTES : "casts"
     PLAN_ITEMS ||--o{ VOTES : "receives"
-    USERS |o--o| PREFERENCES : "saves"
-    PARTICIPANTS |o--o| PREFERENCES : "sets for the outing"
+    USERS ||--o| PREFERENCES : "saves (DB-14)"
+    PARTICIPANTS ||--o| PREFERENCES : "answers for one outing"
+    DISTRICTS ||--o{ OUTINGS : "meeting area of"
 
     USERS {
         uuid id PK
         text name
-        text phone UK
+        text phone_number UK
         text push_token
-        timestamptz created_at
+        timestamp created_at
     }
     GROUPS {
         uuid id PK
@@ -395,7 +396,7 @@ erDiagram
         text[] allergies
         int budget_min
         int budget_max
-        int max_distance_km
+        numeric max_distance_km
         text seating_needs
     }
     RESTAURANTS {
@@ -417,6 +418,13 @@ erDiagram
         jsonb opening_hours
         text summary
         text maps_url
+    }
+    DISTRICTS {
+        text id PK
+        text name_ar
+        text name_en
+        numeric latitude
+        numeric longitude
     }
     PLAN_ITEMS {
         uuid id PK
@@ -443,13 +451,19 @@ How to read the lines: `||` means exactly one, `o{` means zero or many, and `o|`
 
 One row per registered account. Guests have no row here.
 
+DB-03 implements this table in migration `0002_account_keys_and_phone`.
+`id` is the sole primary key; all account foreign keys reference `users(id)`.
+Phone numbers are stored as text to preserve `+` and leading zeros, with a
+separate unique constraint. Existing group references remain compatible; the
+other tables in this diagram remain draft designs, not tables created by DB-03.
+
 | Column | Type | Required | Notes |
 |---|---|---|---|
-| id | uuid | yes | Primary key |
+| id | uuid | yes | Sole primary key, supplied by the application |
 | name | text | yes | |
-| phone | text | yes | Unique. Used to log in |
+| phone_number | text | yes | Unique. Used to log in; not part of the primary key |
 | push_token | text | no | Device token for push notifications |
-| created_at | timestamptz | yes | |
+| created_at | timestamp | yes | Without time zone, matching the existing SQL schema |
 
 #### `groups`
 
@@ -482,10 +496,10 @@ One row per occasion, whether a one-off session or one of a group's outings.
 | group_id | uuid | no | Foreign key to `groups`. Empty for a one-off session |
 | organizer_id | uuid | yes | Foreign key to `users`: the person who runs this outing |
 | name | text | yes | Given by the organizer, for example "Thursday dinner" |
-| status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result`. The first three and the last match the four stages shown in the app |
-| invite_code | text | yes | Four letters and digits. Unique among outings that are still open. Carried by the invite link |
+| status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result` (checked by the database). The first three and the last match the four stages shown in the app |
+| invite_code | text | yes | Four upper-case letters and digits (checked by the database). Unique among outings that are still open (partial unique index). Generated without `0 O 1 I L`, which are easy to confuse. Carried by the invite link |
 | starts_at | timestamptz | yes | Date and time set by the organizer. The meal (breakfast, lunch, afternoon, dinner, late night) is worked out from it and matched against the restaurants' `meal_fit` columns |
-| district | text | yes | Meeting area chosen by the organizer. Distances are measured from its centre, taken as the average position of the restaurants in that district, so no separate districts table is needed |
+| district | text | yes | Meeting area chosen by the organizer: an `id` from `districts`. Distances are measured from that district's centre |
 | tiebreak_ends_at | timestamptz | no | Set when a tie-break starts: the moment the 30 seconds end |
 | created_at | timestamptz | yes | |
 
@@ -509,23 +523,33 @@ One row per person per outing. A member's row points to their account; a guest's
 | outing_id | uuid | yes | Foreign key to `outings` |
 | user_id | uuid | no | Foreign key to `users`. Empty for a guest |
 | guest_name | text | no | Required when `user_id` is empty |
-| attendance | text | yes | `pending`, `confirmed`, or `declined`. Joining from the invite link sets it to `confirmed` |
+| attendance | text | yes | `pending`, `confirmed`, or `declined` (checked by the database). Joining from the invite link sets it to `confirmed` |
 | preferences_done | boolean | yes | True once the participant taps "Ready to vote". The plan is generated when it is true for everyone |
 
 #### `preferences`
 
-One row per set of preferences. The row belongs to an account or to a participant, never both.
+DB-14 implements one optional saved set per account, owned by `users.id`. Clean
+installs require `user_id`; they do not create `participant_id` or session tables.
+Existing shared databases retain participant rows and their exclusive-owner check,
+unique keys and foreign keys. Their account rows have `participant_id IS NULL`.
+Session expansion remains #12 (Sprint 2), not delivered by this migration.
+
+Migration `0003_account_preferences` converts unambiguous JSON string arrays or
+PostgreSQL array literals in legacy TEXT columns to `text[]`, preserving IDs and
+values. Invalid ownership, invalid account numbers, or ambiguous lists abort the
+transaction without deleting data. See the [migration/adoption guide](../database/README.md#db-14-account-preferences).
+The diagram shows the clean Sprint 1 preference shape; the legacy-only participant
+relationship is preserved in existing databases, not required by clean installs.
 
 | Column | Type | Required | Notes |
 |---|---|---|---|
 | id | uuid | yes | Primary key |
-| user_id | uuid | no | Foreign key to `users`. Unique. Set for saved defaults |
-| participant_id | uuid | no | Foreign key to `participants`. Unique. Set for one outing |
-| liked_cuisines | text[] | no | Cuisine codes |
+| user_id | uuid | yes | Unique foreign key to `users.id`; legacy participant rows alone may leave it null |
+| liked_cuisines | text[] | no | Category keys from the account contract; #63 validates keys |
 | allergies | text[] | no | Shown to the group as a combined warning, without the participant's name |
-| budget_min | integer | no | Lower end of the budget range per person in SAR |
-| budget_max | integer | no | Upper end of the range. The engine filters on the lowest `budget_max` in the group |
-| max_distance_km | integer | no | Farthest the participant will go from the meeting area. The engine uses the shortest limit in the group |
+| budget_min | integer | no | Whole SAR per person, ≥ 0; ≤ budget_max when both are present. No business maximum |
+| budget_max | integer | no | Whole SAR per person, ≥ 0. No business maximum |
+| max_distance_km | numeric | no | Finite positive number, including fractional kilometres; no business maximum |
 | seating_needs | text | no | For example family seating or a private room. Stored and shown; not yet used by the recommendation engine |
 
 #### `restaurants`
@@ -551,6 +575,17 @@ A reduced copy of the team's Riyadh restaurants dataset: open places only, with 
 | opening_hours | jsonb | no | Opening periods per weekday. Known for about half of places; shown only when present |
 | summary | text | no | Shown on the restaurant details screen |
 | maps_url | text | yes | Opened by the app |
+
+#### `districts`
+
+The Riyadh districts an organizer or a user without location can choose from. Loaded by migration `0005` from `database/seed/riyadh_districts.json` (171 districts); read-only for the app.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| id | text | yes | Primary key, the dataset's district code, for example `00100001141` |
+| name_ar | text | yes | Shown in the app |
+| name_en | text | no | |
+| latitude, longitude | numeric | yes | The district centre. Used for distances; not sent to the app |
 
 #### `plan_items`
 
@@ -1358,16 +1393,39 @@ POST /outings/session
 ```
 Requires: Authorization
 
-Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant.
+Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant. The outing, its code and its organizer are saved in one transaction.
 
 Request
 ```json
-{ "name": "string", "starts_at": "timestamptz", "district": "string" }
+{ "name": "string", "starts_at": "2026-11-05T20:00:00+03:00", "district": "00100001141" }
 ```
+`name` is 1–60 characters. `starts_at` must carry its time zone, must not have passed, and must be within 60 days. `district` is an `id` from `GET /districts`.
 
 Response `201`
 ```json
-{ "outing_id": "uuid", "invite_code": "string", "status": "invite" }
+{ "outing_id": "uuid", "invite_code": "K7QX", "invite_url": "string | null", "status": "invite" }
+```
+`invite_url` is the shareable link: the server setting `INVITE_BASE_URL` followed by the code. It is `null` while that setting is empty; the app then shares the code.
+
+Response `422`
+```json
+{ "error": { "code": "INVALID_START_TIME", "message": "The start time has already passed." } }
+```
+or
+```json
+{ "error": { "code": "UNKNOWN_DISTRICT", "message": "Choose a district from the list." } }
+```
+
+#### List districts
+
+```http
+GET /districts
+```
+Requires: nothing
+
+Response `200`, by Arabic name. `name_en` is left out when unknown.
+```json
+{ "districts": [ { "id": "00100001141", "name_ar": "العليا", "name_en": "Al Olaya" } ] }
 ```
 
 Internally, this endpoint and group creation (4.4) share the same outing-creation logic; only the presence of a `group_id` differs. See Section 6, Technical Justifications.
@@ -1527,7 +1585,12 @@ Response `200`
 | 20 | PUT | `/outings/{outing_id}/preferences` | 8, 9 |
 | 21 | POST | `/outings/{outing_id}/preferences/ready` | 11 |
 
-`preferences` rows belong either to an account (`user_id` set) or to one outing's participant (`participant_id` set), never both, matching the database rule in Section 2.
+Account storage is supplied by DB-14; these GET/PUT endpoints remain #63 work.
+The server derives `user_id` from authentication and always filters by that ID;
+clients cannot choose an owner. `is_saved` derives from row existence, not a stored
+column. Legacy participant rows must never be selected as account defaults.
+See the [approved account contract](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/8).
+Outing endpoints below remain Sprint 2 work.
 
 #### Get saved preferences
 
@@ -1540,7 +1603,7 @@ Response `200`
 ```json
 {
   "is_saved": true,
-  "liked_cuisines": ["italian", "japanese"],
+  "liked_cuisines": ["saudi_gulf", "grill"],
   "allergies": ["peanuts"],
   "budget_min": 50,
   "budget_max": 150,
@@ -1559,7 +1622,7 @@ Requires: Authorization
 
 Creates the row on first use, updates it afterwards (`user_id` is unique).
 
-Request: same shape as the response above.
+Request: preference fields from the response above, without `is_saved`. All fields are optional. Budget values are whole SAR ≥ 0 with minimum ≤ maximum; distance is a finite number > 0. Lists map to PostgreSQL `text[]`. Seating text is limited to 200 characters by #63 request validation. A failed save preserves the last valid saved values.
 
 Response `200`
 ```json
@@ -2264,7 +2327,7 @@ ORG_TOKEN=$(echo "$VERIFY" | python3 -c "import sys,json; print(json.load(sys.st
 SESSION=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/session" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ORG_TOKEN" \
-  -d '{"name": "Thursday dinner", "starts_at": "2026-10-22T19:00:00+03:00", "district": "Al Olaya"}')
+  -d '{"name": "Thursday dinner", "starts_at": "2026-12-01T19:00:00+03:00", "district": "00100001141"}')
 HTTP_CODE=$(echo "$SESSION" | tail -1)
 BODY=$(echo "$SESSION" | head -1)
 [ "$HTTP_CODE" = "201" ] || { echo "FAIL: create session expected 201, got $HTTP_CODE"; exit 1; }

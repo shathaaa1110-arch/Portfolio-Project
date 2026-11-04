@@ -1,3 +1,4 @@
+import { layoutDirection } from "@/shared/layout";
 import { Keyboard, Pressable, StyleSheet, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
 
   grid: {
     // Start each row from the right.
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     flexWrap: "wrap",
     justifyContent: "space-between",
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
   },
 
   noneOption: {
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     alignItems: "center",
     gap: theme.spacing.labelGap,
