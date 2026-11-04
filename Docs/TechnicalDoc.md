@@ -326,7 +326,7 @@ The same information also appears as a card inside the app, so a member who has 
 
 ### Database design
 
-The database is relational (PostgreSQL). Applied migrations provide accounts and account preferences; the other tables below remain the broader release design. Four ideas shape it:
+The database is relational (PostgreSQL). Applied migrations provide accounts, preferences, outing/district tables, and DB-15 saved-restaurant storage. DB-15 also creates restaurants if absent; the remaining tables below describe the broader release design. Four ideas shape it:
 
 - **People and occasions are separate.** A group holds its members. An outing holds everything that changes from one occasion to the next. An outing can also stand alone, with no group, as a one-off session.
 - **`participants` is the central table.** It has one row per person per outing, for members and guests alike, and carries that person's attendance. Their preferences for the outing and their votes point to this row.
@@ -344,6 +344,8 @@ erDiagram
     OUTINGS ||--o{ PARTICIPANTS : "includes"
     OUTINGS ||--o{ PLAN_ITEMS : "suggests"
     RESTAURANTS ||--o{ PLAN_ITEMS : "appears in"
+    USERS ||--o{ SAVED_RESTAURANTS : "saves"
+    RESTAURANTS ||--o{ SAVED_RESTAURANTS : "is saved"
     PARTICIPANTS ||--o{ VOTES : "casts"
     PLAN_ITEMS ||--o{ VOTES : "receives"
     USERS ||--o| PREFERENCES : "saves (DB-14)"
@@ -398,6 +400,10 @@ erDiagram
         int budget_max
         numeric max_distance_km
         text seating_needs
+    }
+    SAVED_RESTAURANTS {
+        uuid user_id PK, FK
+        int restaurant_id PK, FK
     }
     RESTAURANTS {
         int id PK
@@ -587,6 +593,24 @@ The Riyadh districts an organizer or a user without location can choose from. Lo
 | name_en | text | no | |
 | latitude, longitude | numeric | yes | The district centre. Used for distances; not sent to the app |
 
+#### `saved_restaurants` (DB-15, #130)
+
+One link per account and saved restaurant; the pair is the primary key.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| user_id | uuid | yes | Primary-key component; foreign key to `users(id)` |
+| restaurant_id | integer | yes | Primary-key component; foreign key to `restaurants(id)` |
+
+Both foreign keys use `ON DELETE RESTRICT`: remove saved links explicitly before
+parent deletion. Unsaving never deletes an account or restaurant. The primary key
+supports account lookups; `restaurant_id` also has an index. Existing parent rows
+are preserved by migration `0006_saved_restaurants`; missing restaurants are created
+from the established schema, including search support. Downgrade is refused to
+protect data. See the [database guide](../database/README.md#db-15-saved-restaurants).
+Storage is delivered by #130; authenticated save/load/unsave endpoints remain #126.
+Public browsing remains unauthenticated.
+
 #### `plan_items`
 
 One row per restaurant suggested for an outing.
@@ -626,6 +650,7 @@ Enforced by the database:
 | A user is in a group once | Primary key on (`group_id`, `user_id`) in `group_members` |
 | An invite code leads to one outing | `outings.invite_code` is unique among outings that have not reached the result stage |
 | A member appears once in an outing | Unique on (`outing_id`, `user_id`) in `participants` |
+| An account saves a restaurant at most once | Primary key on (`user_id`, `restaurant_id`) in `saved_restaurants`; both foreign keys restrict parent deletion |
 | A restaurant appears once in a plan | Unique on (`outing_id`, `restaurant_id`) in `plan_items` |
 | One saved set per account, one set per participant | `preferences.user_id` and `preferences.participant_id` are each unique |
 | A set of preferences has exactly one owner | Check constraint: exactly one of `user_id` and `participant_id` is filled |
@@ -645,7 +670,7 @@ Enforced by the API, because they depend on the state of the outing:
 
 Indexes on `restaurants.district` and on the spend columns keep the recommendation engine's filters fast.
 
-The Could Have stories would add a little to this design if they are built: a `saved_restaurants` table linking users to restaurants (story 29), a healthy-options column on `restaurants` for the "light and healthy" mood (story 31), and dish tables for the tourist guide (story 32). The taste summary (story 30) needs nothing new, because it is counted from `votes`.
+The Could Have stories would add a little to this design if they are built: a healthy-options column on `restaurants` for the "light and healthy" mood (story 31), and dish tables for the tourist guide (story 32). The taste summary (story 30) needs nothing new, because it is counted from `votes`.
 
 ### Back-end classes
 

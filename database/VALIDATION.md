@@ -189,3 +189,46 @@ schema and no `alembic_version`. Its runtime role lacks SELECT on users/preferen
 so existing production/development row contents could not be inspected. No adoption
 or upgrade was applied there. The owner must run the documented preflight/adoption
 with a backup and sufficient permissions before deployment.
+
+
+## DB-15 — saved-restaurant storage (4 November 2026)
+
+Local implementation evidence for [#130](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/130).
+Endpoints/authentication remain #126; no remote database or issue was changed.
+
+- The normal disposable reset applied the complete migration chain to a clean
+  database, ending at **0006_saved_restaurants**. Restaurants and their search
+  support are created when absent, followed by the saved relation.
+- DB-15 PostgreSQL acceptance: **18 passed**.
+- Full backend suite: **286 passed**, with one existing Starlette/AnyIO deprecation
+  warning. This includes repeated `upgrade head`, database identity/revision and
+  real health checks, plus existing unauthenticated restaurant browsing tests.
+- `git diff --check`: passed.
+- Constraint checks cover duplicate pairs, distinct pairs across accounts and
+  restaurants, null/nonexistent references, both restricted parent deletions,
+  explicit unsaving, and preservation of unrelated links and parents.
+- Migration checks cover populated parent tables with row comparisons, missing
+  restaurant creation with generated search text/indexes, incompatible/missing
+  prerequisites, an unexpected existing saved table, transactional rollback after
+  simulated DDL failure, and downgrade refusal without data loss.
+- A committed save is read through a new connection and isolated from another
+  account's query. Its test records are explicitly cleaned up afterward. Other
+  migration cases use isolated schemas and roll back all fixture changes.
+
+Commands executed from the repository root with the approved test URL supplied
+only to the test processes:
+
+```bash
+backend/.venv/bin/python database/reset_test_db.py
+backend/.venv/bin/python -m pytest -q backend/tests/test_saved_restaurant_schema_integration.py
+backend/.venv/bin/python -m pytest -q backend/tests
+```
+
+`TEST_DATABASE_URL` was not configured locally. Verification used the existing
+local PostgreSQL administrator connection to temporarily set a generated password
+for the restricted disposable `thouq_test` role. The prior credential was kept only
+in process memory and restored in a `finally` block, with restoration verified.
+No secret or `.env` file was written. The reset still used the repository's target,
+role-attribute and ownership checks; neither tests nor migrations ran as superuser.
+No development database was reset or migrated. Normal future runs should configure
+`TEST_DATABASE_URL` using the database setup guide.
