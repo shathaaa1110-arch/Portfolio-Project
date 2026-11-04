@@ -6,7 +6,8 @@
       "restaurants": [],
       "preferences": ["auth"],
       "savedRestaurants": ["restaurants", "auth"],
-      "personalSuggestions": ["restaurants"]
+      "personalSuggestions": ["restaurants"],
+      "sessions": ["auth"]
     }
   }
 }

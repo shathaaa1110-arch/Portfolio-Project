@@ -1380,6 +1380,7 @@ Response `200`
 | # | Method | Path | Story |
 | -- | ------ | ---- | ----- |
 | 10 | POST | `/outings/session` | 4, 5 |
+|10a | GET | `/outings/by-code/{invite_code}` | 6, 7 |
 | 11 | POST | `/outings/{invite_code}/join` | 6 |
 | 12 | POST | `/outings/{invite_code}/join-guest` | 7 |
 | 13 | GET | `/outings/{outing_id}` | 10, 20 |
