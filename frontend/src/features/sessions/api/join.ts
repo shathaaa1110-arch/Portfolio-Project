@@ -50,19 +50,35 @@ export async function lookupInvite(code: string): Promise<InvitePreview> {
 }
 
 // Join as a signed-in user; repeating it keeps one participation.
-export function joinOuting(code: string, token: string) {
-  return request<JoinResponse>(
+export async function joinOuting(code: string, token: string) {
+  const joined = await request<JoinResponse>(
     "POST",
     `/outings/${encodeURIComponent(code)}/join`,
     { token },
   );
+
+  if (!joined || typeof joined.outing_id !== "string") {
+    throw invalidResponseError(200);
+  }
+  return joined;
 }
 
 // Join as a guest with a name only; a guest has no token yet.
-export function joinOutingAsGuest(code: string, guestName: string) {
-  return request<GuestJoinResponse>(
+export async function joinOutingAsGuest(code: string, guestName: string) {
+  const joined = await request<GuestJoinResponse>(
     "POST",
     `/outings/${encodeURIComponent(code)}/join-guest`,
     { body: { guest_name: guestName } },
   );
+
+  // We keep the guest token for later requests, so it must be real text.
+  if (
+    !joined ||
+    typeof joined.outing_id !== "string" ||
+    typeof joined.participant_id !== "string" ||
+    typeof joined.guest_token !== "string"
+  ) {
+    throw invalidResponseError(200);
+  }
+  return joined;
 }

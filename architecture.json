@@ -7,7 +7,7 @@
       "preferences": ["auth"],
       "savedRestaurants": ["restaurants", "auth"],
       "personalSuggestions": ["restaurants"],
-      "sessions": []
+      "sessions": ["auth"]
     }
   }
 }
