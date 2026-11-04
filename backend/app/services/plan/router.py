@@ -30,12 +30,12 @@ from app.core.errors import ApiError
 from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
 from app.services.outings.models import CONFIRMED, PREFERENCES, VOTING, Outing
 from app.services.outings.stages import move, readiness
-from app.services.plan.engine import EXCLUDED_FLAGS, EXCLUDED_VENUES, Preferences, Restaurant, distance_km, recommend
+from app.services.plan.candidates import load_candidates
+from app.services.plan.engine import Preferences, distance_km, recommend
 from app.services.plan.reasons import reason_text
 
 PLAN_SIZE = 5
 RIYADH = ZoneInfo("Asia/Riyadh")
-FLAG_SEPARATOR = "|"  # restaurants.flags is text (database/load_place_details.py)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["plan"])
@@ -45,17 +45,6 @@ PEOPLE_SQL = text("""
     SELECT pr.liked_cuisines, pr.allergies, pr.budget_min, pr.budget_max, pr.max_distance_km
     FROM participants pa LEFT JOIN preferences pr ON pr.participant_id = pa.id
     WHERE pa.outing_id = :outing_id AND pa.attendance = :confirmed
-""")
-# Only rows the engine could ever accept: known hours and spend, inside everyone's budget.
-# The engine still checks every rule; this only keeps the load small.
-CANDIDATES_SQL = text("""
-    SELECT id, cuisine, latitude, longitude, spend_low, spend_high, quality_score, brand_id,
-           venue_type, flags, opening_hours
-    FROM restaurants
-    WHERE opening_hours->>'days_open' = '7' AND spend_low IS NOT NULL AND spend_high IS NOT NULL
-      AND (venue_type IS NULL OR NOT (venue_type = ANY(:venues)))
-      AND (CAST(:budget_max AS INTEGER) IS NULL OR spend_low <= :budget_max)
-      AND (CAST(:budget_min AS INTEGER) IS NULL OR spend_high >= :budget_min)
 """)
 PLAN_SQL = text("""
     SELECT pi.id, pi.rank, pi.match_score, pi.reason, r.id AS restaurant_id, r.name_ar, r.name_en, r.cuisine,
@@ -79,46 +68,6 @@ def _unavailable() -> ApiError:
     return ApiError(503, "PLAN_UNAVAILABLE", "Could not reach the suggestions right now. Please try again.")
 
 
-def _minutes(hhmm: str) -> int:
-    hours, minutes = hhmm.split(":")
-    return int(hours) * 60 + int(minutes)
-
-
-def hours_from_summary(summary: dict | None) -> dict[int, list[tuple[int, int]]] | None:
-    """restaurants.opening_hours is a summary: {opens, closes, open_24h, days_open}.
-
-    Only a place open every day has hours we can trust for any date. Fewer days open, or missing
-    times, mean we do not know which days, so the hours are unknown and the place is left out (D04).
-    """
-    if not summary or summary.get("days_open") != 7:
-        return None
-    if summary.get("open_24h"):
-        return {day: [(0, 1440)] for day in range(7)}
-    try:
-        opens, closes = _minutes(summary["opens"]), _minutes(summary["closes"])
-    except (KeyError, TypeError, ValueError):
-        return None
-    if closes <= opens:  # runs past midnight, e.g. 16:00 to 01:30
-        closes += 1440
-    return {day: [(opens, closes)] for day in range(7)}
-
-
-def _restaurant(r) -> Restaurant:
-    return Restaurant(
-        id=r.id,
-        cuisines=tuple(c.strip() for c in (r.cuisine or "").split(",") if c.strip()),
-        lat=float(r.latitude),
-        lon=float(r.longitude),
-        spend_low=r.spend_low,
-        spend_high=r.spend_high,
-        quality_score=float(r.quality_score) if r.quality_score is not None else None,
-        brand_id=r.brand_id,
-        venue_type=r.venue_type,
-        flags=tuple(f for f in (r.flags or "").split(FLAG_SEPARATOR) if f),
-        hours=hours_from_summary(r.opening_hours),
-    )
-
-
 def _people(db: Session, outing: Outing) -> list[Preferences]:
     rows = db.execute(PEOPLE_SQL, {"outing_id": outing.id, "confirmed": CONFIRMED}).all()
     return [Preferences(
@@ -139,9 +88,7 @@ def _generate(db: Session, outing: Outing) -> list:
     lat, lon = _centre(db, outing)
     budget_max = min((p.budget_max for p in people if p.budget_max is not None), default=None)
     budget_min = max((p.budget_min for p in people if p.budget_min is not None), default=None)
-    rows = db.execute(CANDIDATES_SQL, {"venues": sorted(EXCLUDED_VENUES), "budget_max": budget_max,
-                                       "budget_min": budget_min}).all()
-    restaurants = [r for r in map(_restaurant, rows) if not EXCLUDED_FLAGS.intersection(r.flags)]
+    restaurants = load_candidates(db, budget_min, budget_max)
     when = outing.starts_at.astimezone(RIYADH).replace(tzinfo=None)  # opening hours are local times
     return recommend(restaurants, people, when, lat, lon, limit=PLAN_SIZE)
 
