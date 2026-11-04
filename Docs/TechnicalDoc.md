@@ -496,8 +496,8 @@ One row per occasion, whether a one-off session or one of a group's outings.
 | group_id | uuid | no | Foreign key to `groups`. Empty for a one-off session |
 | organizer_id | uuid | yes | Foreign key to `users`: the person who runs this outing |
 | name | text | yes | Given by the organizer, for example "Thursday dinner" |
-| status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result`. The first three and the last match the four stages shown in the app |
-| invite_code | text | yes | Four characters: capital letters and digits without 0, O, 1, I or L, so they are not confused. Matched in any letter case. Unique among outings that are still open. Carried by the invite link |
+| status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result` (checked by the database). The first three and the last match the four stages shown in the app |
+| invite_code | text | yes | Four upper-case letters and digits (checked by the database). Unique among outings that are still open (partial unique index). Generated without `0 O 1 I L`, which are easy to confuse. Carried by the invite link |
 | starts_at | timestamptz | yes | Date and time set by the organizer. The meal (breakfast, lunch, afternoon, dinner, late night) is worked out from it and matched against the restaurants' `meal_fit` columns |
 | district | text | yes | Meeting area chosen by the organizer: an `id` from `districts`. Distances are measured from that district's centre |
 | tiebreak_ends_at | timestamptz | no | Set when a tie-break starts: the moment the 30 seconds end |
@@ -987,10 +987,10 @@ sequenceDiagram
     G->>A: Open the link or type the code
     A->>API: GET /outings/by-code/{code}
     API->>DB: Find the open outing with this code
-    API-->>A: 200 preview, and whether a new person can join
+    API-->>A: 200 session name, organizer, and whether joining is open
     G->>A: Enter a name and tap Join
-    A->>API: POST /outings/{invite_code}/join-guest
-    API->>DB: Read the stage and the participant count
+    A->>API: POST /outings/{code}/join-guest
+    API->>DB: Lock the outing, then read the stage and the participant count
     alt Stage is invite or preferences, and fewer than 8 people
         API->>DB: Insert participant with the guest name
         API-->>A: 201 participant and temporary token
@@ -1380,7 +1380,7 @@ Response `200`
 | # | Method | Path | Story |
 | -- | ------ | ---- | ----- |
 | 10 | POST | `/outings/session` | 4, 5 |
-| 10a | GET | `/outings/by-code/{code}` | 6, 7 |
+|10a | GET | `/outings/by-code/{invite_code}` | 6, 7 |
 | 11 | POST | `/outings/{invite_code}/join` | 6 |
 | 12 | POST | `/outings/{invite_code}/join-guest` | 7 |
 | 13 | GET | `/outings/{outing_id}` | 10, 20 |
@@ -1436,11 +1436,11 @@ Internally, this endpoint and group creation (4.4) share the same outing-creatio
 #### Look up an invite code
 
 ```http
-GET /outings/by-code/{code}
+GET /outings/by-code/{invite_code}
 ```
-Requires: nothing (a guest has no token yet)
+Requires: nothing (the join screen calls it before the person has joined)
 
-Returns a short preview, so the join screen can show the session before anyone joins. The code is matched in any letter case. `can_join` and `join_blocked_reason` follow the same rules as joining, so the 8-person limit is checked on the server only. `organizer_name` is the organizer's first name.
+Finds the open outing with this code (any stage before `result`) so the join screen can show it before joining. The code is not case-sensitive and surrounding spaces are ignored. Nothing about the participants is returned except their number, and the organizer appears by first name only.
 
 Response `200`
 ```json
@@ -1571,13 +1571,6 @@ Response `403`
 Response `404`
 ```json
 { "error": { "code": "OUTING_NOT_FOUND", "message": "This outing does not exist." } }
-```
-
-`me` is the caller's own participant, so the app can mark its row and show organizer actions from `me.is_organizer` and `status`.
-
-Response `403` — the caller is not a participant of this outing
-```json
-{ "error": { "code": "NOT_A_PARTICIPANT", "message": "You are not a participant of this outing." } }
 ```
 
 #### Confirm or decline attendance
