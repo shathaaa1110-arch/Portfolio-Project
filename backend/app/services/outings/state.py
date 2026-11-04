@@ -1,0 +1,92 @@
+"""Outing state and the first stage change (BE-11, #18).
+
+GET  /outings/{outing_id}                    the waiting room polls this; login or guest token
+POST /outings/{outing_id}/start-preferences  organizer only; invite -> preferences
+
+A participant summary carries only what the group may see: name, attendance, readiness and
+whether this person is the organizer. Never ids of accounts, phone numbers or preferences.
+"""
+import logging
+import uuid
+
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.errors import ApiError
+from app.services.auth.models import User
+from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
+from app.services.outings.models import PREFERENCES, Outing, Participant
+from app.services.outings.stages import move, organizer_actions
+
+logger = logging.getLogger(__name__)
+router = APIRouter(tags=["outings"])
+
+
+def _unavailable() -> ApiError:
+    return ApiError(503, "OUTINGS_UNAVAILABLE", "Could not reach the outing right now. Please try again.")
+
+
+def _participants(db: Session, outing: Outing) -> list[dict]:
+    """Organizer first, then by name, so the list does not jump around between polls."""
+    rows = db.execute(
+        select(Participant, User.name)
+        .outerjoin(User, User.id == Participant.user_id)
+        .where(Participant.outing_id == outing.id)
+    ).all()
+    people = [
+        {
+            "participant_id": str(p.id),
+            "name": user_name if p.user_id is not None else p.guest_name,
+            "attendance": p.attendance,
+            "preferences_done": p.preferences_done,
+            "is_organizer": p.user_id is not None and p.user_id == outing.organizer_id,
+        }
+        for p, user_name in rows
+    ]
+    people.sort(key=lambda x: (not x["is_organizer"], x["name"] or "", x["participant_id"]))
+    return people
+
+
+@router.get("/outings/{outing_id}")
+def outing_state(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
+                 db: Session = Depends(get_db)) -> dict:
+    try:
+        outing, me = participant_of(db, outing_id, caller)
+        people = _participants(db, outing)
+    except SQLAlchemyError:
+        logger.exception("outing state failed")
+        raise _unavailable()
+
+    organizer = is_organizer(outing, me)
+    return {
+        "outing_id": str(outing.id),
+        "name": outing.name,
+        "status": outing.status,
+        "starts_at": outing.starts_at,
+        "district": outing.district,
+        "invite_code": outing.invite_code,
+        "tiebreak_ends_at": outing.tiebreak_ends_at,
+        "me": {"participant_id": str(me.id), "is_organizer": organizer},
+        "actions": organizer_actions(outing.status) if organizer else [],
+        "participants": people,
+    }
+
+
+@router.post("/outings/{outing_id}/start-preferences")
+def start_preferences(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
+                      db: Session = Depends(get_db)) -> dict:
+    """Asking again once the stage has started answers 200 and changes nothing."""
+    try:
+        outing, me = participant_of(db, outing_id, caller, lock=True)
+        if not is_organizer(outing, me):
+            raise ApiError(403, "ORGANIZER_ONLY", "Only the organizer can start this stage.")
+        if move(outing, PREFERENCES):
+            db.commit()  # also releases the outing's lock
+    except SQLAlchemyError:
+        db.rollback()
+        logger.exception("start preferences failed")
+        raise _unavailable()
+    return {"outing_id": str(outing.id), "status": outing.status}
