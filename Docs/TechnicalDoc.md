@@ -1395,7 +1395,7 @@ POST /outings/session
 ```
 Requires: Authorization
 
-Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant. The outing, its code and its organizer are saved in one transaction.
+Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant, with a copy of their saved preferences if they have any. The outing, its code and its organizer are saved in one transaction.
 
 Request
 ```json
@@ -1546,6 +1546,7 @@ Response `200`
   "tiebreak_ends_at": "timestamptz | null",
   "me": { "participant_id": "uuid", "is_organizer": true },
   "actions": ["start_preferences"],
+  "readiness": { "ready_count": 1, "total_count": 3 },
   "participants": [
     {
       "participant_id": "uuid",
@@ -1558,6 +1559,7 @@ Response `200`
 }
 ```
 - `me` is the caller's own participant, so the app can mark its row.
+- `readiness` counts the confirmed participants who are ready, and all confirmed participants.
 - `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage. It is empty for everyone else, and in stages whose organizer actions are not built yet.
 - `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.
 - A guest token is accepted for its own outing only, and stops working once the guest is removed.
@@ -1651,6 +1653,7 @@ Response `200`
 | -- | ------ | ---- | ----- |
 | 18 | GET | `/users/me/preferences` | 3 |
 | 19 | PUT | `/users/me/preferences` | 3 |
+| 20a | GET | `/outings/{outing_id}/preferences` | 8, 9 |
 | 20 | PUT | `/outings/{outing_id}/preferences` | 8, 9 |
 | 21 | POST | `/outings/{outing_id}/preferences/ready` | 11 |
 
@@ -1659,7 +1662,7 @@ The server derives `user_id` from authentication and always filters by that ID;
 clients cannot choose an owner. `is_saved` derives from row existence, not a stored
 column. Legacy participant rows must never be selected as account defaults.
 See the [approved account contract](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/8).
-Outing endpoints below remain Sprint 2 work.
+The outing endpoints below (BE-13) find the caller's own participant row from the token, member or guest, so nobody can read or change another person's answers.
 
 #### Get saved preferences
 
@@ -1698,6 +1701,23 @@ Response `200`
 { "message": "preferences saved" }
 ```
 
+#### Read my preferences for one outing
+
+```http
+GET /outings/{outing_id}/preferences
+```
+Requires: Authorization (Bearer or guest)
+
+The caller's own copy for this outing, to fill the form. A member starts from a copy of their saved defaults, made when they join or, for the organizer, when the session is created. A guest starts with nothing saved.
+
+Response `200`: the same shape as `GET /users/me/preferences`, plus the caller's readiness.
+```json
+{ "is_saved": true, "liked_cuisines": ["levant"], "allergies": [], "budget_min": 30, "budget_max": 80,
+  "max_distance_km": 5, "seating_needs": null, "preferences_done": false }
+```
+
+Response `403`: `NOT_A_PARTICIPANT`. Response `404`: `OUTING_NOT_FOUND`.
+
 #### Edit preferences for one outing
 
 ```http
@@ -1705,14 +1725,18 @@ PUT /outings/{outing_id}/preferences
 ```
 Requires: Authorization (Bearer or guest)
 
-Edits the copy scoped to this outing only; the account's saved defaults are never touched. Rejected once the outing has moved past the preferences stage.
+Edits the copy scoped to this outing only; the account's saved defaults are never touched. Accepted in the `invite` and `preferences` stages, and rejected once the outing has moved past them. The first save creates the copy and later saves replace every field, so a field left out is saved as empty. Validation is the same as for the account.
+
+Saving clears the caller's readiness (`preferences_done = false`), so the plan is never built from answers the person has not confirmed. The request locks the outing's row like a join, so a save never slips in after voting has started.
 
 Request: same shape as above.
 
 Response `200`
 ```json
-{ "message": "outing preferences updated" }
+{ "message": "outing preferences updated", "preferences_done": false, "ready_count": 1, "total_count": 3 }
 ```
+
+Response `422`: `VALIDATION_ERROR` with the field names; nothing is saved.
 
 Response `409`
 ```json
@@ -1726,17 +1750,25 @@ POST /outings/{outing_id}/preferences/ready
 ```
 Requires: Authorization (Bearer or guest)
 
-Sets `preferences_done = true` for the caller's participant row. If every confirmed participant is now ready, this call triggers plan generation (`Outing.generatePlan()`) and moves the outing to `voting`.
+Sets `preferences_done = true` for the caller's participant row. Accepted only in the `preferences` stage, and only once the caller has a saved copy (an empty one counts). Asking again once ready answers `200` and changes nothing. `ready_count` and `total_count` count confirmed participants only; someone who declined does not hold the plan back.
+
+This call never generates the plan, even for the last person. `all_ready: true` tells the organizer that the plan can now be generated; the organizer then generates it (BE-17). This follows release decision D05: the last Ready does not start generation by itself.
 
 Response `200` — others still pending
 ```json
-{ "participant_id": "uuid", "preferences_done": true, "all_ready": false }
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": false, "outing_status": "preferences", "ready_count": 1, "total_count": 3 }
 ```
 
-Response `200` — last one, plan generated
+Response `200` — everyone is ready; the outing waits for the organizer
 ```json
-{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "voting" }
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "preferences", "ready_count": 3, "total_count": 3 }
 ```
+
+Response `409`
+```json
+{ "error": { "code": "PREFERENCES_REQUIRED", "message": "Save your preferences before marking them ready." } }
+```
+or `PREFERENCES_NOT_OPEN` (the organizer has not started the preferences stage), or `PREFERENCES_LOCKED` (voting has started).
 
 ### 4.7 Plan and Restaurants API
 

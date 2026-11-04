@@ -3,8 +3,14 @@
 Every endpoint that changes an outing's status goes through move(), so a stage can only be
 reached from the stage before it and never backwards (TechnicalDoc section 2, "Outing status").
 """
+import uuid
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
 from app.core.errors import ApiError
-from app.services.outings.models import INVITE, PREFERENCES, RESULT, TIEBREAK, VOTING, Outing
+from app.services.outings.models import (CONFIRMED, INVITE, PREFERENCES, RESULT, TIEBREAK, VOTING, Outing,
+                                         Participant)
 
 ALLOWED_MOVES = {
     INVITE: {PREFERENCES},
@@ -38,3 +44,13 @@ def move(outing: Outing, to: str) -> bool:
 
 def organizer_actions(status: str) -> list[str]:
     return list(ORGANIZER_ACTIONS.get(status, []))
+
+
+def readiness(db: Session, outing_id: uuid.UUID) -> tuple[int, int]:
+    """(ready, total) among confirmed participants. The plan waits until ready == total (BE-13);
+    people who declined do not hold it back."""
+    ready, total = db.execute(
+        select(func.count().filter(Participant.preferences_done), func.count())
+        .where(Participant.outing_id == outing_id, Participant.attendance == CONFIRMED)
+    ).one()
+    return ready, total

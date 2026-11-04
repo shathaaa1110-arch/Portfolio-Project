@@ -26,7 +26,7 @@ pytestmark = pytest.mark.integration
 SECRET = "test-secret"
 BASE = "/api/v1/outings"
 STATE_KEYS = {"outing_id", "name", "status", "starts_at", "district", "invite_code",
-              "tiebreak_ends_at", "me", "actions", "participants"}
+              "tiebreak_ends_at", "me", "actions", "readiness", "participants"}
 
 
 @pytest.fixture
@@ -72,6 +72,7 @@ def test_everyone_reads_the_same_stage_and_readiness(api):
     assert [p["name"] for p in people] == ["عاصم حامد", "فهد", "نورة"]  # organizer first, then by name
     assert [p["preferences_done"] for p in people] == [False, False, True]
     assert [p["is_organizer"] for p in people] == [True, False, False]
+    assert bodies[0]["readiness"] == {"ready_count": 1, "total_count": 3}
 
 
 def test_a_summary_holds_only_what_the_group_may_see(api):
