@@ -1,0 +1,19 @@
+"""Invite codes: four characters, upper-case letters and digits (TechnicalDoc section 2).
+
+Letters and digits that people confuse when reading or typing a code (0 O, 1 I L)
+are left out, which leaves 31 characters and 923,521 possible codes.
+"""
+import secrets
+
+ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+LENGTH = 4
+
+
+def new_code() -> str:
+    """A random code from a cryptographic source, so codes cannot be predicted."""
+    return "".join(secrets.choice(ALPHABET) for _ in range(LENGTH))
+
+
+def normalize_code(raw: str) -> str:
+    """What a person typed, as stored: spaces removed, upper case (BE-09 uses this)."""
+    return raw.strip().upper()
