@@ -8,9 +8,10 @@ import { theme } from "@/shared/theme";
 
 type HomeIntroProps = {
   onFindRestaurant: () => void;
+  onCreateSession: () => void;
 };
 
-export function HomeIntro({ onFindRestaurant }: HomeIntroProps) {
+export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps) {
   return (
     <View style={styles.container}>
      <View style={styles.hero}>
@@ -62,11 +63,11 @@ export function HomeIntro({ onFindRestaurant }: HomeIntroProps) {
           />
         </Pressable>
 
-        <View
+        <Pressable
           accessible
           accessibilityRole="button"
-          accessibilityLabel="أخطّط طلعة، قريبًا"
-          accessibilityState={{ disabled: true }}
+          accessibilityLabel="أخطّط طلعة، إنشاء جلسة جديدة"
+          onPress={onCreateSession}
           style={[styles.action, styles.outingAction]}
         >
           <View style={styles.outingCopy}>
@@ -74,7 +75,6 @@ export function HomeIntro({ onFindRestaurant }: HomeIntroProps) {
               أخطّط طلعة
             </AppText>
 
-            <AppText style={styles.comingSoon}>قريبًا</AppText>
           </View>
 
           <SymbolView
@@ -87,7 +87,7 @@ export function HomeIntro({ onFindRestaurant }: HomeIntroProps) {
             size={27}
             accessible={false}
           />
-        </View>
+        </Pressable>
       </View>
     </View>
   );

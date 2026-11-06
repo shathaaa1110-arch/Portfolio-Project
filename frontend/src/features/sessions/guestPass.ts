@@ -14,7 +14,18 @@ const storage = {
     Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.getItem(key) ?? null) : SecureStore.getItemAsync(key),
   set: (key: string, value: string) =>
     Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.setItem(key, value)) : SecureStore.setItemAsync(key, value),
+  remove: (key: string) =>
+    Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.removeItem(key)) : SecureStore.deleteItemAsync(key),
 };
+// Keep a newly joined guest usable even when private browsing blocks persistent storage.
+const memory = new Map<string, GuestPass>();
+const removed = new Set<string>();
+
+export async function removeGuestPass(code: string): Promise<void> {
+  memory.delete(code);
+  removed.add(code);
+  try { await storage.remove(keyFor(code)); } catch { /* A new join can still work in memory. */ }
+}
 
 // One saved pass per invite code, so the same guest is not added twice.
 function keyFor(code: string): string {
@@ -28,6 +39,8 @@ export async function saveGuestPass(code: string, pass: GuestPass): Promise<void
     participant_id: pass.participant_id,
     guest_token: pass.guest_token,
   };
+  memory.set(code, saved);
+  removed.delete(code);
   try {
     await storage.set(keyFor(code), JSON.stringify(saved));
   } catch {
@@ -37,6 +50,8 @@ export async function saveGuestPass(code: string, pass: GuestPass): Promise<void
 
 // Returns the saved pass for this code, or null when there is none or it cannot be read.
 export async function loadGuestPass(code: string): Promise<GuestPass | null> {
+  if (removed.has(code)) return null;
+  if (memory.has(code)) return memory.get(code)!;
   try {
     const saved = await storage.get(keyFor(code));
     const pass = saved ? JSON.parse(saved) : null;
