@@ -40,8 +40,8 @@ function joinScreen({ preview = open, session = null, saved = null, link = {}, l
       },
     },
     "./guestPass": {
-      loadGuestPass: async () => saved,
-      saveGuestPass: async (code, pass) => { calls.saved.push([code, pass]); },
+      loadGuestPass: async outingId => (saved?.outing_id === outingId ? saved : null),
+      saveGuestPass: async pass => { calls.saved.push(pass); },
     },
   }).JoinSessionScreen;
   return { Screen, calls };
@@ -138,8 +138,8 @@ test("a guest sees a clean card, needs a name, joins with the trimmed name and t
   await type(inputs(root)[0], "  فهد  ");
   await press(root.findByType("AppButton"));
   assert.deepEqual(calls.guest[0], ["TEST", "فهد"]);
-  assert.equal(calls.saved[0][0], "TEST");
-  assert.equal(calls.saved[0][1].guest_token, "token");
+  assert.equal(calls.saved[0].outing_id, "o1");
+  assert.equal(calls.saved[0].guest_token, "token");
   assert(texts(root).includes(JOINED));
 });
 
@@ -200,17 +200,28 @@ test("mock mode answers like the server for each test code", async () => {
   await assert.rejects(call("GET", "/outings/by-code/ABCD"), { status: 404 });
 });
 
-test("the guest pass keeps three fields and ignores broken saved values", async () => {
+test("the guest pass is kept per outing with three fields and ignores broken saved values", async () => {
   const saved = new Map();
   const localStorage = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) };
   const store = load("features/sessions/guestPass.ts", { "react-native": { Platform: { OS: "web" } }, "expo-secure-store": {} }, { globalThis: { localStorage } });
 
-  assert.equal(await store.loadGuestPass("TEST"), null);
-  await store.saveGuestPass("TEST", { outing_id: "o1", participant_id: "g1", guest_token: "token", status: "invite" });
-  assert.deepEqual(JSON.parse(saved.get("thouq.guest.TEST")), { outing_id: "o1", participant_id: "g1", guest_token: "token" });
-  assert.deepEqual(plain(await store.loadGuestPass("TEST")), { outing_id: "o1", participant_id: "g1", guest_token: "token" });
-  saved.set("thouq.guest.BAD1", "{not json");
-  saved.set("thouq.guest.BAD2", JSON.stringify({ outing_id: "o1" }));
-  assert.equal(await store.loadGuestPass("BAD1"), null);
-  assert.equal(await store.loadGuestPass("BAD2"), null);
+  assert.equal(await store.loadGuestPass("o1"), null);
+  await store.saveGuestPass({ outing_id: "o1", participant_id: "g1", guest_token: "token", status: "invite" });
+  assert.deepEqual(JSON.parse(saved.get("thouq.guest.o1")), { outing_id: "o1", participant_id: "g1", guest_token: "token" });
+  assert.deepEqual(plain(await store.loadGuestPass("o1")), { outing_id: "o1", participant_id: "g1", guest_token: "token" });
+  assert.equal(await store.loadGuestPass("o2"), null);
+  saved.set("thouq.guest.bad1", "{not json");
+  saved.set("thouq.guest.bad2", JSON.stringify({ outing_id: "bad2" }));
+  assert.equal(await store.loadGuestPass("bad1"), null);
+  assert.equal(await store.loadGuestPass("bad2"), null);
+});
+
+test("an outing's token is the guest pass for it first, then the member's login", async () => {
+  const access = (pass, session) => load("features/sessions/access.ts", {
+    "@/features/auth": { loadSession: async () => session },
+    "./guestPass": { loadGuestPass: async () => pass },
+  });
+  assert.equal(await access({ guest_token: "guest" }, { token: "member" }).outingToken("o1"), "guest");
+  assert.equal(await access(null, { token: "member" }).outingToken("o1"), "member");
+  assert.equal(await access(null, null).outingToken("o1"), null);
 });

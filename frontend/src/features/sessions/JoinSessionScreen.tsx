@@ -52,8 +52,7 @@ export function JoinSessionScreen() {
       const found = await lookupInvite(code);
       const signedIn = await loadSession();
       // A guest who joined this same outing before comes back instead of joining twice.
-      const savedPass = signedIn === null ? await loadGuestPass(code) : null;
-      const returning = savedPass !== null && savedPass.outing_id === found.outing_id;
+      const returning = signedIn === null && (await loadGuestPass(found.outing_id)) !== null;
       // The server decides who can join; members and returning guests may already be inside.
       if (signedIn === null && !returning && !found.can_join) {
         setError(found.join_blocked_reason === "OUTING_FULL" ? FULL_MESSAGE : CLOSED_MESSAGE);
@@ -84,7 +83,7 @@ export function JoinSessionScreen() {
         await joinOuting(code, account.token);
       } else {
         const pass = await joinOutingAsGuest(code, name);
-        await saveGuestPass(code, pass);
+        await saveGuestPass(pass);
       }
       setJoined(true);
     } catch (e) {
