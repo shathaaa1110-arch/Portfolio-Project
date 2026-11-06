@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,7 +29,6 @@ export function JoinSessionScreen() {
   const [account, setAccount] = useState<AuthSession | null>(null);
   const [guestName, setGuestName] = useState("");
   const [nameError, setNameError] = useState("");
-  const [joined, setJoined] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -51,16 +50,17 @@ export function JoinSessionScreen() {
     try {
       const found = await lookupInvite(code);
       const signedIn = await loadSession();
-      // A guest who joined this same outing before comes back instead of joining twice.
-      const savedPass = signedIn === null ? await loadGuestPass(code) : null;
-      const returning = savedPass !== null && savedPass.outing_id === found.outing_id;
-      // The server decides who can join; members and returning guests may already be inside.
-      if (signedIn === null && !returning && !found.can_join) {
+      // A guest who joined this same outing before goes straight back to its waiting room.
+      if (signedIn === null && (await loadGuestPass(found.outing_id)) !== null) {
+        openLobby(found.outing_id);
+        return;
+      }
+      // The server decides who can join; a member may already be inside a full or closed session.
+      if (signedIn === null && !found.can_join) {
         setError(found.join_blocked_reason === "OUTING_FULL" ? FULL_MESSAGE : CLOSED_MESSAGE);
       } else {
         setAccount(signedIn);
         setPreview(found);
-        setJoined(returning);
       }
     } catch (e) {
       setError(lookupErrorMessage(e));
@@ -81,12 +81,13 @@ export function JoinSessionScreen() {
     setError("");
     try {
       if (account !== null) {
-        await joinOuting(code, account.token);
+        const joined = await joinOuting(code, account.token);
+        openLobby(joined.outing_id);
       } else {
         const pass = await joinOutingAsGuest(code, name);
-        await saveGuestPass(code, pass);
+        await saveGuestPass(pass);
+        openLobby(pass.outing_id);
       }
-      setJoined(true);
     } catch (e) {
       if (isSessionEnded(e)) {
         // The account sign-in ended, so continue as a guest instead.
@@ -143,9 +144,6 @@ export function JoinSessionScreen() {
               onPress={handleLookup}
             />
           </>
-        ) : joined ? (
-          // FE-10 replaces this with the waiting room.
-          <AppText style={styles.success}>تم انضمامك إلى «{preview.name}».</AppText>
         ) : (
           <>
             <View style={styles.card}>
@@ -187,6 +185,11 @@ export function JoinSessionScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+// Joining is done, so the waiting room takes over; going back should not return to this form.
+function openLobby(outingId: string) {
+  router.replace({ pathname: "/lobby", params: { id: outingId } });
 }
 
 // Keep Latin capitals and digits only, so the code matches the server.
@@ -248,11 +251,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: theme.typography.fontFamilyBold,
     fontSize: theme.typography.sessionTitleSize,
-  },
-  success: {
-    fontFamily: theme.typography.fontFamilyBold,
-    fontSize: theme.typography.sectionTitleSize,
-    color: theme.colors.primary,
   },
   // Tall enough to tap easily, like the text link on the login screen.
   link: {
