@@ -6,3 +6,6 @@ export { outingToken } from "./access";
 
 // Join-by-code screen.
 export { JoinSessionScreen } from "./JoinSessionScreen";
+
+// The waiting room after joining.
+export { LobbyScreen } from "./LobbyScreen";

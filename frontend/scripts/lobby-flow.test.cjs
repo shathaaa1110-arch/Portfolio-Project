@@ -239,3 +239,125 @@ test("the invite card shares the code, and hides sharing once joining has closed
   assert(texts(root).includes("رمز الجلسة · الانضمام مغلق"));
   assert.equal(root.findAllByType("Pressable").length, 0);
 });
+
+test("refresh asks right away, and asks again right after a request that was already running", async () => {
+  const slow = deferred();
+  const { clock, calls, view, open } = polling({ reply: n => (n === 2 ? slow.promise : { name: `poll ${n}` }) });
+  await open();
+  await act(async () => view.refresh()); await clock.advance(0);
+  assert.equal(calls.load, 2);
+  await act(async () => view.refresh());
+  slow.resolve({ name: "poll 2" }); await settle();
+  await clock.advance(0);
+  assert.equal(calls.load, 3); assert.equal(view.state.name, "poll 3"); assert.equal(clock.pending(), 1);
+});
+
+// The waiting room screen with fake polling, router and server; set `room` and update to show a new poll.
+function lobbyScreen({ params = { id: "o1" }, start } = {}) {
+  const room = { state: null, error: null };
+  const calls = { push: [], replace: [], start: [], refresh: 0 };
+  const Screen = load("features/sessions/LobbyScreen.tsx", {
+    "expo-router": {
+      useLocalSearchParams: () => params,
+      router: { push: href => calls.push.push(href), replace: href => calls.replace.push(href) },
+    },
+    "react-native": { ...native, Share: { share: async () => {} } },
+    "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
+    "@/shared/components": shared,
+    "@/shared/theme": theme,
+    "./access": { outingToken: async () => "T" },
+    "./api/state": { startPreferences: async (...args) => { calls.start.push(args); return start ? start() : { status: "preferences" }; } },
+    "./components/InviteCard": { InviteCard: component("InviteCard", { Share: { share: async () => {} } }) },
+    "./components/ParticipantRow": { ParticipantRow: component("ParticipantRow") },
+    "./components/StageIndicator": { StageIndicator: component("StageIndicator") },
+    "./useSessionState": { useSessionState: () => ({ ...room, refresh: () => { calls.refresh++; } }) },
+  }).LobbyScreen;
+  return { Screen, room, calls };
+}
+const roomState = (status, organizer, meDone = false) => ({
+  ...state,
+  status,
+  me: { participant_id: "p1", is_organizer: organizer },
+  actions: organizer && status === "invite" ? ["start_preferences"] : [],
+  readiness: { ready_count: meDone ? 1 : 0, total_count: 2 },
+  participants: [
+    { participant_id: "p1", name: "سارة", attendance: "confirmed", preferences_done: meDone, is_organizer: organizer },
+    { participant_id: "p2", name: "خالد", attendance: "confirmed", preferences_done: false, is_organizer: !organizer },
+  ],
+});
+const button = (root, title) => root.findAllByType("AppButton").find(node => node.props.title === title);
+
+test("the organizer sees the room and starts preferences, and the next poll is asked at once", async () => {
+  const lobby = lobbyScreen();
+  lobby.room.state = roomState("invite", true);
+  const { root } = await render(lobby.Screen);
+  const shown = texts(root);
+  assert(shown.includes("عشاء الخميس")); assert(shown.includes("TEST")); assert(shown.includes("المشاركون ٢ / ٨"));
+  assert(shown.includes("أنت")); assert(!shown.some(text => text.includes("جاهزون")));
+  await act(async () => button(root, "ابدأ التفضيلات").props.onPress());
+  assert.deepEqual(plain(lobby.calls.start[0]), ["o1", "T"]);
+  assert.equal(lobby.calls.refresh, 1);
+});
+
+test("a participant waits for the organizer and has no start button", async () => {
+  const lobby = lobbyScreen();
+  lobby.room.state = roomState("invite", false);
+  const { root } = await render(lobby.Screen);
+  assert.equal(button(root, "ابدأ التفضيلات"), undefined);
+  assert(texts(root).includes("ننتظر المنظّم يبدأ مرحلة التفضيلات."));
+});
+
+test("when preferences start, each person goes to their form once, and not when already done", async () => {
+  const lobby = lobbyScreen();
+  lobby.room.state = roomState("invite", false);
+  const screen = await render(lobby.Screen);
+  assert.equal(lobby.calls.push.length, 0);
+  lobby.room.state = roomState("preferences", false);
+  await screen.update({});
+  lobby.room.state = roomState("preferences", false);
+  await screen.update({});
+  assert.deepEqual(lobby.calls.push, ["/session-preferences?id=o1"]);
+  assert(texts(screen.root).includes("٠ جاهزون"));
+  await act(async () => button(screen.root, "تفضيلاتي لهذه الجلسة").props.onPress());
+  assert.equal(lobby.calls.push.length, 2);
+
+  const done = lobbyScreen();
+  done.room.state = roomState("preferences", false, true);
+  await render(done.Screen);
+  assert.equal(done.calls.push.length, 0);
+
+  // Opening the room after preferences started, with yours still to fill, sends you once.
+  const late = lobbyScreen();
+  late.room.state = roomState("preferences", false);
+  const opened = await render(late.Screen);
+  await opened.update({});
+  assert.deepEqual(late.calls.push, ["/session-preferences?id=o1"]);
+});
+
+test("no access sends you to join; a missing id and an ended outing each read clearly", async () => {
+  let lobby = lobbyScreen();
+  lobby.room.error = new errors.ApiError(403, "NOT_A_PARTICIPANT", "");
+  let { root } = await render(lobby.Screen);
+  assert(texts(root).includes("ما عندك وصول لهذه الجلسة. انضم برمز الدعوة."));
+  await act(async () => button(root, "الانضمام برمز").props.onPress());
+  assert.deepEqual(lobby.calls.replace, ["/join"]);
+
+  lobby = lobbyScreen({ params: {} });
+  ({ root } = await render(lobby.Screen));
+  assert(texts(root).includes("ما وصلنا رقم الجلسة."));
+
+  lobby = lobbyScreen();
+  lobby.room.error = new errors.ApiError(404, "OUTING_NOT_FOUND", "");
+  ({ root } = await render(lobby.Screen));
+  await act(async () => button(root, "الرجوع للرئيسية").props.onPress());
+  assert.deepEqual(lobby.calls.replace, ["/"]);
+});
+
+test("a failed start keeps the room and says so", async () => {
+  const lobby = lobbyScreen({ start: () => { throw new errors.ApiError(0, "NETWORK_ERROR", ""); } });
+  lobby.room.state = roomState("invite", true);
+  const { root } = await render(lobby.Screen);
+  await act(async () => button(root, "ابدأ التفضيلات").props.onPress());
+  assert(texts(root).includes("تعذّر بدء التفضيلات. حاول مرة ثانية."));
+  assert.equal(lobby.calls.refresh, 0);
+});

@@ -22,6 +22,7 @@ export function useSessionState(outingId: string) {
     useCallback(() => {
       let focused = true;
       let busy = false;
+      let askAgain = false;
       let timer: ReturnType<typeof setTimeout> | undefined;
       let token: string | null = null;
 
@@ -65,11 +66,22 @@ export function useSessionState(outingId: string) {
           busy = false;
         }
         if (!final) {
-          schedule(POLL_MS);
+          // Someone asked for news while this request was running, so ask again at once.
+          schedule(askAgain ? 0 : POLL_MS);
         }
+        askAgain = false;
       }
 
-      pollNow.current = () => schedule(0);
+      // Ask now instead of waiting for the planned request; if one is running, ask right after it.
+      pollNow.current = () => {
+        if (busy) {
+          askAgain = true;
+          return;
+        }
+        clearTimeout(timer);
+        timer = undefined;
+        schedule(0);
+      };
       const appState = AppState.addEventListener("change", (status) => {
         if (status === "active") {
           schedule(0);
