@@ -2,12 +2,12 @@
 
 [Arabic architecture and learning guide](../Docs/Frontend-Architecture.ar.md)
 
-## Current implementation — 2 November 2026
+## Current implementation — 6 November 2026
 
 Home is public and includes the approved hero, greeting/location, search,
-Today's suggestion, and restaurant cards. Outing planning is marked Coming soon.
+Today's suggestion, and restaurant cards. Create session opens the selected watercolor/paper design and the backend-supported invitation → per-person preferences/readiness → suggestions flow.
 Saved uses Fahad's `savedRestaurants` feature. The current Account composition
-shows the session, preferences, and sign-out; it is not the unmerged account PR.
+shows the account, preferences, and sign-out.
 
 Home requests one page of 20 restaurants with `limit/offset`, without a token.
 Next/Previous sit at the list footer; pull-to-refresh reloads the current page.
@@ -42,6 +42,20 @@ Initial load failures offer retry/browse rather than an empty replacement form.
 The deployed OpenAPI checked on 2 November does not yet expose preferences,
 recommendations, or districts. See the
 [Arabic delivery checklist and backend dependencies](../Docs/Frontend-Delivery-2026-11-02.ar.md).
+
+### Direct sessions
+
+The organizer supplies a name, Riyadh date/time and a district ID. The current
+backend uses the district center, not a midpoint of participants' locations.
+No GPS is requested in this flow. Sign-in retains the creation draft in memory;
+new accounts still complete onboarding before returning.
+
+Invite/join, a five-second focused state refresh, full outing preference saves,
+explicit Ready and organizer-triggered suggestions use existing backend routes.
+Account defaults remain unchanged. There is no voting/final-winner implementation.
+The shared paper, watercolor hero, typography and proposed Haila character keep
+invite, join, readiness and suggestions consistent with the create screen.
+See the [Arabic walkthrough and exact file ownership](../Docs/Session-Flow.ar.md).
 
 ## Install and run
 
@@ -96,6 +110,10 @@ Paths below are relative to `frontend`.
 | `src/app/(tabs)/account.tsx` | Opens the My account screen |
 | `src/app/sign-up.tsx` | Opens the sign-up screen |
 | `src/app/preferences.tsx` | Opens account preferences |
+| `src/app/sessions/new.tsx` | Opens session creation |
+| `src/app/sessions/[id].tsx` | Opens invitation, readiness or suggestions based on server state |
+| `src/app/join/[code].tsx` | Supports backend invite links ending in /join/CODE |
+| `src/features/sessions` | Session screens, editors, shared visuals, identity, API wrappers and explicit mocks |
 | `src/application/ApplicationRoot.tsx` | Loads fonts and composes the root navigation |
 | `src/application/MainTabs.tsx` | Defines the three bottom tabs |
 | `src/application/HomePage.tsx` | Composes Home, search, location, recommendations, and paginated list |
@@ -163,9 +181,9 @@ npm run check
 git diff --check
 ```
 
-`npm run check` runs TypeScript, architecture boundary checks and 49 tests:
-7 architecture, 10 restaurant/API/presentation, 18 preference, and 14 discovery
-and recommendation tests. Component tests use real React state/effects with
+`npm run check` runs TypeScript, architecture boundary checks and 71 tests:
+7 architecture, 10 restaurant/API/presentation, 18 preference, 14 discovery
+and recommendation, and 22 session/join tests. Component tests use real React state/effects with
 stubbed services. The test renderer emits a deprecation notice; it is a dev-only dependency.
 
 ### Web review — 24 October 2026
@@ -256,6 +274,19 @@ After reconciling the account PR with deployment, `npm run check` passed
 (TypeScript, architecture boundaries and 49 tests), and the four account tests
 passed separately. Documentation keeps the current Home and preferences flow
 and describes AccountScreen. This check did not repeat device or live API tests.
+
+### Session flow verification — 6 November 2026
+
+Session tests cover creation validation/deduplication, sign-in return, role and
+readiness gates, full preference replacement, account isolation, guest bearer
+tokens, blocked-storage recovery, and locks after suggestion generation. Local
+web QA exercised edits, the sign-in round trip, invitation, all six preference
+steps, Ready, and suggestions with explicit mock data; no SMS or live writes.
+See `../design-qa.md` for visual evidence and viewport checks.
+
+Mock-created sessions live in memory; a reload clears them. Create a new session
+for full-flow preview. The older TEST/MAXX/SHUT fixtures cover join preview only.
+Production export is a build check, not proof that the live API supports the flow.
 
 ### Remaining integration and device checks
 

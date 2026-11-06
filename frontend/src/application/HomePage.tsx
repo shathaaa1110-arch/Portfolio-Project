@@ -33,7 +33,7 @@ export function HomePage() {
   }
 
   const header = <View style={styles.header}>
-    <HomeIntro onFindRestaurant={() => setBrowseRequest(value => value + 1)} />
+    <HomeIntro onFindRestaurant={() => setBrowseRequest(value => value + 1)} onCreateSession={() => router.push("/sessions/new")} />
 
     {RESTAURANT_SEARCH_ENABLED && <View style={styles.searchGroup}>
       <View style={styles.searchField}>

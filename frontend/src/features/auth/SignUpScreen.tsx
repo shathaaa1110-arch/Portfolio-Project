@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,6 +14,7 @@ import { goBack, goToVerify } from "./navigation";
 const PHONE_PATTERN = /^[0٠][5٥][0-9٠-٩]{8}$/;
 
 export function SignUpScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [nameError, setNameError] = useState("");
@@ -37,11 +38,11 @@ export function SignUpScreen() {
     setError("");
     try {
       const response = await requestCode(cleanPhone);
-      goToVerify({ phone: cleanPhone, codeLength: response.code_length, name: cleanName });
+      goToVerify({ phone: cleanPhone, codeLength: response.code_length, name: cleanName, returnTo });
     } catch (e) {
       if (e instanceof ApiError && e.code === "RATE_LIMITED") {
         // A code was sent less than a minute ago and still works: continue to the code screen
-        goToVerify({ phone: cleanPhone, codeLength: 6, waitSeconds: e.retryAfterSeconds, name: cleanName });
+        goToVerify({ phone: cleanPhone, codeLength: 6, waitSeconds: e.retryAfterSeconds, name: cleanName, returnTo });
       } else {
         // The typed values stay in the fields so the user can press the button again
         setError(errorMessage(e));
@@ -96,7 +97,7 @@ export function SignUpScreen() {
           onPress={handleSubmit}
         />
 
-        <Pressable style={styles.link} onPress={() => router.replace("/login")}>
+        <Pressable style={styles.link} onPress={() => router.replace({ pathname: "/login", params: { returnTo } })}>
           <AppText style={styles.linkText}>عندك حساب؟ تسجيل الدخول</AppText>
         </Pressable>
 

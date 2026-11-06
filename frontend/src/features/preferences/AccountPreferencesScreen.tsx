@@ -14,7 +14,8 @@ import { PreferencesForm } from "./PreferencesForm";
 import { preferencesErrorMessage } from "./errors";
 
 export function AccountPreferencesScreen() {
-  const { onboarding } = useLocalSearchParams<{ onboarding?: string }>();
+  const { onboarding, returnTo } = useLocalSearchParams<{ onboarding?: string; returnTo?: string }>();
+  const destination = returnTo === "/sessions/new" ? "/sessions/new" : "/";
   const [initialValue, setInitialValue] = useState<PreferencesDraft | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -47,7 +48,7 @@ export function AccountPreferencesScreen() {
         const response = await getAccountPreferences(session.token);
         if (!active) return;
         if (onboarding === "1" && response.is_saved) {
-          router.replace("/");
+          router.replace(destination);
           return;
         }
         loadedToken.current = session.token;
@@ -62,7 +63,7 @@ export function AccountPreferencesScreen() {
     }
     void load();
     return () => { active = false; };
-  }, [attempt, onboarding]);
+  }, [attempt, onboarding, destination]);
 
   async function save(value: PreferencesDraft) {
     // Block duplicate taps before React updates the screen.
@@ -82,7 +83,7 @@ export function AccountPreferencesScreen() {
       if (!await markPreferencesSaved(session.token)) {
         throw new ApiError(401, "INVALID_TOKEN", "Session changed");
       }
-      if (mounted.current) router.replace("/");
+      if (mounted.current) router.replace(destination);
     } catch (error) {
       if (!mounted.current) return;
       setSaveError(preferencesErrorMessage(error));
