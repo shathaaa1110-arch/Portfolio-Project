@@ -48,7 +48,7 @@
     "test:restaurants-api": "node --test scripts/restaurants-api.test.cjs",
     "test:preferences": "node --test scripts/preferences.test.cjs scripts/preferences-flow.test.cjs",
     "test:discovery": "node --test scripts/home-recommendations.test.cjs scripts/discovery-flow.test.cjs",
-    "test:sessions": "node --test scripts/join-flow.test.cjs scripts/lobby-flow.test.cjs",    "check": "npm run typecheck && npm run check:architecture && npm run test:architecture && npm run test:restaurants-api && npm run test:preferences && npm run test:discovery && npm run test:sessions"
-  },
+    "test:sessions": "node --test scripts/join-flow.test.cjs scripts/lobby-flow.test.cjs",
+    "check": "npm run typecheck && npm run check:architecture && npm run test:architecture && npm run test:restaurants-api && npm run test:preferences && npm run test:discovery && npm run test:sessions"  },
   "private": true
 }

@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { load, plain } = require("./helpers/render-feature.cjs");
+const React = require("react");
+const { load, render, act, deferred, plain } = require("./helpers/render-feature.cjs");
 
 const errors = load("shared/api/errors.ts");
 const state = {
@@ -59,4 +60,138 @@ test("mock TEST: someone arrives on the 3rd poll and the organizer starts on the
   assert.deepEqual(plain(polls[0].actions), []);
   await assert.rejects(call("POST", "/outings/mock-outing-TEST/start-preferences"), { status: 403, code: "ORGANIZER_ONLY" });
   await assert.rejects(call("GET", "/outings/mock-outing-TEST", ""), { status: 401, code: "INVALID_TOKEN" });
+});
+
+// A clock the test moves by hand, so polling runs without waiting.
+function fakeClock() {
+  let now = 0;
+  let lastId = 0;
+  const timers = new Map();
+  return {
+    setTimeout: (run, ms) => { timers.set(++lastId, { run, at: now + ms }); return lastId; },
+    clearTimeout: id => { timers.delete(id); },
+    pending: () => timers.size,
+    async advance(ms) {
+      now += ms;
+      for (const [id, timer] of [...timers]) {
+        if (timer.at <= now && timers.delete(id)) timer.run();
+      }
+      await settle();
+    },
+  };
+}
+const settle = () => act(async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); });
+
+// The app moving between front and background.
+function fakeAppState() {
+  const listeners = new Set();
+  return {
+    currentState: "active",
+    addEventListener: (_event, listener) => { listeners.add(listener); return { remove: () => listeners.delete(listener) }; },
+    set(status) { this.currentState = status; listeners.forEach(listener => listener(status)); },
+    listeners: () => listeners.size,
+  };
+}
+
+// Screen focus the test controls; losing focus keeps the screen mounted, like a stack navigator.
+function fakeFocus() {
+  const listeners = new Set();
+  const focus = { focused: true, set(value) { focus.focused = value; listeners.forEach(listener => listener()); } };
+  function useFocusEffect(effect) {
+    const [focused, setFocused] = React.useState(focus.focused);
+    React.useEffect(() => {
+      const listener = () => setFocused(focus.focused);
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    }, []);
+    React.useEffect(() => (focused ? effect() : undefined), [effect, focused]);
+  }
+  return { focus, useFocusEffect };
+}
+
+// The hook with a fake clock, app state, focus, token and server.
+function polling({ token = "T", reply } = {}) {
+  const clock = fakeClock();
+  const app = fakeAppState();
+  const { focus, useFocusEffect } = fakeFocus();
+  const calls = { load: 0 };
+  const hook = load("features/sessions/useSessionState.ts", {
+    "expo-router": { useFocusEffect },
+    "react-native": { AppState: app },
+    "@/shared/api/errors": errors,
+    "./access": { outingToken: async () => token },
+    "./api/state": {
+      loadOutingState: async () => { calls.load++; return reply ? reply(calls.load) : { name: `poll ${calls.load}` }; },
+    },
+  }, { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout });
+  const view = {};
+  function Screen() { Object.assign(view, hook.useSessionState("o1")); return null; }
+  // Opening the screen plans the first request at once; advance(0) lets it run.
+  const open = async () => { const screen = await render(Screen); await clock.advance(0); return screen; };
+  const blur = () => act(async () => focus.set(false));
+  const refocus = async () => { await act(async () => focus.set(true)); await clock.advance(0); };
+  return { clock, app, calls, view, open, blur, refocus };
+}
+
+test("polls at once and then every 4 seconds, with one timer", async () => {
+  const { clock, calls, view, open } = polling();
+  await open();
+  assert.equal(calls.load, 1); assert.equal(view.state.name, "poll 1"); assert.equal(clock.pending(), 1);
+  await clock.advance(3999); assert.equal(calls.load, 1);
+  await clock.advance(1); assert.equal(calls.load, 2); assert.equal(view.state.name, "poll 2"); assert.equal(clock.pending(), 1);
+});
+
+test("leaving stops polling, and coming back again and again never doubles it", async () => {
+  const { clock, app, calls, open, blur, refocus } = polling();
+  const screen = await open();
+  for (let visit = 0; visit < 3; visit++) {
+    await blur();
+    assert.equal(clock.pending(), 0); assert.equal(app.listeners(), 0);
+    await clock.advance(20000);
+    await refocus();
+  }
+  assert.equal(calls.load, 4);
+  await clock.advance(4000); await clock.advance(4000);
+  assert.equal(calls.load, 6); assert.equal(clock.pending(), 1);
+  await screen.close();
+  assert.equal(clock.pending(), 0); assert.equal(app.listeners(), 0);
+});
+
+test("a request still running when the screen loses focus changes nothing after it", async () => {
+  const slow = deferred();
+  const { clock, calls, view, open, blur } = polling({ reply: () => slow.promise });
+  await open();
+  await blur();
+  slow.resolve({ name: "late" }); await settle();
+  assert.equal(calls.load, 1); assert.equal(clock.pending(), 0); assert.equal(view.state, null);
+});
+
+test("the background pauses polling, and coming back asks at once, once", async () => {
+  const { clock, app, calls, open } = polling();
+  await open();
+  app.set("background");
+  await clock.advance(4000); assert.equal(calls.load, 1); assert.equal(clock.pending(), 0);
+  app.set("active"); app.set("active");
+  assert.equal(clock.pending(), 1);
+  await clock.advance(0); assert.equal(calls.load, 2);
+});
+
+test("passing failures keep the last state; final ones stop until refresh", async () => {
+  const fail = code => { throw new errors.ApiError(code === "NETWORK_ERROR" ? 0 : 403, code, ""); };
+  const { clock, calls, view, open } = polling({
+    reply: n => (n === 2 ? fail("NETWORK_ERROR") : n === 4 ? fail("NOT_A_PARTICIPANT") : { name: `poll ${n}` }),
+  });
+  await open();
+  await clock.advance(4000);
+  assert.equal(view.state.name, "poll 1"); assert.equal(view.error.code, "NETWORK_ERROR"); assert.equal(clock.pending(), 1);
+  await clock.advance(4000); assert.equal(view.error, null); assert.equal(view.state.name, "poll 3");
+  await clock.advance(4000); assert.equal(view.error.code, "NOT_A_PARTICIPANT"); assert.equal(clock.pending(), 0);
+  await clock.advance(20000); assert.equal(calls.load, 4);
+  await act(async () => view.refresh()); await clock.advance(0); assert.equal(calls.load, 5);
+});
+
+test("without a pass for the outing it reports NO_ACCESS and asks nothing", async () => {
+  const { clock, calls, view, open } = polling({ token: null });
+  await open();
+  assert.equal(view.error.code, "NO_ACCESS"); assert.equal(calls.load, 0); assert.equal(clock.pending(), 0);
 });
