@@ -195,3 +195,47 @@ test("without a pass for the outing it reports NO_ACCESS and asks nothing", asyn
   await open();
   assert.equal(view.error.code, "NO_ACCESS"); assert.equal(calls.load, 0); assert.equal(clock.pending(), 0);
 });
+
+// The waiting room's components, with the app's real theme and fake native views.
+const { native, shared } = require("./helpers/render-feature.cjs");
+const theme = load("shared/theme.ts");
+const texts = root => root.findAllByType("AppText").map(node => [].concat(node.props.children).join(""));
+function component(name, nativeExtras = {}) {
+  return load(`features/sessions/components/${name}.tsx`, {
+    "react-native": { ...native, ...nativeExtras },
+    "@/shared/components": shared,
+    "@/shared/theme": theme,
+  })[name];
+}
+
+test("a participant row shows you, the organizer badge, and readiness only once preferences started", async () => {
+  const ParticipantRow = component("ParticipantRow");
+  const sara = { participant_id: "p1", name: "سارة", attendance: "confirmed", preferences_done: true, is_organizer: true };
+  let { root } = await render(ParticipantRow, { person: sara, isMe: true, showReadiness: false });
+  assert.deepEqual(texts(root), ["س", "أنت", "المنظّم"]);
+  ({ root } = await render(ParticipantRow, { person: { ...sara, name: null, is_organizer: false, preferences_done: false }, isMe: false, showReadiness: true }));
+  assert.deepEqual(texts(root), ["م", "مشارك", "يجهّز تفضيلاته"]);
+  ({ root } = await render(ParticipantRow, { person: sara, isMe: false, showReadiness: true }));
+  assert(texts(root).includes("✓ جاهز"));
+});
+
+test("the stage indicator fills every step up to the current one; a tiebreak is still voting", async () => {
+  const StageIndicator = component("StageIndicator");
+  const filled = root => root.findAll(node => node.type === "View" && Array.isArray(node.props.style) && node.props.style[1]).length;
+  for (const [status, steps] of [["invite", 1], ["preferences", 2], ["tiebreak", 3], ["result", 4]]) {
+    const { root } = await render(StageIndicator, { status });
+    assert.equal(filled(root), steps, status);
+  }
+});
+
+test("the invite card shares the code, and hides sharing once joining has closed", async () => {
+  const sent = [];
+  const InviteCard = component("InviteCard", { Share: { share: async content => { sent.push(content.message); } } });
+  let { root } = await render(InviteCard, { code: "7K3M", closed: false });
+  assert(texts(root).includes("7K3M"));
+  await act(async () => root.findByType("Pressable").props.onPress());
+  assert.match(sent[0], /7K3M/);
+  ({ root } = await render(InviteCard, { code: "7K3M", closed: true }));
+  assert(texts(root).includes("رمز الجلسة · الانضمام مغلق"));
+  assert.equal(root.findAllByType("Pressable").length, 0);
+});
