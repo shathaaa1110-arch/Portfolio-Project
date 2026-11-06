@@ -7,6 +7,23 @@ Portfolio Project · Stage 3
 | Project | Thouq (ذوق), a group dining planner |
 | Team | Shatha Alanzi, Asim Alhubaishi, Hassan Alhuzali, Fahad Almidaj |
 
+## Implemented session frontend — 6 November 2026
+
+The frontend now follows the existing session backend: create → invite/join →
+organizer opens preferences → each participant saves their complete outing copy
+and confirms Ready → organizer requests suggestions → everyone reads the plan.
+The endpoint is named `start-voting`, but this frontend only displays suggestions:
+the voting router in this revision has no voting/final-result implementation.
+The existing engine uses the selected district center, not a participant midpoint.
+Allergies remain a warning and seating requirements are stored, not applied as a
+restaurant filter. No SQL/ERD or backend contract changes are included.
+
+The selected create-screen design is implemented with consistent invitation,
+join, readiness and result screens and a proposed Haila cardamom companion.
+See [the Arabic flow, API mapping, source files and validation limits](Session-Flow.ar.md).
+Later diagrams below describe the broader product contract, including planned
+voting behavior; they do not establish that every feature is currently implemented.
+
 ## Contents
 
 0. [User stories and mockups](#0-user-stories-and-mockups)

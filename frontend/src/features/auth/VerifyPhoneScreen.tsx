@@ -20,7 +20,7 @@ const LOCK_CIRCLE_SIZE = 68; // From the UX-01 design
 const LOCK_ICON_SIZE = 30; // From the UX-01 design
 
 export function VerifyPhoneScreen() {
-  const params = useLocalSearchParams<{ phone: string; name?: string; codeLength?: string; wait?: string }>();
+  const params = useLocalSearchParams<{ phone: string; name?: string; codeLength?: string; wait?: string; returnTo?: string }>();
   const phone = params.phone ?? "";
   const codeLength = Number(params.codeLength) || 6;
 
@@ -46,7 +46,7 @@ export function VerifyPhoneScreen() {
     try {
       const response = await verifyCode(phone, code, name.trim() || undefined);
       await saveSession(sessionFromVerify(response));
-      goToApp(response.user.has_saved_preferences);
+      goToApp(response.user.has_saved_preferences, params.returnTo);
     } catch (e) {
       if (e instanceof ApiError && e.code === "NAME_REQUIRED") {
         // A new phone came from the login screen: ask for the name, the same code still works
