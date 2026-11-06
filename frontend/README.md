@@ -233,9 +233,11 @@ this copy. The mock verification code is `123456`. Mock preferences are for
 one account and live in memory; reload clears them. Home uses three explicit
 mock restaurant fixtures. The real app keeps `EXPO_PUBLIC_USE_MOCK=false`.
 
-Join-by-code test codes: `TEST` opens a session, `MAXX` is full, `SHUT` is
-closed, and any other code is invalid. A guest who joined is remembered per
-code, so use a private window to join again as a new guest.
+Join-by-code test codes: `TEST` opens a session, `CHEF` opens one where you
+are the organizer, `MAXX` is full, `SHUT` is closed, and any other code is
+invalid. A guest who joined is remembered per outing, so use a private window
+to join again as a new guest. In the lobby someone new arrives on the third
+poll, and in `TEST` the organizer starts preferences on the sixth.
 The mock account keeps its name and phone after reload because its token carries
 them. An unknown or older mock token requires signing in again. This does not
 make mock preferences persistent; those still live in memory. No real SMS is
