@@ -19,7 +19,7 @@ from app.core.errors import ApiError
 from app.services.auth.models import User
 from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
 from app.services.outings.models import PREFERENCES, Outing, Participant
-from app.services.outings.stages import move, organizer_actions
+from app.services.outings.stages import move, organizer_actions, readiness
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["outings"])
@@ -56,6 +56,7 @@ def outing_state(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
     try:
         outing, me = participant_of(db, outing_id, caller)
         people = _participants(db, outing)
+        ready, total = readiness(db, outing.id)
     except SQLAlchemyError:
         logger.exception("outing state failed")
         raise _unavailable()
@@ -70,7 +71,8 @@ def outing_state(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
         "invite_code": outing.invite_code,
         "tiebreak_ends_at": outing.tiebreak_ends_at,
         "me": {"participant_id": str(me.id), "is_organizer": organizer},
-        "actions": organizer_actions(outing.status) if organizer else [],
+        "actions": organizer_actions(outing.status, total > 0 and ready == total) if organizer else [],
+        "readiness": {"ready_count": ready, "total_count": total},
         "participants": people,
     }
 

@@ -1386,7 +1386,7 @@ Response `200`
 | 13 | GET | `/outings/{outing_id}` | 10, 20 |
 | 14 | POST | `/outings/{outing_id}/attendance` | 19 |
 | 15 | POST | `/outings/{outing_id}/start-preferences` | 10 |
-| 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 |
+| 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 (generates the plan, D05) |
 | 17 | DELETE | `/outings/{outing_id}/participants/{participant_id}` | 24 |
 
 #### Create a one-off session
@@ -1396,7 +1396,7 @@ POST /outings/session
 ```
 Requires: Authorization
 
-Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant. The outing, its code and its organizer are saved in one transaction.
+Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant, with a copy of their saved preferences if they have any. The outing, its code and its organizer are saved in one transaction.
 
 Request
 ```json
@@ -1547,6 +1547,7 @@ Response `200`
   "tiebreak_ends_at": "timestamptz | null",
   "me": { "participant_id": "uuid", "is_organizer": true },
   "actions": ["start_preferences"],
+  "readiness": { "ready_count": 1, "total_count": 3 },
   "participants": [
     {
       "participant_id": "uuid",
@@ -1559,7 +1560,8 @@ Response `200`
 }
 ```
 - `me` is the caller's own participant, so the app can mark its row.
-- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage. It is empty for everyone else, and in stages whose organizer actions are not built yet.
+- `readiness` counts the confirmed participants who are ready, and all confirmed participants.
+- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage, and `start_voting` in the `preferences` stage once everyone confirmed is ready. It is empty for everyone else, and in stages whose organizer actions are not built yet.
 - `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.
 - A guest token is accepted for its own outing only, and stops working once the guest is removed.
 
@@ -1620,19 +1622,36 @@ Response `409`
 { "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing cannot move from the voting stage to the preferences stage." } }
 ```
 
-#### Start voting early
+#### Generate the plan and open voting
 
 ```http
 POST /outings/{outing_id}/start-voting
 ```
 Requires: Authorization, caller must be the organizer
 
-Generates the plan immediately, without waiting for every participant to mark their preferences ready. Participants who are not ready are excluded from the plan's calculation but can still vote once it exists. Moves `status` to `voting`.
+Generates the plan and moves `status` from `preferences` to `voting` (BE-17). Following release decision D05, it is accepted only when every confirmed participant is ready; marking ready never generates the plan by itself. Readiness and membership are checked under the outing's row lock, the same lock a join takes, so a person who joins at that moment is never left out. The plan items and the stage change are saved in one transaction, and voting closes joining and answers.
 
-Response `200`
+The engine (BE-14, BE-15) uses every confirmed participant's answers, the outing's district centre and its start time in Riyadh time. Restaurants whose opening days are not fully known are left out (D04). Up to 5 places are saved in `plan_items`, in rank order, with the Arabic reason.
+
+Asking again once voting is open returns the stored plan; nothing is generated twice.
+
+Response `200`: the plan, in the same shape as `GET /outings/{outing_id}/plan`, with `"status": "voting"`.
+
+Response `200`, no matching restaurant: nothing is saved, no limit is relaxed (D04), and the outing stays in `preferences`, so people can change their answers and the organizer can try again.
 ```json
-{ "outing_id": "uuid", "status": "voting" }
+{ "outing_id": "uuid", "status": "preferences", "allergy_warning": [], "plan_items": [],
+  "message": "No restaurant matches everyone's conditions. Change some answers and try again." }
 ```
+
+Response `403`: `ORGANIZER_ONLY`.
+
+Response `409`
+```json
+{ "error": { "code": "NOT_EVERYONE_READY", "message": "Wait until everyone is ready.", "ready_count": 2, "total_count": 3 } }
+```
+or `INVALID_STATUS_TRANSITION` before the preferences stage.
+
+One round per outing for now; separate rounds for a retry come with DB-07 (#14) and BE-31 (#90).
 
 #### Remove a participant from an outing
 
@@ -1652,6 +1671,7 @@ Response `200`
 | -- | ------ | ---- | ----- |
 | 18 | GET | `/users/me/preferences` | 3 |
 | 19 | PUT | `/users/me/preferences` | 3 |
+| 20a | GET | `/outings/{outing_id}/preferences` | 8, 9 |
 | 20 | PUT | `/outings/{outing_id}/preferences` | 8, 9 |
 | 21 | POST | `/outings/{outing_id}/preferences/ready` | 11 |
 
@@ -1660,7 +1680,7 @@ The server derives `user_id` from authentication and always filters by that ID;
 clients cannot choose an owner. `is_saved` derives from row existence, not a stored
 column. Legacy participant rows must never be selected as account defaults.
 See the [approved account contract](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/8).
-Outing endpoints below remain Sprint 2 work.
+The outing endpoints below (BE-13) find the caller's own participant row from the token, member or guest, so nobody can read or change another person's answers.
 
 #### Get saved preferences
 
@@ -1699,6 +1719,23 @@ Response `200`
 { "message": "preferences saved" }
 ```
 
+#### Read my preferences for one outing
+
+```http
+GET /outings/{outing_id}/preferences
+```
+Requires: Authorization (Bearer or guest)
+
+The caller's own copy for this outing, to fill the form. A member starts from a copy of their saved defaults, made when they join or, for the organizer, when the session is created. A guest starts with nothing saved.
+
+Response `200`: the same shape as `GET /users/me/preferences`, plus the caller's readiness.
+```json
+{ "is_saved": true, "liked_cuisines": ["levant"], "allergies": [], "budget_min": 30, "budget_max": 80,
+  "max_distance_km": 5, "seating_needs": null, "preferences_done": false }
+```
+
+Response `403`: `NOT_A_PARTICIPANT`. Response `404`: `OUTING_NOT_FOUND`.
+
 #### Edit preferences for one outing
 
 ```http
@@ -1706,14 +1743,18 @@ PUT /outings/{outing_id}/preferences
 ```
 Requires: Authorization (Bearer or guest)
 
-Edits the copy scoped to this outing only; the account's saved defaults are never touched. Rejected once the outing has moved past the preferences stage.
+Edits the copy scoped to this outing only; the account's saved defaults are never touched. Accepted in the `invite` and `preferences` stages, and rejected once the outing has moved past them. The first save creates the copy and later saves replace every field, so a field left out is saved as empty. Validation is the same as for the account.
+
+Saving clears the caller's readiness (`preferences_done = false`), so the plan is never built from answers the person has not confirmed. The request locks the outing's row like a join, so a save never slips in after voting has started.
 
 Request: same shape as above.
 
 Response `200`
 ```json
-{ "message": "outing preferences updated" }
+{ "message": "outing preferences updated", "preferences_done": false, "ready_count": 1, "total_count": 3 }
 ```
+
+Response `422`: `VALIDATION_ERROR` with the field names; nothing is saved.
 
 Response `409`
 ```json
@@ -1727,17 +1768,25 @@ POST /outings/{outing_id}/preferences/ready
 ```
 Requires: Authorization (Bearer or guest)
 
-Sets `preferences_done = true` for the caller's participant row. If every confirmed participant is now ready, this call triggers plan generation (`Outing.generatePlan()`) and moves the outing to `voting`.
+Sets `preferences_done = true` for the caller's participant row. Accepted only in the `preferences` stage, and only once the caller has a saved copy (an empty one counts). Asking again once ready answers `200` and changes nothing. `ready_count` and `total_count` count confirmed participants only; someone who declined does not hold the plan back.
+
+This call never generates the plan, even for the last person. `all_ready: true` tells the organizer that the plan can now be generated; the organizer then generates it (BE-17). This follows release decision D05: the last Ready does not start generation by itself.
 
 Response `200` — others still pending
 ```json
-{ "participant_id": "uuid", "preferences_done": true, "all_ready": false }
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": false, "outing_status": "preferences", "ready_count": 1, "total_count": 3 }
 ```
 
-Response `200` — last one, plan generated
+Response `200` — everyone is ready; the outing waits for the organizer
 ```json
-{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "voting" }
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "preferences", "ready_count": 3, "total_count": 3 }
 ```
+
+Response `409`
+```json
+{ "error": { "code": "PREFERENCES_REQUIRED", "message": "Save your preferences before marking them ready." } }
+```
+or `PREFERENCES_NOT_OPEN` (the organizer has not started the preferences stage), or `PREFERENCES_LOCKED` (voting has started).
 
 ### 4.7 Plan and Restaurants API
 
@@ -1746,7 +1795,7 @@ Response `200` — last one, plan generated
 | 22 | GET | `/outings/{outing_id}/plan` | 11 |
 | 23 | GET | `/restaurants/{restaurant_id}` | 21, 26 |
 | 24 | GET | `/restaurants` | 22 |
-| 25 | POST | `/recommendations/personal` | 23, 31 |
+| 25 | GET | `/users/me/recommendations` | 23, 31 |
 
 #### Get an outing's plan
 
@@ -1755,26 +1804,31 @@ GET /outings/{outing_id}/plan
 ```
 Requires: Authorization
 
-Returns the suggested restaurants in rank order, with the group's combined allergy warning (no names attached, as decided in Section 0).
+Returns the stored suggestions in rank order, the same for every participant, with the group's combined allergy warning (no names attached, as decided in Section 0). Accepts a login or a guest token.
 
 Response `200`
 ```json
 {
   "outing_id": "uuid",
+  "status": "voting",
   "allergy_warning": ["peanuts", "shellfish"],
   "plan_items": [
     {
       "plan_item_id": "uuid",
       "rank": 1,
       "match_score": 87,
-      "reason": "string",
+      "reason": "يناسب ذوقك، ضمن ميزانيتك ويبعد 1.9 كم",
       "restaurant": {
         "id": 101,
         "name_ar": "string",
+        "name_en": "string",
         "cuisines": ["italian"],
         "district": "string",
         "price_tier": 3,
         "rating": 4.6,
+        "spend_low": 40,
+        "spend_high": 90,
+        "maps_url": "string",
         "distance_km": 2.3
       }
     }
@@ -1782,6 +1836,8 @@ Response `200`
 }
 ```
 `distance_km` is computed at request time from the outing's `district` centre; it is not stored.
+
+Response `409`: `PLAN_NOT_READY` before the plan is generated. Response `403`: `NOT_A_PARTICIPANT`.
 
 #### Restaurant details
 
@@ -1854,25 +1910,28 @@ Response `503` — the restaurants table cannot be read
 #### Personal recommendation
 
 ```http
-POST /recommendations/personal
+GET /users/me/recommendations?limit=10&lat=24.69&lon=46.68
+GET /users/me/recommendations?limit=10&district_id=00100001141
 ```
-Requires: Authorization
+Requires: Authorization (an account; a guest pass is refused)
 
-Calls the recommendation engine with the caller's saved preferences and this request's inputs. Returns a result without storing it (`User.viewSuggestions()`).
+Runs the same engine and candidate rules as the group plan with one person: the caller's saved
+preferences, at the current Riyadh time. Coordinates win over `district_id`; with neither, no
+distances are shown. Nothing is stored (`User.viewSuggestions()`). `limit` is 1 to 20, default 10.
 
-Request
-```json
-{ "mood": "something_new", "budget_max": 150, "max_distance_km": 10 }
-```
-
-Response `200`
+Response `200`, best first; an empty list means nothing open now matches
 ```json
 {
   "restaurants": [
-    { "id": 101, "name_ar": "string", "match_score": 91, "reason": "string" }
+    { "id": 101, "name_ar": "string", "name_en": "string", "cuisines": ["italian"], "district": "string",
+      "price_tier": 2, "rating": 4.5, "maps_url": "string", "spend_low": 40, "spend_high": 80,
+      "match_score": 91, "reason": "string", "distance_km": 1.2 }
   ]
 }
 ```
+
+Response `422` — a distance limit is saved but no location was sent (`LOCATION_REQUIRED`), or only one of `lat`/`lon`
+Response `404` — `district_id` is not a known district (`DISTRICT_NOT_FOUND`)
 
 ### 4.8 Voting API
 
@@ -2007,11 +2066,11 @@ Every Must Have and Should Have story (Section 0) maps to at least one endpoint 
 | 20 | `GET /groups/{id}`, `GET /outings/{id}` (participant list) |
 | 21 | `GET /restaurants/{id}` (`reason` field) |
 | 22 | `GET /restaurants?search=` |
-| 23 | `POST /recommendations/personal` |
+| 23 | `GET /users/me/recommendations` |
 | 24 | `DELETE /outings/{id}/participants/{pid}`, `DELETE /groups/{id}/members/{uid}` |
 | 25 | `POST /auth/push-token`; notifications sent by the group/outing, plan, and voting services |
 | 26 | `maps_url` field on `restaurants` and on the result |
-| 31 | `mood` input on `POST /recommendations/personal` |
+| 31 | `mood` input on `GET /users/me/recommendations` (not built) |
 
 ### 4.11 API architecture
 
@@ -2624,7 +2683,7 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `GET /outings/{id}/plan` | Plan returned (200) | No plan yet (404) |
 | `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
 | `GET /restaurants` | List returned (200), empty list (200) | Bad `limit` (422), database unavailable (503) |
-| `POST /recommendations/personal` | Suggestions returned (200) | No auth (401) |
+| `GET /users/me/recommendations` | Suggestions returned (200), empty list (200) | No auth or guest pass (401), distance limit without a location (422), unknown district (404) |
 | `POST /outings/{id}/votes` | Vote recorded (200) | Wrong stage (409), not a participant (403) |
 | `POST /outings/{id}/end-voting` | Result settled (200) | Not organizer (403) |
 | `POST /outings/{id}/tiebreak-vote` | Recorded (200) | Not in tiebreak (409), already voted (409) |

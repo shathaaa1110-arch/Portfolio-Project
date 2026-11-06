@@ -4,6 +4,7 @@ POST /outings/session (BE-08) creates a one-off session: no saved group, the cal
 the organizer and its first, confirmed participant, and the session gets an invite code.
 """
 import logging
+import uuid
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
@@ -18,6 +19,7 @@ from app.core.errors import ApiError
 from app.services.auth.dependencies import current_user
 from app.services.auth.models import User
 from app.services.outings.codes import new_code
+from app.services.outings.join import COPY_PREFERENCES
 from app.services.outings.models import CONFIRMED, INVITE, Outing, Participant, now_utc
 
 MAX_NAME_CHARS = 60
@@ -86,7 +88,11 @@ def create_session(body: SessionIn, user: User = Depends(current_user), db: Sess
             logger.error("no free invite code after %d attempts", CODE_ATTEMPTS)
             raise ApiError(503, "INVITE_CODE_UNAVAILABLE", "Could not create the session right now. Please try again.")
 
-        db.add(Participant(outing_id=outing.id, user_id=user.id, attendance=CONFIRMED, preferences_done=False))
+        organizer = Participant(outing_id=outing.id, user_id=user.id, attendance=CONFIRMED, preferences_done=False)
+        db.add(organizer)
+        db.flush()
+        # The organizer starts from their saved preferences, like a member who joins (BE-13).
+        db.execute(COPY_PREFERENCES, {"id": uuid.uuid4(), "participant_id": organizer.id, "user_id": user.id})
         db.commit()  # the outing, its code and its organizer are saved together, or not at all
     except SQLAlchemyError:
         db.rollback()
