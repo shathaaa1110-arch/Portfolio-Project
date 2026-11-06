@@ -25,6 +25,8 @@ export type OutingState = {
   me: { participant_id: string; is_organizer: boolean };
   // What the caller can do now as organizer, such as "start_preferences"; empty for everyone else.
   actions: string[];
+  // How many have saved their preferences, out of everyone in the outing.
+  readiness: { ready_count: number; total_count: number };
   participants: Participant[];
 };
 
@@ -67,6 +69,8 @@ function isOutingState(state: OutingState): boolean {
     typeof state.me?.participant_id === "string" &&
     typeof state.me?.is_organizer === "boolean" &&
     Array.isArray(state.actions) &&
+    Number.isSafeInteger(state.readiness?.ready_count) &&
+    Number.isSafeInteger(state.readiness?.total_count) &&
     Array.isArray(state.participants) &&
     state.participants.every(isParticipant)
   );
