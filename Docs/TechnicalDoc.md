@@ -1023,7 +1023,7 @@ sequenceDiagram
  
     loop For each suggested restaurant
         P->>A: Swipe right (like) or left (pass)
-        A->>API: PUT /outings/{id}/votes/{plan_item_id}
+        A->>API: POST /outings/{id}/votes
         API->>DB: Insert or update the vote
         API-->>A: 200 OK
     end
@@ -1938,18 +1938,21 @@ Response `404` — `district_id` is not a known district (`DISTRICT_NOT_FOUND`)
 | #  | Method | Path | Story |
 | -- | ------ | ---- | ----- |
 | 26 | POST | `/outings/{outing_id}/votes` | 12 |
+| 26a | GET | `/outings/{outing_id}/votes` | 12 |
 | 27 | POST | `/outings/{outing_id}/end-voting` | 13 |
-| 28 | POST | `/outings/{outing_id}/tiebreak-vote` | 14 |
+| 28 | ~~POST `/outings/{outing_id}/tiebreak-vote`~~ | not built: ties are settled automatically (D09) | 14 |
 | 29 | GET | `/outings/{outing_id}/result` | 15 |
 
-#### Cast a vote
+One round per outing for now: the current round is the outing's single stored plan. Round ids come with DB-07 (#14) and BE-31 (#90).
+
+#### Cast or change a vote
 
 ```http
 POST /outings/{outing_id}/votes
 ```
-Requires: Authorization (Bearer or guest)
+Requires: Authorization (Bearer or guest), a confirmed participant of this outing
 
-Accepted only while `status = voting`, for a plan item that belongs to this outing. Upserts the row (unique on participant, plan item, and `is_tiebreak = false`), so changing an answer updates it rather than creating a duplicate. Once every participant has voted on every card, this call triggers `settleResult()`.
+Accepted only while `status = voting`, for a plan item of this outing. Upserts the row (unique on participant, plan item and `is_tiebreak = false`), so changing Like to Pass updates the one answer. Takes the outing's row lock. When every member has answered every suggestion, this call ends voting in the same transaction (D07).
 
 Request
 ```json
@@ -1958,7 +1961,23 @@ Request
 
 Response `200`
 ```json
-{ "plan_item_id": "uuid", "liked": true, "voting_complete": false }
+{ "plan_item_id": "uuid", "liked": true, "voting_complete": false, "status": "voting",
+  "items_count": 5, "members_count": 3, "completed_count": 1 }
+```
+
+Errors: `409 VOTING_NOT_OPEN` (not in voting, including after the result), `404 PLAN_ITEM_NOT_FOUND` (not this outing's plan), `403` (not a participant), `422` (bad body).
+
+#### My votes and the group's progress
+
+```http
+GET /outings/{outing_id}/votes
+```
+Returns only the caller's own answers, for a reload, and counts for the group. Nobody sees another person's answers.
+
+Response `200`
+```json
+{ "outing_id": "uuid", "status": "voting", "votes": [{ "plan_item_id": "uuid", "liked": true }],
+  "answered_count": 1, "items_count": 5, "members_count": 3, "completed_count": 1 }
 ```
 
 #### End voting early
@@ -1966,49 +1985,28 @@ Response `200`
 ```http
 POST /outings/{outing_id}/end-voting
 ```
-Requires: Authorization, caller must be the organizer
+Requires: Authorization, caller must be the organizer (`actions` shows `end_voting` in the voting stage)
 
-Settles the result with the votes collected so far.
-
-Response `200`
-```json
-{ "outing_id": "uuid", "status": "result" }
-```
-`status` is `"tiebreak"` instead when the top plan items are tied.
-
-#### Cast a tie-break vote
-
-```http
-POST /outings/{outing_id}/tiebreak-vote
-```
-Requires: Authorization (Bearer or guest)
-
-Accepted only while `status = tiebreak`, before `tiebreak_ends_at`, for one of the tied plan items, once per participant (`is_tiebreak = true`). The result is not revealed by this call; it stays hidden until the tie-break ends, as decided in Section 0.
-
-Request
-```json
-{ "plan_item_id": "uuid" }
-```
-
-Response `200`
-```json
-{ "recorded": true }
-```
+Settles the result with the votes saved so far (D07); missing votes are not counted as Pass. Asking again after the result returns the same result. Response: the result below.
 
 #### Get the result
 
 ```http
 GET /outings/{outing_id}/result
 ```
-Requires: Authorization
+Requires: Authorization (Bearer or guest), a participant
+
+Most likes wins. Equal likes go to the better stored recommendation rank, then the plan item id (D09); there is no tie-break vote or timer. Support = likes ÷ all members (D08); `completed_count` is shown separately. No likes means no winner (D10), and `no_winner_reason` tells `no_votes` apart from `everyone_passed`. The winner's plan item has `is_winner = true`.
 
 Response `200`
 ```json
 {
-  "outing_id": "uuid",
-  "winner": { "restaurant_id": 101, "name_ar": "string", "maps_url": "string" },
-  "consensus_percentage": 71,
-  "total_votes": 7
+  "outing_id": "uuid", "status": "result",
+  "winner": { "plan_item_id": "uuid", "restaurant_id": 101, "name_ar": "string", "name_en": "string",
+              "district": "string", "maps_url": "string", "likes": 2, "support_percentage": 67 },
+  "no_winner_reason": null,
+  "members_count": 3, "completed_count": 2,
+  "items": [{ "plan_item_id": "uuid", "rank": 1, "restaurant_id": 101, "name_ar": "string", "likes": 2, "support_percentage": 67 }]
 }
 ```
 
@@ -2563,8 +2561,8 @@ HTTP_CODE=$(echo "$RESULT" | tail -1)
 BODY=$(echo "$RESULT" | head -1)
 [ "$HTTP_CODE" = "200" ] || { echo "FAIL: get result expected 200, got $HTTP_CODE"; exit 1; }
 WINNER=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['winner']['name_ar'])")
-CONSENSUS=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['consensus_percentage'])")
-echo "  result: OK (winner=$WINNER, consensus=$CONSENSUS%)"
+SUPPORT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['winner']['support_percentage'])")
+echo "  result: OK (winner=$WINNER, support=$SUPPORT%)"
 
 echo "=== Test 3 PASSED ==="
 ```
@@ -2684,10 +2682,10 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
 | `GET /restaurants` | List returned (200), empty list (200) | Bad `limit` (422), database unavailable (503) |
 | `GET /users/me/recommendations` | Suggestions returned (200), empty list (200) | No auth or guest pass (401), distance limit without a location (422), unknown district (404) |
-| `POST /outings/{id}/votes` | Vote recorded (200) | Wrong stage (409), not a participant (403) |
+| `POST /outings/{id}/votes` | Vote recorded or changed (200); the last answer ends voting | Wrong stage (409), another outing's suggestion (404), not a participant (403) |
+| `GET /outings/{id}/votes` | Own answers and counts (200) | Not a participant (403) |
 | `POST /outings/{id}/end-voting` | Result settled (200) | Not organizer (403) |
-| `POST /outings/{id}/tiebreak-vote` | Recorded (200) | Not in tiebreak (409), already voted (409) |
-| `GET /outings/{id}/result` | Result returned (200) | Not decided yet (409) |
+| `GET /outings/{id}/result` | Winner, or no winner with a reason (200) | Not decided yet (409) |
 
 ### 6.6 Bug tracking
 

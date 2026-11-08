@@ -25,6 +25,7 @@ ALLOWED_MOVES = {
 ORGANIZER_ACTIONS = {
     INVITE: ["start_preferences"],
     PREFERENCES: ["start_voting"],
+    VOTING: ["end_voting"],
 }
 
 
