@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { AppText } from "@/shared/components";
+import { layoutDirection } from "@/shared/layout";
 import { theme } from "@/shared/theme";
 import type { Participant } from "../api/state";
 
@@ -17,7 +18,7 @@ export function ParticipantRow({ person, isMe, showReadiness }: Props) {
   return (
     <View style={styles.row}>
       <View style={styles.avatar}>
-        <AppText style={styles.initial}>{realName.slice(0, 1)}</AppText>
+        <AppText style={styles.initial}>{Array.from(realName)[0]}</AppText>
       </View>
       <View style={styles.names}>
         <AppText style={styles.name}>{isMe ? "أنت" : realName}</AppText>
@@ -36,7 +37,7 @@ const styles = StyleSheet.create({
   // Arabic order: the initial sits on the right and readiness on the left.
   row: {
     flexDirection: "row",
-    direction: "rtl",
+    ...layoutDirection("rtl"),
     alignItems: "center",
     gap: theme.spacing.actionGap,
     paddingVertical: theme.spacing.actionGap,

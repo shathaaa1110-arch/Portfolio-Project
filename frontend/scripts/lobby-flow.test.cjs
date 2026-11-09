@@ -211,7 +211,7 @@ function component(name, nativeExtras = {}) {
   })[name];
 }
 
-test("a participant row shows you, the organizer badge, and readiness only once preferences started", async () => {
+test("a participant row shows you, the organizer badge, readiness only once preferences started, and a whole emoji initial", async () => {
   const ParticipantRow = component("ParticipantRow");
   const sara = { participant_id: "p1", name: "سارة", attendance: "confirmed", preferences_done: true, is_organizer: true };
   let { root } = await render(ParticipantRow, { person: sara, isMe: true, showReadiness: false });
@@ -220,6 +220,8 @@ test("a participant row shows you, the organizer badge, and readiness only once 
   assert.deepEqual(texts(root), ["م", "مشارك", "يجهّز تفضيلاته"]);
   ({ root } = await render(ParticipantRow, { person: sara, isMe: false, showReadiness: true }));
   assert(texts(root).includes("✓ جاهز"));
+  ({ root } = await render(ParticipantRow, { person: { ...sara, name: "😀 علي" }, isMe: false, showReadiness: false }));
+  assert.equal(texts(root)[0], "😀");
 });
 
 test("the stage indicator fills every step up to the current one; a tiebreak is still voting", async () => {
