@@ -5,7 +5,9 @@ import * as Location from "expo-location";
 import { SymbolView } from "expo-symbols";
 import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, View } from "react-native";
 import { loadSession } from "@/features/auth";
-import { LocationPicker, requestRecommendationLocation, type RecommendationLocation } from "@/features/personalSuggestions";
+import {
+  LocationPicker, recallLocation, rememberLocation, requestRecommendationLocation, type RecommendationLocation,
+} from "@/features/personalSuggestions";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 
@@ -31,10 +33,22 @@ export function HomeLocationBar({ onLocationChange, pickerRequest = 0 }: Props) 
     let current = true;
     setName("");
     void loadSession().then(session => {
-      if (current) setName(session?.userName?.trim() ?? "");
+      if (!current) return;
+      setName(session?.userName?.trim() ?? "");
+      // A new Home, for example after saving preferences, continues with the place this account chose.
+      const chosen = recallLocation(session?.token ?? null);
+      setPlace(chosen?.label ?? "حدّد موقعك");
+      onLocationChange(chosen?.location ?? { kind: "none" });
     }).catch(() => { if (current) setName(""); });
     return () => { current = false; };
   }, []));
+
+  // Show the place and keep it for this account, so it survives opening Home again.
+  function choose(location: RecommendationLocation, label: string) {
+    setPlace(label);
+    onLocationChange(location);
+    void loadSession().then(session => rememberLocation(session?.token ?? null, { location, label })).catch(() => {});
+  }
 
   async function locate() {
     if (requesting.current) return;
@@ -47,8 +61,7 @@ export function HomeLocationBar({ onLocationChange, pickerRequest = 0 }: Props) 
       const result = await requestRecommendationLocation();
       if (!active.current) return;
       if (result.status !== "ready") {
-        setPlace("حدّد موقعك");
-        onLocationChange({ kind: "none" });
+        choose({ kind: "none" }, "حدّد موقعك");
         setShowSettings(result.status === "denied" && !result.canAskAgain && Platform.OS !== "web");
         setMessage(result.status === "denied"
           ? "ما عندنا إذن الموقع. تقدر تكمّل التصفّح بدونه."
@@ -58,8 +71,7 @@ export function HomeLocationBar({ onLocationChange, pickerRequest = 0 }: Props) 
         return;
       }
       // الإحداثيات للترشيحات، واسم المدينة للعرض فقط.
-      onLocationChange(result.location);
-      setPlace("موقعي الحالي");
+      choose(result.location, "موقعي الحالي");
       if (Platform.OS !== "web") {
         const { lat, lon } = result.location;
         const addresses = await Promise.race([
@@ -70,7 +82,7 @@ export function HomeLocationBar({ onLocationChange, pickerRequest = 0 }: Props) 
         ]);
         const address = addresses[0];
         const label = address?.city || address?.district || address?.region;
-        if (active.current && label) setPlace(label === "Riyadh" ? "الرياض" : label);
+        if (active.current && label) choose(result.location, label === "Riyadh" ? "الرياض" : label);
       }
     } catch {
       if (active.current) setMessage("تعذّر تحديد موقعك. جرّب مرة ثانية.");
@@ -110,15 +122,13 @@ export function HomeLocationBar({ onLocationChange, pickerRequest = 0 }: Props) 
       <LocationPicker visible={pickerVisible} onClose={() => setPickerVisible(false)}
         onUseCurrentLocation={() => { setPickerVisible(false); void locate(); }}
         onDistrict={district => {
-          setPlace(district.name_ar);
-          onLocationChange({ kind: "district", districtId: district.id });
+          choose({ kind: "district", districtId: district.id }, district.name_ar);
           setMessage("نحسب المسافة من وسط الحي المختار.");
           setShowSettings(false);
           setPickerVisible(false);
         }}
         onClear={() => {
-          setPlace("حدّد موقعك");
-          onLocationChange({ kind: "none" });
+          choose({ kind: "none" }, "حدّد موقعك");
           setMessage(""); setShowSettings(false); setPickerVisible(false);
         }} />
     </View>
