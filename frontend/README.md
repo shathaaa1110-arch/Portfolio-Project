@@ -87,9 +87,11 @@ From `frontend`, `npm run web` starts the web app.
 Invite links open the same join screen with the code filled in, such as
 `/join/7K3M`; `/join?code=7K3M` also works. The server builds each link from
 `INVITE_BASE_URL` and the code, so set `INVITE_BASE_URL` to the web address
-followed by `/join`. The web export has one page for every code,
-`join/[code].html`, so the host must serve that page for any `/join/<code>`
-address; without that rule the link opens a "not found" page.
+followed by `/join`. The web build is one page (`"output": "single"` in
+`app.json`), so the host must answer every address with `index.html`, using a
+rewrite from `/*` to `/index.html`; without it, invite links and refreshes
+open the host's "not found" page. `EXPO_PUBLIC_` values are read when the app
+is built, so set them on the host before building.
 
 ## Files
 
