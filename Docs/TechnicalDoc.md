@@ -601,6 +601,7 @@ One link per account and saved restaurant; the pair is the primary key.
 |---|---|---|---|
 | user_id | uuid | yes | Primary-key component; foreign key to `users(id)` |
 | restaurant_id | integer | yes | Primary-key component; foreign key to `restaurants(id)` |
+| saved_at | timestamptz | yes | When it was saved, default `now()`; the list shows the newest first (migration `0007_saved_at`, BE-33) |
 
 Both foreign keys use `ON DELETE RESTRICT`: remove saved links explicitly before
 parent deletion. Unsaving never deletes an account or restaurant. The primary key
@@ -608,7 +609,7 @@ supports account lookups; `restaurant_id` also has an index. Existing parent row
 are preserved by migration `0006_saved_restaurants`; missing restaurants are created
 from the established schema, including search support. Downgrade is refused to
 protect data. See the [database guide](../database/README.md#db-15-saved-restaurants).
-Storage is delivered by #130; authenticated save/load/unsave endpoints remain #126.
+Storage is delivered by #130; the save/load/unsave endpoints are #126 (section 4.7).
 Public browsing remains unauthenticated.
 
 #### `plan_items`
@@ -1957,6 +1958,24 @@ Response `200`, best first; an empty list means nothing open now matches
 
 Response `422` — a distance limit is saved but no location was sent (`LOCATION_REQUIRED`), or only one of `lat`/`lon`
 Response `404` — `district_id` is not a known district (`DISTRICT_NOT_FOUND`)
+
+#### Saved restaurants (BE-33, #126)
+
+All routes require an account token; a guest pass is refused (`401`). The account comes from the token only.
+
+```http
+GET    /users/me/saved-restaurants?limit=20&offset=0
+GET    /users/me/saved-restaurants/ids
+PUT    /users/me/saved-restaurants/{restaurant_id}
+DELETE /users/me/saved-restaurants/{restaurant_id}
+```
+
+- List: newest save first (`saved_at`, migration `0007_saved_at`), `limit` 1–50 (default 20), `offset` ≥ 0. Each item is the same summary as `GET /restaurants`.
+  Response `200`: `{ "restaurants": [ ... ], "total": 12, "limit": 20, "offset": 0 }`; nothing saved → empty list and `total: 0`.
+- Ids: `{ "ids": [101, 205] }`, newest first, to fill the hearts after login.
+- Save: `204`. Saving again keeps one row and its first time. Unknown restaurant → `404 RESTAURANT_NOT_FOUND`.
+- Remove: `204`, also when the restaurant was not saved.
+- Errors: `401 INVALID_TOKEN` / `TOKEN_EXPIRED`, `422 VALIDATION_ERROR` (bad `limit`, `offset` or id), `503 SAVED_UNAVAILABLE`.
 
 ### 4.8 Voting API
 
