@@ -34,3 +34,123 @@ test("my answers come back for a reload, and replies the screen cannot use are e
     await assert.rejects(api(broken).saveVote("o1", "T", { plan_item_id: "i1", liked: true }), { code: "INVALID_RESPONSE" });
   }
 });
+
+// The vote logic with a fake server and a clock the test moves by hand.
+const { render, act, deferred } = require("./helpers/render-feature.cjs");
+const settle = () => act(async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); });
+
+function fakeClock() {
+  let now = 0;
+  let lastId = 0;
+  const timers = new Map();
+  return {
+    setTimeout: (run, ms) => { timers.set(++lastId, { run, at: now + ms }); return lastId; },
+    clearTimeout: id => { timers.delete(id); },
+    async advance(ms) {
+      now += ms;
+      for (const [id, timer] of [...timers]) if (timer.at <= now && timers.delete(id)) timer.run();
+      await settle();
+    },
+  };
+}
+
+// The hook on cards i1, i2, i3. `saved` are the answers the server already has; `save` answers each save request.
+async function voting({ saved = [], status = "voting", save, mine, token = "T" } = {}) {
+  const clock = fakeClock();
+  const calls = { load: 0, save: [] };
+  let inFlight = 0;
+  let mostAtOnce = 0;
+  const hook = load("features/voting/useVoting.ts", {
+    "@/shared/api/errors": errors,
+    "./api": {
+      loadMyVotes: async () => {
+        calls.load++;
+        return mine ? mine(calls.load) : { outing_id: "o1", status, votes: saved, answered_count: saved.length, ...progress };
+      },
+      saveVote: async (outingId, usedToken, answer) => {
+        calls.save.push(plain(answer));
+        inFlight++; mostAtOnce = Math.max(mostAtOnce, inFlight);
+        try {
+          return await (save ? save(calls.save.length, answer) : { ...answer, voting_complete: false, status: "voting", ...progress });
+        } finally { inFlight--; }
+      },
+    },
+  }, { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout });
+  const view = {};
+  function Screen() { Object.assign(view, hook.useVoting("o1", ["i1", "i2", "i3"], async () => token)); return null; }
+  const screen = await render(Screen);
+  await settle();
+  return { clock, calls, view, screen, mostAtOnce: () => mostAtOnce };
+}
+
+test("opening restores my saved answers and continues at the first card without one", async () => {
+  const { view } = await voting({ saved: [{ plan_item_id: "i1", liked: true }] });
+  assert.equal(view.stage, "open");
+  assert.deepEqual(plain(view.answers), { i1: true });
+  assert.equal(view.next, "i2");
+  assert.equal(view.finished, false);
+});
+
+test("answers are saved one at a time, in order, and a newer answer on the same card wins", async () => {
+  const first = deferred();
+  const { calls, view, mostAtOnce } = await voting({
+    save: (n, answer) => (n === 1 ? first.promise : { ...answer, voting_complete: false, status: "voting", ...progress }),
+  });
+  await act(async () => { view.answer("i1", true); });
+  await act(async () => { view.answer("i1", false); view.answer("i2", true); });
+  assert.equal(calls.save.length, 1);
+  assert.equal(view.unsaved, 2);
+  first.resolve({ plan_item_id: "i1", liked: true, voting_complete: false, status: "voting", ...progress });
+  await settle();
+  assert.deepEqual(calls.save, [{ plan_item_id: "i1", liked: true }, { plan_item_id: "i1", liked: false }, { plan_item_id: "i2", liked: true }]);
+  assert.equal(mostAtOnce(), 1);
+  assert.equal(view.unsaved, 0);
+  assert.deepEqual(plain(view.answers), { i1: false, i2: true });
+});
+
+test("after a network failure the answer stays and is sent again later, as the same card", async () => {
+  const { clock, calls, view } = await voting({
+    save: (n, answer) => {
+      if (n === 1) throw new errors.ApiError(0, "NETWORK_ERROR", "");
+      return { ...answer, voting_complete: false, status: "voting", ...progress };
+    },
+  });
+  await act(async () => { view.answer("i2", true); });
+  await settle();
+  assert.equal(view.unsaved, 1);
+  assert.equal(view.offline, true);
+  await clock.advance(2999);
+  assert.equal(calls.save.length, 1);
+  await clock.advance(1);
+  assert.deepEqual(calls.save, [{ plan_item_id: "i2", liked: true }, { plan_item_id: "i2", liked: true }]);
+  assert.equal(view.unsaved, 0);
+  assert.equal(view.offline, false);
+  assert.equal(view.error, null);
+});
+
+test("when voting closed meanwhile, answering stops and the answers the server kept come back", async () => {
+  const { calls, view } = await voting({
+    mine: n => ({ outing_id: "o1", status: n === 1 ? "voting" : "result", votes: [{ plan_item_id: "i1", liked: true }], answered_count: 1, ...progress }),
+    save: () => { throw new errors.ApiError(409, "VOTING_NOT_OPEN", ""); },
+  });
+  await act(async () => { view.answer("i2", false); });
+  await settle();
+  assert.equal(view.stage, "closed");
+  assert.equal(view.outingStatus, "result");
+  assert.deepEqual(plain(view.answers), { i1: true });
+  assert.equal(view.answer("i3", true), false);
+  assert.equal(calls.save.length, 1);
+});
+
+test("the answer that completes voting closes it, and without a pass nothing is asked", async () => {
+  const done = await voting({ save: (n, answer) => ({ ...answer, voting_complete: true, status: "result", ...progress }) });
+  await act(async () => { done.view.answer("i1", true); });
+  await settle();
+  assert.equal(done.view.stage, "closed");
+  assert.equal(done.view.outingStatus, "result");
+
+  const noPass = await voting({ token: null });
+  assert.equal(noPass.view.stage, "error");
+  assert.equal(noPass.view.error.code, "NO_ACCESS");
+  assert.equal(noPass.calls.load, 0);
+});
