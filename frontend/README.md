@@ -84,6 +84,13 @@ Wi-Fi network, or follow the development build's connection method.
 
 From `frontend`, `npm run web` starts the web app.
 
+Invite links open the same join screen with the code filled in, such as
+`/join/7K3M`; `/join?code=7K3M` also works. The server builds each link from
+`INVITE_BASE_URL` and the code, so set `INVITE_BASE_URL` to the web address
+followed by `/join`. The web export has one page for every code,
+`join/[code].html`, so the host must serve that page for any `/join/<code>`
+address; without that rule the link opens a "not found" page.
+
 ## Files
 
 Paths below are relative to `frontend`.
@@ -238,6 +245,9 @@ are the organizer, `MAXX` is full, `SHUT` is closed, and any other code is
 invalid. A guest who joined is remembered per outing, so use a private window
 to join again as a new guest. In the lobby someone new arrives on the third
 poll, and in `TEST` the organizer starts preferences on the sixth.
+`/join/TEST` opens the same invitation straight from a link. If the server
+later refuses a guest's saved pass, the lobby forgets it, so joining by code
+works again.
 The mock account keeps its name and phone after reload because its token carries
 them. An unknown or older mock token requires signing in again. This does not
 make mock preferences persistent; those still live in memory. No real SMS is
