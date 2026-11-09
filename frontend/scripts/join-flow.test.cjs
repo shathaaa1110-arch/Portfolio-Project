@@ -200,9 +200,9 @@ test("mock mode answers like the server for each test code", async () => {
   await assert.rejects(call("GET", "/outings/by-code/ABCD"), { status: 404 });
 });
 
-test("the guest pass is kept per outing with three fields and ignores broken saved values", async () => {
+test("the guest pass is kept per outing with three fields, ignores broken saved values, and can be forgotten", async () => {
   const saved = new Map();
-  const localStorage = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) };
+  const localStorage = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) };
   const store = load("features/sessions/guestPass.ts", { "react-native": { Platform: { OS: "web" } }, "expo-secure-store": {} }, { globalThis: { localStorage } });
 
   assert.equal(await store.loadGuestPass("o1"), null);
@@ -214,6 +214,8 @@ test("the guest pass is kept per outing with three fields and ignores broken sav
   saved.set("thouq.guest.bad2", JSON.stringify({ outing_id: "bad2" }));
   assert.equal(await store.loadGuestPass("bad1"), null);
   assert.equal(await store.loadGuestPass("bad2"), null);
+  await store.forgetGuestPass("o1");
+  assert.equal(await store.loadGuestPass("o1"), null);
 });
 
 test("an outing's token is the guest pass for it first, then the member's login", async () => {

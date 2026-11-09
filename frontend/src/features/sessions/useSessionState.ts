@@ -4,6 +4,7 @@ import { AppState } from "react-native";
 import { ApiError } from "@/shared/api/errors";
 import { outingToken } from "./access";
 import { loadOutingState, type OutingState } from "./api/state";
+import { forgetGuestPass } from "./guestPass";
 
 // How often the waiting room asks for news while it is on screen.
 export const POLL_MS = 4000;
@@ -57,6 +58,8 @@ export function useSessionState(outingId: string) {
           if (final) {
             // Read the token again if someone asks to retry later.
             token = null;
+            // Otherwise the join screen keeps sending the guest back here with the same refused pass.
+            await forgetGuestPass(outingId);
           }
           if (focused) {
             // A passing failure keeps the last good state on screen.
