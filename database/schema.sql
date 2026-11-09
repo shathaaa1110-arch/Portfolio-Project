@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS preferences (
     )
 );
 
--- restaurants table
+-- restaurants table (created if absent by DB-15; search artifacts are migration-managed)
 CREATE TABLE IF NOT EXISTS restaurants (
     id INTEGER PRIMARY KEY,
     name_ar TEXT NOT NULL,
@@ -102,6 +102,19 @@ CREATE TABLE IF NOT EXISTS restaurants (
     summary TEXT,
     maps_url TEXT NOT NULL
 );
+
+-- Saved restaurants (DB-15: migration 0006_saved_restaurants).
+-- Remove saved links explicitly before deleting either parent; no cascades.
+CREATE TABLE IF NOT EXISTS saved_restaurants (
+    user_id UUID NOT NULL,
+    restaurant_id INTEGER NOT NULL,
+    CONSTRAINT saved_restaurants_pkey PRIMARY KEY (user_id, restaurant_id),
+    CONSTRAINT saved_restaurants_user_id_fkey FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT saved_restaurants_restaurant_id_fkey FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS ix_saved_restaurants_restaurant_id ON saved_restaurants (restaurant_id);
 
 -- plan_items table
 CREATE TABLE IF NOT EXISTS plan_items (
