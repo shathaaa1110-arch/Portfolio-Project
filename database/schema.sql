@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS restaurants (
 CREATE TABLE IF NOT EXISTS saved_restaurants (
     user_id UUID NOT NULL,
     restaurant_id INTEGER NOT NULL,
+    saved_at TIMESTAMPTZ NOT NULL DEFAULT now(),  -- 0007_saved_at (BE-33)
     CONSTRAINT saved_restaurants_pkey PRIMARY KEY (user_id, restaurant_id),
     CONSTRAINT saved_restaurants_user_id_fkey FOREIGN KEY (user_id)
         REFERENCES users(id) ON DELETE RESTRICT,
