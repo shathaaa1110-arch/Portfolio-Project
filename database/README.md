@@ -1,4 +1,4 @@
-# Thouq database setup (DB-02 / DB-03 / DB-14 / DB-15)
+# Thouq database setup (DB-02 / DB-03 / DB-13 / DB-14 / DB-15)
 
 This workflow uses installed PostgreSQL 18, Python 3.12, SQLAlchemy/Psycopg,
 and Alembic 1.20.0. It provides separate local development and disposable test
@@ -111,7 +111,7 @@ alembic -c database/alembic.ini upgrade head
 alembic -c database/alembic.ini current
 ```
 
-Expected revision: `0006_saved_restaurants (head)`. The migrations create
+Expected revision: `0008_general_restaurants (head)`. The migrations create
 `alembic_version`, accounts/preferences, outing/district tables, restaurants, and
 `saved_restaurants`. `upgrade head` can be rerun without recreating the database. Migration files live in `database/migrations/versions/`.
 
@@ -143,7 +143,7 @@ python database/reset_test_db.py
 Expected output:
 
 ```text
-Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0006_saved_restaurants
+Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0008_general_restaurants
 ```
 
 This command always selects test mode, verifies the URL and local role attributes,
@@ -222,7 +222,8 @@ flowchart LR
 
 Record runtime evidence in `database/VALIDATION.md`.
 
-The restaurant dataset is not committed because its terms do not allow republishing.
+The private restaurant dataset is not committed because its terms do not allow republishing.
+The separately authored DB-13 synthetic sample below may be committed.
 
 
 ## DB-14 account preferences
@@ -333,3 +334,59 @@ browsing remains unauthenticated.
 Verification: `backend/tests/test_saved_restaurant_schema_integration.py`, the
 normal database migration/health integration tests, and the existing backend suite.
 Actual run evidence belongs in [VALIDATION.md](VALIDATION.md).
+
+## DB-13 general Home sample (#100)
+
+Migration `0008_general_restaurants` follows `0007_saved_at`. It adds nullable
+`image_url TEXT` and makes coordinates, spend bounds, price tier and map URL
+nullable. Required `id INTEGER`, `name_ar TEXT`, `cuisine TEXT` and `district TEXT`
+are unchanged. Existing rows, search indexes and saved references are preserved.
+Downgrade is refused to avoid losing photos or forcing invented optional values.
+Apply the migration before deploying the API that selects `image_url`.
+
+The committed `seed/general_restaurants.json` contains eight original fictional
+records, visibly labelled `تجريبي` / `Demo`. They are not copies of the private
+Riyadh dataset and do not represent real businesses. Districts and cuisines are
+illustrative. IDs 2000000101–2000000108 are reserved for this sample. All unknown
+fields are explicit JSON/SQL null, including actual photos, coordinates, map links,
+prices, ratings, hours and recommendation scores. No suitability is claimed.
+
+With the backend environment activated, use the same configured database selection
+as Alembic. For the local disposable test database:
+
+```bash
+ENVIRONMENT=test alembic -c database/alembic.ini upgrade head
+ENVIRONMENT=test python database/seed_general_restaurants.py
+ENVIRONMENT=test python database/seed_general_restaurants.py --apply
+ENVIRONMENT=test python database/seed_general_restaurants.py --apply
+```
+
+`TEST_DATABASE_URL` must be configured as above. Without `ENVIRONMENT=test`, the
+configured application database is selected; inspect the target before applying.
+The first seed command runs the complete transaction and rolls back. `--apply`
+commits: first run reports 8 inserted; repeat reports 0 inserted / 8 unchanged.
+A conflicting ID aborts the whole import without overwriting any row. Imports
+briefly lock restaurant writes to serialize collision checks; run on a development
+or test database. No seed runs automatically during migrations or API startup.
+No hosted import is included in this change.
+
+Home uses the public `GET /api/v1/restaurants` endpoint, independent of preferences.
+The API returns `image_url: null` when absent; the UI uses a cuisine illustration
+and labels it as illustrative in details. HTTPS photo URLs can be supplied by a
+later permitted dataset; broken/invalid URLs fall back to the same illustration.
+The synthetic sample deliberately contains no external photos. Existing list
+ordering remains unchanged; null scores leave demo ordering stable by ID.
+
+For #133 read-only acceptance, use the live endpoint and inspect:
+
+```sql
+SELECT id, name_ar, name_en, district, cuisine, image_url,
+       maps_url, price_tier, rating
+FROM restaurants WHERE id BETWEEN 2000000101 AND 2000000108 ORDER BY id;
+SELECT count(*) AS rows, count(DISTINCT id) AS unique_ids
+FROM restaurants WHERE id BETWEEN 2000000101 AND 2000000108;
+```
+
+Expected sample counts: 8 / 8. Implementation tests and evidence are in
+[VALIDATION.md](VALIDATION.md); final device/build/recording acceptance remains
+[#133](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/133).

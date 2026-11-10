@@ -190,3 +190,11 @@ A new endpoint goes in its service's `router.py`; the service is already mounted
 | `CORS_ORIGINS` | Comma-separated origins allowed to call the API from a browser (`*` in development) |
 
 Never commit `.env`: the repository is public.
+
+### DB-13 general restaurant sample
+
+Apply migration `0008_general_restaurants` before deploying the restaurant API
+image field. Public and Saved restaurant summaries include nullable `image_url`;
+unknown map URLs and price tiers may also be null. Use the separately invoked,
+repeatable fictional sample in the [database guide](../database/README.md#db-13-general-home-sample-100).
+No sample is imported during API startup, and the sample makes no suitability claims.

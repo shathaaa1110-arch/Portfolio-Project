@@ -45,7 +45,7 @@
     "typecheck": "tsc --noEmit",
     "check:architecture": "node scripts/check-architecture.mjs",
     "test:architecture": "node --test scripts/check-architecture.test.mjs",
-    "test:restaurants-api": "node --test scripts/restaurants-api.test.cjs",
+    "test:restaurants-api": "node --test scripts/restaurants-api.test.cjs scripts/restaurant-images.test.cjs",
     "test:preferences": "node --test scripts/preferences.test.cjs scripts/preferences-flow.test.cjs",
     "test:discovery": "node --test scripts/home-recommendations.test.cjs scripts/discovery-flow.test.cjs",
     "test:sessions": "node --test scripts/join-flow.test.cjs",

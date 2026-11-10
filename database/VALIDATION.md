@@ -232,3 +232,58 @@ No secret or `.env` file was written. The reset still used the repository's targ
 role-attribute and ownership checks; neither tests nor migrations ran as superuser.
 No development database was reset or migrated. Normal future runs should configure
 `TEST_DATABASE_URL` using the database setup guide.
+
+## DB-13 — general Home sample (#100), 10 November 2026
+
+Implementation evidence from the working tree based on commit `4dc75a7`. Environment: Python
+3.12.16, PostgreSQL 18.6, Alembic 1.20.0, Node 26.13.0. API was a real local
+Uvicorn process at `http://127.0.0.1:8013/api/v1`, `ENVIRONMENT=test`, using
+`thouq_test` as both database and role on `127.0.0.1:5432`. Credentials are omitted.
+No development/hosted database or role credentials were changed.
+
+| Check | Observed result |
+| --- | --- |
+| Apply pending migrations to the existing test database | Revision advanced from 0006 to `0008_general_restaurants` |
+| Full migration chain on a fresh isolated PostgreSQL schema | Passed; sample inserts after all eight revisions; schema rolled back |
+| Sample dry run | 8 would insert; transaction rolled back |
+| First committed sample import | 8 inserted, 0 unchanged |
+| Repeated committed sample import | 0 inserted, 8 unchanged |
+| Read-only sample count | 8 rows / 8 distinct IDs |
+| Backend non-integration suite | 129 passed, 246 deselected at time of run |
+| Focused PostgreSQL suites (DB-13, search, Saved API, Saved schema) | 51 passed after adding the fresh-chain case |
+| Final serializer compatibility run (personal recommendations, DB-13, public list/search, Saved API) | 49 passed; includes overlapping regression cases |
+| Frontend `npm run check` | Passed: TypeScript, architecture, restaurant API/image fallback, preferences, discovery and sessions |
+| Live HTTP `GET /health` | 200; `database: ok`, `environment: test` |
+| Live HTTP `GET /restaurants` without a token | 200; total 8, eight labelled demo rows, explicit nullable image field |
+| Live HTTP `GET /restaurants?search=Palm` without a token | 200; total 1 |
+| Working-tree whitespace check | `git diff --check` passed |
+
+The PostgreSQL checks cover preserved existing rows and saved links, required and
+optional column types, search indexes, idempotence, ID collisions, rollback after
+failed inserts, explicit missing values and non-null image serialization. Frontend
+checks cover absent, malformed, non-HTTPS and failed images, plus recovery when
+URLs change. The final serializer check also preserves callers that do not select
+photos, including personal recommendations; no recommendation logic changed. Existing dependency deprecation warnings remain (Starlette/AnyIO and
+React test renderer). An initial fixture failure caused by a semicolon in a schema
+comment was fixed; all focused checks subsequently passed.
+
+To reproduce, configure the approved test URL using the database README, activate
+the backend environment, and run from the repository root:
+
+```bash
+ENVIRONMENT=test alembic -c database/alembic.ini upgrade head
+ENVIRONMENT=test python database/seed_general_restaurants.py
+ENVIRONMENT=test python database/seed_general_restaurants.py --apply
+ENVIRONMENT=test python database/seed_general_restaurants.py --apply
+python -m pytest backend/tests -m 'not integration' -q
+python -m pytest backend/tests/test_general_restaurants_integration.py backend/tests/test_restaurant_search_integration.py backend/tests/test_saved_restaurants_api_integration.py backend/tests/test_saved_restaurant_schema_integration.py -q
+npm --prefix frontend run check
+ENVIRONMENT=test uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8013
+```
+
+In another terminal, request the three HTTP paths above. The temporary verification
+API was stopped after checks; eight demo rows remain in the disposable test database.
+The implementation tests do not duplicate or close the final read-only acceptance
+work in [#133](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/133).
+**Pending:** PR/commit link, application device/build identification, short recording,
+and linked #133 acceptance evidence. No device E2E completion is claimed.

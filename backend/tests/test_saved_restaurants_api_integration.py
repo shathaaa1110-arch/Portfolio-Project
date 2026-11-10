@@ -56,7 +56,7 @@ def test_saving_twice_keeps_one_record(places):
     assert body["total"] == 1
     card = body["restaurants"][0]
     assert card["id"] == ids[0] and card["cuisines"] == ["italian", "pizza"]
-    assert set(card) == {"id", "name_ar", "name_en", "cuisines", "district", "price_tier", "rating", "maps_url"}
+    assert set(card) == {"id", "name_ar", "name_en", "cuisines", "district", "price_tier", "rating", "maps_url", "image_url"}
 
 
 def test_the_newest_save_comes_first_and_pages_work(places):
