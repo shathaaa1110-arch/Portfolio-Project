@@ -62,24 +62,32 @@ export function getDraftError(value: PreferencesDraft): string {
   if (value.allergyChoices.selected.includes("other") && !value.allergyChoices.otherText.trim()) {
     return "اكتب نوع الحساسية الأخرى، أو ألغِ اختيار «أخرى».";
   }
+  const allergies = allergyValues(value);
+  if (allergies.length > 20) return "يمكن حفظ ٢٠ نوع حساسية كحد أقصى.";
+  if (allergies.some(item => [...item].length > 50)) return "اختصر اسم كل نوع حساسية إلى ٥٠ حرفًا أو أقل.";
   if (seatingText(value).length > 200) return "اختصر احتياجات الجلسة إلى ٢٠٠ حرف أو أقل.";
   return "";
+}
+
+function allergyValues(value: PreferencesDraft): string[] {
+  if (value.allergyChoices.noAllergies) return [];
+  const other = value.allergyChoices.selected.includes("other")
+    ? value.allergyChoices.otherText.split(/\r?\n/).map(text => text.trim()).filter(Boolean)
+    : [];
+  return [...new Set([
+    ...value.allergyChoices.selected.filter(id => id !== "other"), ...other,
+  ])];
 }
 
 export function toPreferencesPayload(value: PreferencesDraft): PreferencesPayload {
   const error = getDraftError(value);
   if (error) throw new Error(error);
-  const other = value.allergyChoices.selected.includes("other")
-    ? value.allergyChoices.otherText.split(/\r?\n/).map(text => text.trim()).filter(Boolean)
-    : [];
   return {
     liked_cuisines: [...new Set([
       ...value.selectedCuisines,
       ...value.selectedFoodTypes.map(id => foodKeys[id] ?? id),
     ])],
-    allergies: value.allergyChoices.noAllergies ? [] : [...new Set([
-      ...value.allergyChoices.selected.filter(id => id !== "other"), ...other,
-    ])],
+    allergies: allergyValues(value),
     budget_min: value.isBudgetUnlimited ? null : toNumber(value.budgetMin),
     budget_max: value.isBudgetUnlimited ? null : toNumber(value.budgetMax),
     max_distance_km: value.isDistanceUnlimited ? null : toNumber(value.maxDistance),

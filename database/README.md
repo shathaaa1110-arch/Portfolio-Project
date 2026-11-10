@@ -1,10 +1,11 @@
-# Thouq database setup (DB-02 / DB-03 / DB-14)
+# Thouq database setup (DB-02 / DB-03 / DB-14 / DB-15)
 
 This workflow uses installed PostgreSQL 18, Python 3.12, SQLAlchemy/Psycopg,
 and Alembic 1.20.0. It provides separate local development and disposable test
 databases. DB-02 establishes migration tracking; DB-03 creates `users` with a
-single UUID primary key and a unique, required text `phone_number`. DB-14 adds account preferences. The remaining tables in `schema.sql` are drafts
-for later tasks, not applied migrations.
+single UUID primary key and a unique, required text `phone_number`. DB-14 adds account preferences; 0005 adds outings and districts. DB-15 adds saved
+restaurants and creates the existing restaurant schema when absent. Other tables
+in `schema.sql` remain drafts; Alembic is the migration source of truth.
 The account diagram and column definitions are in
 [TechnicalDoc.md](../Docs/TechnicalDoc.md#users).
 
@@ -110,9 +111,9 @@ alembic -c database/alembic.ini upgrade head
 alembic -c database/alembic.ini current
 ```
 
-Expected revision: `0003_account_preferences (head)`. The migrations create
-`alembic_version`, `users`, and account `preferences`. `upgrade head` can be rerun without recreating
-the database. Migration files live in `database/migrations/versions/`.
+Expected revision: `0006_saved_restaurants (head)`. The migrations create
+`alembic_version`, accounts/preferences, outing/district tables, restaurants, and
+`saved_restaurants`. `upgrade head` can be rerun without recreating the database. Migration files live in `database/migrations/versions/`.
 
 DB-03 starts from DB-02's empty baseline; it does not convert a database manually
 populated from the draft SQL. Its downgrade drops `users` and its account data,
@@ -142,7 +143,7 @@ python database/reset_test_db.py
 Expected output:
 
 ```text
-Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0003_account_preferences
+Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0006_saved_restaurants
 ```
 
 This command always selects test mode, verifies the URL and local role attributes,
@@ -291,3 +292,55 @@ validation and endpoints remain #63. Public browsing remains unauthenticated.
 
 [Arabic learning guide](../Docs/Database-Learning.ar.md) ·
 [DB-14 issue](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/125)
+
+
+## DB-15 saved restaurants
+
+Migration `0006_saved_restaurants` follows `0005_outings_and_districts`. The storage
+contract is `saved_restaurants(user_id UUID, restaurant_id INTEGER)`, with both
+columns required and the pair as its primary key. The foreign keys reference
+`users(id)` and `restaurants(id)`. An account can save multiple restaurants; multiple
+accounts can save the same restaurant, but the same pair cannot occur twice.
+The primary-key index supports account lookups; a separate restaurant index supports
+reference checks from restaurants.
+
+Both foreign keys use **ON DELETE RESTRICT**. Explicitly delete saved links before
+deleting an account or restaurant; no saved links are cascaded away. Removing a
+saved link does not delete either parent. Other tables' foreign keys still apply.
+
+Existing account and restaurant rows and schemas are preserved. If restaurants is
+absent, the migration creates its established schema without importing any dataset,
+plus the search column/indexes skipped by 0004 on a fresh database. Existing parent
+IDs must be UUID/integer primary keys respectively. An incompatible parent or an
+unexpected existing saved-restaurants table stops the migration; inspect and resolve
+the mismatch before retrying. Failed DDL rolls back, with no automatic data repair.
+Downgrade is refused to protect saved data; use a reviewed forward migration.
+
+Use the normal `upgrade head` and disposable test reset commands above. Do not apply
+`schema.sql` as an alternative migration path. No remote database upgrade is included
+in this task. The database owner applies the migration through the normal deployment
+workflow. Offline SQL generation remains unsupported by the migration chain.
+
+### Handoff to #126
+
+The SQL relation is the interface; endpoints and authentication belong to
+[#126](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/126).
+Always derive `user_id` from the authenticated account. A plain duplicate insert
+fails with unique violation `23505`; an idempotent save can use:
+
+```sql
+INSERT INTO saved_restaurants (user_id, restaurant_id)
+VALUES (:user_id, :restaurant_id)
+ON CONFLICT (user_id, restaurant_id) DO NOTHING;
+```
+
+Read with `WHERE user_id = :user_id` and join `restaurants.id = restaurant_id`.
+Unsave with both keys in the delete predicate. Use bound parameters and a transaction.
+Invalid references (`23503`), restricted parent deletes (`23001` on PostgreSQL 18),
+and null keys (`23502`) are rejected by PostgreSQL.
+No saved-restaurant routes or authentication changes are supplied here; public
+browsing remains unauthenticated.
+
+Verification: `backend/tests/test_saved_restaurant_schema_integration.py`, the
+normal database migration/health integration tests, and the existing backend suite.
+Actual run evidence belongs in [VALIDATION.md](VALIDATION.md).

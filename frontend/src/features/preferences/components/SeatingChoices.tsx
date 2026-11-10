@@ -1,3 +1,4 @@
+import { layoutDirection } from "@/shared/layout";
 import { StyleSheet, View } from "react-native";
 import { CuisineCard } from "./CuisineCard";
 
@@ -93,7 +94,7 @@ export function SeatingChoices({
 const styles = StyleSheet.create({
   grid: {
     // Show two cards per row, starting from the right.
-    direction: "ltr",
+    ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
     flexWrap: "wrap",
     justifyContent: "space-between",

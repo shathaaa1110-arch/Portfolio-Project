@@ -326,7 +326,7 @@ The same information also appears as a card inside the app, so a member who has 
 
 ### Database design
 
-The database is relational (PostgreSQL). Applied migrations provide accounts and account preferences; the other tables below remain the broader release design. Four ideas shape it:
+The database is relational (PostgreSQL). Applied migrations provide accounts, preferences, outing/district tables, and DB-15 saved-restaurant storage. DB-15 also creates restaurants if absent; the remaining tables below describe the broader release design. Four ideas shape it:
 
 - **People and occasions are separate.** A group holds its members. An outing holds everything that changes from one occasion to the next. An outing can also stand alone, with no group, as a one-off session.
 - **`participants` is the central table.** It has one row per person per outing, for members and guests alike, and carries that person's attendance. Their preferences for the outing and their votes point to this row.
@@ -344,9 +344,13 @@ erDiagram
     OUTINGS ||--o{ PARTICIPANTS : "includes"
     OUTINGS ||--o{ PLAN_ITEMS : "suggests"
     RESTAURANTS ||--o{ PLAN_ITEMS : "appears in"
+    USERS ||--o{ SAVED_RESTAURANTS : "saves"
+    RESTAURANTS ||--o{ SAVED_RESTAURANTS : "is saved"
     PARTICIPANTS ||--o{ VOTES : "casts"
     PLAN_ITEMS ||--o{ VOTES : "receives"
     USERS ||--o| PREFERENCES : "saves (DB-14)"
+    PARTICIPANTS ||--o| PREFERENCES : "answers for one outing"
+    DISTRICTS ||--o{ OUTINGS : "meeting area of"
 
     USERS {
         uuid id PK
@@ -389,12 +393,17 @@ erDiagram
     PREFERENCES {
         uuid id PK
         uuid user_id FK, UK
+        uuid participant_id FK, UK
         text[] liked_cuisines
         text[] allergies
         int budget_min
         int budget_max
         numeric max_distance_km
         text seating_needs
+    }
+    SAVED_RESTAURANTS {
+        uuid user_id PK, FK
+        int restaurant_id PK, FK
     }
     RESTAURANTS {
         int id PK
@@ -415,6 +424,13 @@ erDiagram
         jsonb opening_hours
         text summary
         text maps_url
+    }
+    DISTRICTS {
+        text id PK
+        text name_ar
+        text name_en
+        numeric latitude
+        numeric longitude
     }
     PLAN_ITEMS {
         uuid id PK
@@ -486,10 +502,10 @@ One row per occasion, whether a one-off session or one of a group's outings.
 | group_id | uuid | no | Foreign key to `groups`. Empty for a one-off session |
 | organizer_id | uuid | yes | Foreign key to `users`: the person who runs this outing |
 | name | text | yes | Given by the organizer, for example "Thursday dinner" |
-| status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result`. The first three and the last match the four stages shown in the app |
-| invite_code | text | yes | Four letters and digits. Unique among outings that are still open. Carried by the invite link |
+| status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result` (checked by the database). The first three and the last match the four stages shown in the app |
+| invite_code | text | yes | Four upper-case letters and digits (checked by the database). Unique among outings that are still open (partial unique index). Generated without `0 O 1 I L`, which are easy to confuse. Carried by the invite link |
 | starts_at | timestamptz | yes | Date and time set by the organizer. The meal (breakfast, lunch, afternoon, dinner, late night) is worked out from it and matched against the restaurants' `meal_fit` columns |
-| district | text | yes | Meeting area chosen by the organizer. Distances are measured from its centre, taken as the average position of the restaurants in that district, so no separate districts table is needed |
+| district | text | yes | Meeting area chosen by the organizer: an `id` from `districts`. Distances are measured from that district's centre |
 | tiebreak_ends_at | timestamptz | no | Set when a tie-break starts: the moment the 30 seconds end |
 | created_at | timestamptz | yes | |
 
@@ -513,7 +529,7 @@ One row per person per outing. A member's row points to their account; a guest's
 | outing_id | uuid | yes | Foreign key to `outings` |
 | user_id | uuid | no | Foreign key to `users`. Empty for a guest |
 | guest_name | text | no | Required when `user_id` is empty |
-| attendance | text | yes | `pending`, `confirmed`, or `declined`. Joining from the invite link sets it to `confirmed` |
+| attendance | text | yes | `pending`, `confirmed`, or `declined` (checked by the database). Joining from the invite link sets it to `confirmed` |
 | preferences_done | boolean | yes | True once the participant taps "Ready to vote". The plan is generated when it is true for everyone |
 
 #### `preferences`
@@ -566,6 +582,36 @@ A reduced copy of the team's Riyadh restaurants dataset: open places only, with 
 | summary | text | no | Shown on the restaurant details screen |
 | maps_url | text | yes | Opened by the app |
 
+#### `districts`
+
+The Riyadh districts an organizer or a user without location can choose from. Loaded by migration `0005` from `database/seed/riyadh_districts.json` (171 districts); read-only for the app.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| id | text | yes | Primary key, the dataset's district code, for example `00100001141` |
+| name_ar | text | yes | Shown in the app |
+| name_en | text | no | |
+| latitude, longitude | numeric | yes | The district centre. Used for distances; not sent to the app |
+
+#### `saved_restaurants` (DB-15, #130)
+
+One link per account and saved restaurant; the pair is the primary key.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| user_id | uuid | yes | Primary-key component; foreign key to `users(id)` |
+| restaurant_id | integer | yes | Primary-key component; foreign key to `restaurants(id)` |
+| saved_at | timestamptz | yes | When it was saved, default `now()`; the list shows the newest first (migration `0007_saved_at`, BE-33) |
+
+Both foreign keys use `ON DELETE RESTRICT`: remove saved links explicitly before
+parent deletion. Unsaving never deletes an account or restaurant. The primary key
+supports account lookups; `restaurant_id` also has an index. Existing parent rows
+are preserved by migration `0006_saved_restaurants`; missing restaurants are created
+from the established schema, including search support. Downgrade is refused to
+protect data. See the [database guide](../database/README.md#db-15-saved-restaurants).
+Storage is delivered by #130; the save/load/unsave endpoints are #126 (section 4.7).
+Public browsing remains unauthenticated.
+
 #### `plan_items`
 
 One row per restaurant suggested for an outing.
@@ -605,6 +651,7 @@ Enforced by the database:
 | A user is in a group once | Primary key on (`group_id`, `user_id`) in `group_members` |
 | An invite code leads to one outing | `outings.invite_code` is unique among outings that have not reached the result stage |
 | A member appears once in an outing | Unique on (`outing_id`, `user_id`) in `participants` |
+| An account saves a restaurant at most once | Primary key on (`user_id`, `restaurant_id`) in `saved_restaurants`; both foreign keys restrict parent deletion |
 | A restaurant appears once in a plan | Unique on (`outing_id`, `restaurant_id`) in `plan_items` |
 | One saved set per account, one set per participant | `preferences.user_id` and `preferences.participant_id` are each unique |
 | A set of preferences has exactly one owner | Check constraint: exactly one of `user_id` and `participant_id` is filled |
@@ -616,13 +663,15 @@ Enforced by the API, because they depend on the state of the outing:
 - A vote is accepted only while the status is `voting`, and only for a plan item of the same outing.
 - A tie-break vote is accepted only while the status is `tiebreak`, before `tiebreak_ends_at`, for one of the tied plan items, and once per participant.
 - Joining is accepted only while the status is `invite` or `preferences`.
+- A join locks the outing's row before it counts the participants, so two people joining at the same moment cannot pass the limit of 8. Starting voting and generating the plan lock the same row, so they never overlap a join. A new participant starts not ready.
 - Only the organizer can start the preferences stage, start voting early, and end voting early.
 - A guest's token is valid for one outing only.
+- Requests that carry an invite code, and guest joins, are limited per client address (Section 4.5).
 - The API never returns one participant's preferences to another. Allergies are returned as a single combined list for the outing, with no names attached.
 
 Indexes on `restaurants.district` and on the spend columns keep the recommendation engine's filters fast.
 
-The Could Have stories would add a little to this design if they are built: a `saved_restaurants` table linking users to restaurants (story 29), a healthy-options column on `restaurants` for the "light and healthy" mood (story 31), and dish tables for the tourist guide (story 32). The taste summary (story 30) needs nothing new, because it is counted from `votes`.
+The Could Have stories would add a little to this design if they are built: a healthy-options column on `restaurants` for the "light and healthy" mood (story 31), and dish tables for the tourist guide (story 32). The taste summary (story 30) needs nothing new, because it is counted from `votes`.
 
 ### Back-end classes
 
@@ -955,7 +1004,7 @@ sequenceDiagram
     participant DB as PostgreSQL
  
     O->>A: Enter session name, time, and area
-    A->>API: POST /outings
+    A->>API: POST /outings/session
     API->>DB: Insert outing (status invite, new code) and organizer as participant
     API-->>A: 201 outing with its invite code
     A-->>O: Waiting room with the code
@@ -964,10 +1013,10 @@ sequenceDiagram
     G->>A: Open the link or type the code
     A->>API: GET /outings/by-code/{code}
     API->>DB: Find the open outing with this code
-    API-->>A: 200 session name and organizer
+    API-->>A: 200 session name, organizer, and whether joining is open
     G->>A: Enter a name and tap Join
-    A->>API: POST /outings/{id}/join
-    API->>DB: Read the stage and the participant count
+    A->>API: POST /outings/{code}/join-guest
+    API->>DB: Lock the outing, then read the stage and the participant count
     alt Stage is invite or preferences, and fewer than 8 people
         API->>DB: Insert participant with the guest name
         API-->>A: 201 participant and temporary token
@@ -985,7 +1034,7 @@ sequenceDiagram
  
 - The guest first asks which session the code belongs to, sees its name, and only then joins.
 - The API server checks the stage and the number of people before adding anyone. A full session, or one where voting has started, answers with 409.
-- A registered user joins in the same way, sending their token instead of a name. No temporary token is issued, and when the outing belongs to a group the user also becomes a member.
+- A registered user joins in the same way through `POST /outings/{code}/join`, sending their token instead of a name. No temporary token is issued, and when the outing belongs to a group the user also becomes a member.
 - The loop at the end is how the organizer's screen learns that someone joined: the app asks for the outing's state every few seconds.
 ### 3.3 Vote, settle a tie, and announce the result
  
@@ -1000,7 +1049,7 @@ sequenceDiagram
  
     loop For each suggested restaurant
         P->>A: Swipe right (like) or left (pass)
-        A->>API: PUT /outings/{id}/votes/{plan_item_id}
+        A->>API: POST /outings/{id}/votes
         API->>DB: Insert or update the vote
         API-->>A: 200 OK
     end
@@ -1357,12 +1406,13 @@ Response `200`
 | # | Method | Path | Story |
 | -- | ------ | ---- | ----- |
 | 10 | POST | `/outings/session` | 4, 5 |
+|10a | GET | `/outings/by-code/{invite_code}` | 6, 7 |
 | 11 | POST | `/outings/{invite_code}/join` | 6 |
 | 12 | POST | `/outings/{invite_code}/join-guest` | 7 |
 | 13 | GET | `/outings/{outing_id}` | 10, 20 |
 | 14 | POST | `/outings/{outing_id}/attendance` | 19 |
 | 15 | POST | `/outings/{outing_id}/start-preferences` | 10 |
-| 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 |
+| 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 (generates the plan, D05) |
 | 17 | DELETE | `/outings/{outing_id}/participants/{participant_id}` | 24 |
 
 #### Create a one-off session
@@ -1372,33 +1422,104 @@ POST /outings/session
 ```
 Requires: Authorization
 
-Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant.
+Creates an outing with no group (`group_id = null`), generates its invite code, and adds the caller as the first, confirmed participant, with a copy of their saved preferences if they have any. The outing, its code and its organizer are saved in one transaction.
 
 Request
 ```json
-{ "name": "string", "starts_at": "timestamptz", "district": "string" }
+{ "name": "string", "starts_at": "2026-11-05T20:00:00+03:00", "district": "00100001141" }
 ```
+`name` is 1–60 characters. `starts_at` must carry its time zone, must not have passed, and must be within 60 days. `district` is an `id` from `GET /districts`.
 
 Response `201`
 ```json
-{ "outing_id": "uuid", "invite_code": "string", "status": "invite" }
+{ "outing_id": "uuid", "invite_code": "K7QX", "invite_url": "string | null", "status": "invite" }
+```
+`invite_url` is the shareable link: the server setting `INVITE_BASE_URL` followed by the code. It is `null` while that setting is empty; the app then shares the code.
+
+Response `422`
+```json
+{ "error": { "code": "INVALID_START_TIME", "message": "The start time has already passed." } }
+```
+or
+```json
+{ "error": { "code": "UNKNOWN_DISTRICT", "message": "Choose a district from the list." } }
+```
+
+#### List districts
+
+```http
+GET /districts
+```
+Requires: nothing
+
+Response `200`, by Arabic name. `name_en` is left out when unknown.
+```json
+{ "districts": [ { "id": "00100001141", "name_ar": "العليا", "name_en": "Al Olaya" } ] }
 ```
 
 Internally, this endpoint and group creation (4.4) share the same outing-creation logic; only the presence of a `group_id` differs. See Section 6, Technical Justifications.
+
+#### Look up an invite code
+
+```http
+GET /outings/by-code/{invite_code}
+```
+Requires: nothing (the join screen calls it before the person has joined)
+
+Finds the open outing with this code (any stage before `result`) so the join screen can show it before joining. The code is not case-sensitive and surrounding spaces are ignored. Nothing about the participants is returned except their number, and the organizer appears by first name only.
+
+Response `200`
+```json
+{
+  "outing_id": "uuid",
+  "name": "عشاء الخميس",
+  "organizer_name": "عاصم",
+  "starts_at": "2026-11-05T17:00:00+00:00",
+  "district": "00100001141",
+  "status": "invite",
+  "participants_count": 3,
+  "can_join": true,
+  "join_blocked_reason": null
+}
+```
+`join_blocked_reason` is `null`, `OUTING_FULL`, or `JOINING_CLOSED`, the same codes the join endpoints answer with. `district` is an `id` from `GET /districts`.
+
+Response `404`
+```json
+{ "error": { "code": "OUTING_NOT_FOUND", "message": "No open outing has this code. Check the code and try again." } }
+```
+
+Response `429` — too many tries with a code from the same address
+```json
+{ "error": { "code": "RATE_LIMITED", "message": "Too many tries. Please wait and try again.", "retry_after_seconds": 120 } }
+```
+
+Limits per client address, counted over the last 10 minutes:
+
+| Limit | Applies to | Why |
+| ----- | ---------- | --- |
+| 30 requests that carry a code | This lookup and both join endpoints together | Guessing a code by trying many is slow |
+| 10 guest joins | `POST /outings/{invite_code}/join-guest` | Filling an outing with fake guests is slow |
+
+A group joining from one network shares one address, and 8 people fit inside both limits. A refused request is not counted. Behind Render's proxy, the server setting `CLIENT_IP_HEADER` names the header that carries the caller's real address; it is empty locally. The counts are kept in the server's memory, which holds while the API runs as one process; they move to the database or Redis before it runs as several.
 
 #### Join with an invite code
 
 ```http
 POST /outings/{invite_code}/join
 ```
-Requires: Authorization
+Requires: Authorization (Bearer only)
 
-Joining is accepted only while the outing's status is `invite` or `preferences`, and only while it has fewer than 8 participants. If the outing belongs to a group, the caller is also added to `group_members` if not already a member. The caller's saved preferences, if any, are copied into a new row scoped to this outing.
+Joining is accepted only while the outing's status is `invite` or `preferences`, and only while it has fewer than 8 participants. The caller is added as a confirmed participant who is not ready yet. If the outing belongs to a group, the caller is also added to `group_members` if not already a member. The caller's saved preferences, if any, are copied into a new row scoped to this outing.
+
+Joining again returns the same participant and adds nobody, even after joining has closed. If that participant had declined, joining again confirms their attendance while joining is still open.
 
 Response `200`
 ```json
-{ "outing_id": "uuid", "status": "invite" }
+{ "outing_id": "uuid", "participant_id": "uuid", "status": "invite" }
 ```
+
+Responses `404` (`OUTING_NOT_FOUND`) and `429` (`RATE_LIMITED`) are the same as in the lookup above.
 
 Response `409`
 ```json
@@ -1414,19 +1535,22 @@ or
 ```http
 POST /outings/{invite_code}/join-guest
 ```
-Requires: nothing (this is the one endpoint with no token; a guest has none yet)
+Requires: nothing (a guest has no token yet)
 
-Same checks as joining above. Creates a participant row with no `user_id` and issues a temporary guest token, valid for this outing only, accepted by every endpoint a guest needs (preferences, voting, viewing the plan and the result).
+Same checks as joining above. Creates a confirmed participant row with no `user_id` that is not ready yet, and issues a temporary guest token, valid for this outing only, accepted by every endpoint a guest needs (preferences, voting, viewing the plan and the result). The token expires one day after the outing's `starts_at`. A guest has no account, so every call adds a new participant.
 
 Request
 ```json
 { "guest_name": "string" }
 ```
+`guest_name` is 1–40 characters after surrounding spaces are removed.
 
 Response `201`
 ```json
 { "outing_id": "uuid", "participant_id": "uuid", "guest_token": "jwt", "status": "invite" }
 ```
+
+Responses `404`, `409` and `429` are the same as for joining with an account.
 
 #### Outing state (polling)
 
@@ -1447,6 +1571,9 @@ Response `200`
   "district": "string",
   "invite_code": "string",
   "tiebreak_ends_at": "timestamptz | null",
+  "me": { "participant_id": "uuid", "is_organizer": true },
+  "actions": ["start_preferences"],
+  "readiness": { "ready_count": 1, "total_count": 3 },
   "participants": [
     {
       "participant_id": "uuid",
@@ -1457,6 +1584,21 @@ Response `200`
     }
   ]
 }
+```
+- `me` is the caller's own participant, so the app can mark its row.
+- `readiness` counts the confirmed participants who are ready, and all confirmed participants.
+- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage, and `start_voting` in the `preferences` stage once everyone confirmed is ready. It is empty for everyone else, and in stages whose organizer actions are not built yet.
+- `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.
+- A guest token is accepted for its own outing only, and stops working once the guest is removed.
+
+Response `403`
+```json
+{ "error": { "code": "NOT_A_PARTICIPANT", "message": "You are not part of this outing." } }
+```
+
+Response `404`
+```json
+{ "error": { "code": "OUTING_NOT_FOUND", "message": "This outing does not exist." } }
 ```
 
 #### Confirm or decline attendance
@@ -1489,7 +1631,7 @@ POST /outings/{outing_id}/start-preferences
 ```
 Requires: Authorization, caller must be the organizer
 
-Moves `status` from `invite` to `preferences`.
+Moves `status` from `invite` to `preferences`. Asking again once the outing is in `preferences` answers `200` and changes nothing, so a double tap is safe. The allowed moves between stages are kept in one place (`outings/stages.py`); a stage is reached only from the one before it, never backwards. The request locks the outing's row, like a join, so it never overwrites a stage that another request has just changed.
 
 Response `200`
 ```json
@@ -1503,22 +1645,39 @@ Response `403`
 
 Response `409`
 ```json
-{ "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing is not in the invite stage." } }
+{ "error": { "code": "INVALID_STATUS_TRANSITION", "message": "The outing cannot move from the voting stage to the preferences stage." } }
 ```
 
-#### Start voting early
+#### Generate the plan and open voting
 
 ```http
 POST /outings/{outing_id}/start-voting
 ```
 Requires: Authorization, caller must be the organizer
 
-Generates the plan immediately, without waiting for every participant to mark their preferences ready. Participants who are not ready are excluded from the plan's calculation but can still vote once it exists. Moves `status` to `voting`.
+Generates the plan and moves `status` from `preferences` to `voting` (BE-17). Following release decision D05, it is accepted only when every confirmed participant is ready; marking ready never generates the plan by itself. Readiness and membership are checked under the outing's row lock, the same lock a join takes, so a person who joins at that moment is never left out. The plan items and the stage change are saved in one transaction, and voting closes joining and answers.
 
-Response `200`
+The engine (BE-14, BE-15) uses every confirmed participant's answers, the outing's district centre and its start time in Riyadh time. Restaurants whose opening days are not fully known are left out (D04). Up to 5 places are saved in `plan_items`, in rank order, with the Arabic reason.
+
+Asking again once voting is open returns the stored plan; nothing is generated twice.
+
+Response `200`: the plan, in the same shape as `GET /outings/{outing_id}/plan`, with `"status": "voting"`.
+
+Response `200`, no matching restaurant: nothing is saved, no limit is relaxed (D04), and the outing stays in `preferences`, so people can change their answers and the organizer can try again.
 ```json
-{ "outing_id": "uuid", "status": "voting" }
+{ "outing_id": "uuid", "status": "preferences", "allergy_warning": [], "plan_items": [],
+  "message": "No restaurant matches everyone's conditions. Change some answers and try again." }
 ```
+
+Response `403`: `ORGANIZER_ONLY`.
+
+Response `409`
+```json
+{ "error": { "code": "NOT_EVERYONE_READY", "message": "Wait until everyone is ready.", "ready_count": 2, "total_count": 3 } }
+```
+or `INVALID_STATUS_TRANSITION` before the preferences stage.
+
+One round per outing for now; separate rounds for a retry come with DB-07 (#14) and BE-31 (#90).
 
 #### Remove a participant from an outing
 
@@ -1538,6 +1697,7 @@ Response `200`
 | -- | ------ | ---- | ----- |
 | 18 | GET | `/users/me/preferences` | 3 |
 | 19 | PUT | `/users/me/preferences` | 3 |
+| 20a | GET | `/outings/{outing_id}/preferences` | 8, 9 |
 | 20 | PUT | `/outings/{outing_id}/preferences` | 8, 9 |
 | 21 | POST | `/outings/{outing_id}/preferences/ready` | 11 |
 
@@ -1546,7 +1706,7 @@ The server derives `user_id` from authentication and always filters by that ID;
 clients cannot choose an owner. `is_saved` derives from row existence, not a stored
 column. Legacy participant rows must never be selected as account defaults.
 See the [approved account contract](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/8).
-Outing endpoints below remain Sprint 2 work.
+The outing endpoints below (BE-13) find the caller's own participant row from the token, member or guest, so nobody can read or change another person's answers.
 
 #### Get saved preferences
 
@@ -1585,6 +1745,23 @@ Response `200`
 { "message": "preferences saved" }
 ```
 
+#### Read my preferences for one outing
+
+```http
+GET /outings/{outing_id}/preferences
+```
+Requires: Authorization (Bearer or guest)
+
+The caller's own copy for this outing, to fill the form. A member starts from a copy of their saved defaults, made when they join or, for the organizer, when the session is created. A guest starts with nothing saved.
+
+Response `200`: the same shape as `GET /users/me/preferences`, plus the caller's readiness.
+```json
+{ "is_saved": true, "liked_cuisines": ["levant"], "allergies": [], "budget_min": 30, "budget_max": 80,
+  "max_distance_km": 5, "seating_needs": null, "preferences_done": false }
+```
+
+Response `403`: `NOT_A_PARTICIPANT`. Response `404`: `OUTING_NOT_FOUND`.
+
 #### Edit preferences for one outing
 
 ```http
@@ -1592,14 +1769,18 @@ PUT /outings/{outing_id}/preferences
 ```
 Requires: Authorization (Bearer or guest)
 
-Edits the copy scoped to this outing only; the account's saved defaults are never touched. Rejected once the outing has moved past the preferences stage.
+Edits the copy scoped to this outing only; the account's saved defaults are never touched. Accepted in the `invite` and `preferences` stages, and rejected once the outing has moved past them. The first save creates the copy and later saves replace every field, so a field left out is saved as empty. Validation is the same as for the account.
+
+Saving clears the caller's readiness (`preferences_done = false`), so the plan is never built from answers the person has not confirmed. The request locks the outing's row like a join, so a save never slips in after voting has started.
 
 Request: same shape as above.
 
 Response `200`
 ```json
-{ "message": "outing preferences updated" }
+{ "message": "outing preferences updated", "preferences_done": false, "ready_count": 1, "total_count": 3 }
 ```
+
+Response `422`: `VALIDATION_ERROR` with the field names; nothing is saved.
 
 Response `409`
 ```json
@@ -1613,17 +1794,25 @@ POST /outings/{outing_id}/preferences/ready
 ```
 Requires: Authorization (Bearer or guest)
 
-Sets `preferences_done = true` for the caller's participant row. If every confirmed participant is now ready, this call triggers plan generation (`Outing.generatePlan()`) and moves the outing to `voting`.
+Sets `preferences_done = true` for the caller's participant row. Accepted only in the `preferences` stage, and only once the caller has a saved copy (an empty one counts). Asking again once ready answers `200` and changes nothing. `ready_count` and `total_count` count confirmed participants only; someone who declined does not hold the plan back.
+
+This call never generates the plan, even for the last person. `all_ready: true` tells the organizer that the plan can now be generated; the organizer then generates it (BE-17). This follows release decision D05: the last Ready does not start generation by itself.
 
 Response `200` — others still pending
 ```json
-{ "participant_id": "uuid", "preferences_done": true, "all_ready": false }
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": false, "outing_status": "preferences", "ready_count": 1, "total_count": 3 }
 ```
 
-Response `200` — last one, plan generated
+Response `200` — everyone is ready; the outing waits for the organizer
 ```json
-{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "voting" }
+{ "participant_id": "uuid", "preferences_done": true, "all_ready": true, "outing_status": "preferences", "ready_count": 3, "total_count": 3 }
 ```
+
+Response `409`
+```json
+{ "error": { "code": "PREFERENCES_REQUIRED", "message": "Save your preferences before marking them ready." } }
+```
+or `PREFERENCES_NOT_OPEN` (the organizer has not started the preferences stage), or `PREFERENCES_LOCKED` (voting has started).
 
 ### 4.7 Plan and Restaurants API
 
@@ -1632,7 +1821,7 @@ Response `200` — last one, plan generated
 | 22 | GET | `/outings/{outing_id}/plan` | 11 |
 | 23 | GET | `/restaurants/{restaurant_id}` | 21, 26 |
 | 24 | GET | `/restaurants` | 22 |
-| 25 | POST | `/recommendations/personal` | 23, 31 |
+| 25 | GET | `/users/me/recommendations` | 23, 31 |
 
 #### Get an outing's plan
 
@@ -1641,26 +1830,31 @@ GET /outings/{outing_id}/plan
 ```
 Requires: Authorization
 
-Returns the suggested restaurants in rank order, with the group's combined allergy warning (no names attached, as decided in Section 0).
+Returns the stored suggestions in rank order, the same for every participant, with the group's combined allergy warning (no names attached, as decided in Section 0). Accepts a login or a guest token.
 
 Response `200`
 ```json
 {
   "outing_id": "uuid",
+  "status": "voting",
   "allergy_warning": ["peanuts", "shellfish"],
   "plan_items": [
     {
       "plan_item_id": "uuid",
       "rank": 1,
       "match_score": 87,
-      "reason": "string",
+      "reason": "يناسب ذوقك، ضمن ميزانيتك ويبعد 1.9 كم",
       "restaurant": {
         "id": 101,
         "name_ar": "string",
+        "name_en": "string",
         "cuisines": ["italian"],
         "district": "string",
         "price_tier": 3,
         "rating": 4.6,
+        "spend_low": 40,
+        "spend_high": 90,
+        "maps_url": "string",
         "distance_km": 2.3
       }
     }
@@ -1668,6 +1862,8 @@ Response `200`
 }
 ```
 `distance_km` is computed at request time from the outing's `district` centre; it is not stored.
+
+Response `409`: `PLAN_NOT_READY` before the plan is generated. Response `403`: `NOT_A_PARTICIPANT`.
 
 #### Restaurant details
 
@@ -1740,43 +1936,67 @@ Response `503` — the restaurants table cannot be read
 #### Personal recommendation
 
 ```http
-POST /recommendations/personal
+GET /users/me/recommendations?limit=10&lat=24.69&lon=46.68
+GET /users/me/recommendations?limit=10&district_id=00100001141
 ```
-Requires: Authorization
+Requires: Authorization (an account; a guest pass is refused)
 
-Calls the recommendation engine with the caller's saved preferences and this request's inputs. Returns a result without storing it (`User.viewSuggestions()`).
+Runs the same engine and candidate rules as the group plan with one person: the caller's saved
+preferences, at the current Riyadh time. Coordinates win over `district_id`; with neither, no
+distances are shown. Nothing is stored (`User.viewSuggestions()`). `limit` is 1 to 20, default 10.
 
-Request
-```json
-{ "mood": "something_new", "budget_max": 150, "max_distance_km": 10 }
-```
-
-Response `200`
+Response `200`, best first; an empty list means nothing open now matches
 ```json
 {
   "restaurants": [
-    { "id": 101, "name_ar": "string", "match_score": 91, "reason": "string" }
+    { "id": 101, "name_ar": "string", "name_en": "string", "cuisines": ["italian"], "district": "string",
+      "price_tier": 2, "rating": 4.5, "maps_url": "string", "spend_low": 40, "spend_high": 80,
+      "match_score": 91, "reason": "string", "distance_km": 1.2 }
   ]
 }
 ```
+
+Response `422` — a distance limit is saved but no location was sent (`LOCATION_REQUIRED`), or only one of `lat`/`lon`
+Response `404` — `district_id` is not a known district (`DISTRICT_NOT_FOUND`)
+
+#### Saved restaurants (BE-33, #126)
+
+All routes require an account token; a guest pass is refused (`401`). The account comes from the token only.
+
+```http
+GET    /users/me/saved-restaurants?limit=20&offset=0
+GET    /users/me/saved-restaurants/ids
+PUT    /users/me/saved-restaurants/{restaurant_id}
+DELETE /users/me/saved-restaurants/{restaurant_id}
+```
+
+- List: newest save first (`saved_at`, migration `0007_saved_at`), `limit` 1–50 (default 20), `offset` ≥ 0. Each item is the same summary as `GET /restaurants`.
+  Response `200`: `{ "restaurants": [ ... ], "total": 12, "limit": 20, "offset": 0 }`; nothing saved → empty list and `total: 0`.
+- Ids: `{ "ids": [101, 205] }`, newest first, to fill the hearts after login.
+- Save: `204`. Saving again keeps one row and its first time. Unknown restaurant → `404 RESTAURANT_NOT_FOUND`.
+- Remove: `204`, also when the restaurant was not saved.
+- Errors: `401 INVALID_TOKEN` / `TOKEN_EXPIRED`, `422 VALIDATION_ERROR` (bad `limit`, `offset` or id), `503 SAVED_UNAVAILABLE`.
 
 ### 4.8 Voting API
 
 | #  | Method | Path | Story |
 | -- | ------ | ---- | ----- |
 | 26 | POST | `/outings/{outing_id}/votes` | 12 |
+| 26a | GET | `/outings/{outing_id}/votes` | 12 |
 | 27 | POST | `/outings/{outing_id}/end-voting` | 13 |
-| 28 | POST | `/outings/{outing_id}/tiebreak-vote` | 14 |
+| 28 | ~~POST `/outings/{outing_id}/tiebreak-vote`~~ | not built: ties are settled automatically (D09) | 14 |
 | 29 | GET | `/outings/{outing_id}/result` | 15 |
 
-#### Cast a vote
+One round per outing for now: the current round is the outing's single stored plan. Round ids come with DB-07 (#14) and BE-31 (#90).
+
+#### Cast or change a vote
 
 ```http
 POST /outings/{outing_id}/votes
 ```
-Requires: Authorization (Bearer or guest)
+Requires: Authorization (Bearer or guest), a confirmed participant of this outing
 
-Accepted only while `status = voting`, for a plan item that belongs to this outing. Upserts the row (unique on participant, plan item, and `is_tiebreak = false`), so changing an answer updates it rather than creating a duplicate. Once every participant has voted on every card, this call triggers `settleResult()`.
+Accepted only while `status = voting`, for a plan item of this outing. Upserts the row (unique on participant, plan item and `is_tiebreak = false`), so changing Like to Pass updates the one answer. Takes the outing's row lock. When every member has answered every suggestion, this call ends voting in the same transaction (D07).
 
 Request
 ```json
@@ -1785,7 +2005,23 @@ Request
 
 Response `200`
 ```json
-{ "plan_item_id": "uuid", "liked": true, "voting_complete": false }
+{ "plan_item_id": "uuid", "liked": true, "voting_complete": false, "status": "voting",
+  "items_count": 5, "members_count": 3, "completed_count": 1 }
+```
+
+Errors: `409 VOTING_NOT_OPEN` (not in voting, including after the result), `404 PLAN_ITEM_NOT_FOUND` (not this outing's plan), `403` (not a participant), `422` (bad body).
+
+#### My votes and the group's progress
+
+```http
+GET /outings/{outing_id}/votes
+```
+Returns only the caller's own answers, for a reload, and counts for the group. Nobody sees another person's answers.
+
+Response `200`
+```json
+{ "outing_id": "uuid", "status": "voting", "votes": [{ "plan_item_id": "uuid", "liked": true }],
+  "answered_count": 1, "items_count": 5, "members_count": 3, "completed_count": 1 }
 ```
 
 #### End voting early
@@ -1793,49 +2029,28 @@ Response `200`
 ```http
 POST /outings/{outing_id}/end-voting
 ```
-Requires: Authorization, caller must be the organizer
+Requires: Authorization, caller must be the organizer (`actions` shows `end_voting` in the voting stage)
 
-Settles the result with the votes collected so far.
-
-Response `200`
-```json
-{ "outing_id": "uuid", "status": "result" }
-```
-`status` is `"tiebreak"` instead when the top plan items are tied.
-
-#### Cast a tie-break vote
-
-```http
-POST /outings/{outing_id}/tiebreak-vote
-```
-Requires: Authorization (Bearer or guest)
-
-Accepted only while `status = tiebreak`, before `tiebreak_ends_at`, for one of the tied plan items, once per participant (`is_tiebreak = true`). The result is not revealed by this call; it stays hidden until the tie-break ends, as decided in Section 0.
-
-Request
-```json
-{ "plan_item_id": "uuid" }
-```
-
-Response `200`
-```json
-{ "recorded": true }
-```
+Settles the result with the votes saved so far (D07); missing votes are not counted as Pass. Asking again after the result returns the same result. Response: the result below.
 
 #### Get the result
 
 ```http
 GET /outings/{outing_id}/result
 ```
-Requires: Authorization
+Requires: Authorization (Bearer or guest), a participant
+
+Most likes wins. Equal likes go to the better stored recommendation rank, then the plan item id (D09); there is no tie-break vote or timer. Support = likes ÷ all members (D08); `completed_count` is shown separately. No likes means no winner (D10), and `no_winner_reason` tells `no_votes` apart from `everyone_passed`. The winner's plan item has `is_winner = true`.
 
 Response `200`
 ```json
 {
-  "outing_id": "uuid",
-  "winner": { "restaurant_id": 101, "name_ar": "string", "maps_url": "string" },
-  "consensus_percentage": 71,
-  "total_votes": 7
+  "outing_id": "uuid", "status": "result",
+  "winner": { "plan_item_id": "uuid", "restaurant_id": 101, "name_ar": "string", "name_en": "string",
+              "district": "string", "maps_url": "string", "likes": 2, "support_percentage": 67 },
+  "no_winner_reason": null,
+  "members_count": 3, "completed_count": 2,
+  "items": [{ "plan_item_id": "uuid", "rank": 1, "restaurant_id": 101, "name_ar": "string", "likes": 2, "support_percentage": 67 }]
 }
 ```
 
@@ -1893,11 +2108,11 @@ Every Must Have and Should Have story (Section 0) maps to at least one endpoint 
 | 20 | `GET /groups/{id}`, `GET /outings/{id}` (participant list) |
 | 21 | `GET /restaurants/{id}` (`reason` field) |
 | 22 | `GET /restaurants?search=` |
-| 23 | `POST /recommendations/personal` |
+| 23 | `GET /users/me/recommendations` |
 | 24 | `DELETE /outings/{id}/participants/{pid}`, `DELETE /groups/{id}/members/{uid}` |
 | 25 | `POST /auth/push-token`; notifications sent by the group/outing, plan, and voting services |
 | 26 | `maps_url` field on `restaurants` and on the result |
-| 31 | `mood` input on `POST /recommendations/personal` |
+| 31 | `mood` input on `GET /users/me/recommendations` (not built) |
 
 ### 4.11 API architecture
 
@@ -2283,7 +2498,7 @@ ORG_TOKEN=$(echo "$VERIFY" | python3 -c "import sys,json; print(json.load(sys.st
 SESSION=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/outings/session" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ORG_TOKEN" \
-  -d '{"name": "Thursday dinner", "starts_at": "2026-10-22T19:00:00+03:00", "district": "Al Olaya"}')
+  -d '{"name": "Thursday dinner", "starts_at": "2026-12-01T19:00:00+03:00", "district": "00100001141"}')
 HTTP_CODE=$(echo "$SESSION" | tail -1)
 BODY=$(echo "$SESSION" | head -1)
 [ "$HTTP_CODE" = "201" ] || { echo "FAIL: create session expected 201, got $HTTP_CODE"; exit 1; }
@@ -2390,8 +2605,8 @@ HTTP_CODE=$(echo "$RESULT" | tail -1)
 BODY=$(echo "$RESULT" | head -1)
 [ "$HTTP_CODE" = "200" ] || { echo "FAIL: get result expected 200, got $HTTP_CODE"; exit 1; }
 WINNER=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['winner']['name_ar'])")
-CONSENSUS=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['consensus_percentage'])")
-echo "  result: OK (winner=$WINNER, consensus=$CONSENSUS%)"
+SUPPORT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['winner']['support_percentage'])")
+echo "  result: OK (winner=$WINNER, support=$SUPPORT%)"
 
 echo "=== Test 3 PASSED ==="
 ```
@@ -2510,11 +2725,11 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `GET /outings/{id}/plan` | Plan returned (200) | No plan yet (404) |
 | `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
 | `GET /restaurants` | List returned (200), empty list (200) | Bad `limit` (422), database unavailable (503) |
-| `POST /recommendations/personal` | Suggestions returned (200) | No auth (401) |
-| `POST /outings/{id}/votes` | Vote recorded (200) | Wrong stage (409), not a participant (403) |
+| `GET /users/me/recommendations` | Suggestions returned (200), empty list (200) | No auth or guest pass (401), distance limit without a location (422), unknown district (404) |
+| `POST /outings/{id}/votes` | Vote recorded or changed (200); the last answer ends voting | Wrong stage (409), another outing's suggestion (404), not a participant (403) |
+| `GET /outings/{id}/votes` | Own answers and counts (200) | Not a participant (403) |
 | `POST /outings/{id}/end-voting` | Result settled (200) | Not organizer (403) |
-| `POST /outings/{id}/tiebreak-vote` | Recorded (200) | Not in tiebreak (409), already voted (409) |
-| `GET /outings/{id}/result` | Result returned (200) | Not decided yet (409) |
+| `GET /outings/{id}/result` | Winner, or no winner with a reason (200) | Not decided yet (409) |
 
 ### 6.6 Bug tracking
 

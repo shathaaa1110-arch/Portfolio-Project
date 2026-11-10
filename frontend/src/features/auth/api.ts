@@ -45,3 +45,15 @@ export function verifyCode(phone: string, code: string, name?: string) {
 export function logout(token: string) {
   return request<null>("POST", "/auth/logout", { token });
 }
+
+// Response of GET /users/me: the signed-in account's own profile
+export type AccountProfile = {
+  id: string;
+  name: string;
+  phone: string;
+};
+
+// The backend finds the account from the token, so no user id is sent
+export function getMyProfile(token: string) {
+  return request<AccountProfile>("GET", "/users/me", { token });
+}

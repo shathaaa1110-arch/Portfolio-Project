@@ -60,7 +60,7 @@ export function LoginScreen() {
 
         <AppText style={styles.eyebrow}>جمعة حلوة، تبدأ هنا</AppText>
         <AppText variant="title" style={styles.title}>حيّاك من جديد.</AppText>
-        <AppText style={styles.subtitle}>ادخل بجوالك، ونرجعك لإنشاء الجلسة.</AppText>
+        <AppText style={styles.subtitle}>ادخل بجوالك، ونكمل من ذوقك وتفضيلاتك.</AppText>
 
         <AppText variant="label" style={styles.label}>رقم الجوال</AppText>
         <AppInput
@@ -90,7 +90,7 @@ export function LoginScreen() {
           <AppText style={styles.linkText}>أول مرة؟ أنشئ حسابًا</AppText>
         </Pressable>
 
-        <AppText style={styles.note}>تقدر تتصفح المطاعم وتنضم كضيف بدون حساب.</AppText>
+        <AppText style={styles.note}>تقدر تتصفح المطاعم بدون حساب.</AppText>
       </ScrollView>
     </SafeAreaView>
   );

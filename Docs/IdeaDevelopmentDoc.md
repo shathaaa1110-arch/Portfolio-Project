@@ -141,7 +141,7 @@ Thouq assembles it. One person creates an outing and shares an invite link. Each
 
 **Phase 2 — differentiating features:** dish-level recommendations per person, reservation integration, a restaurant dashboard for menus and availability, location-aware suggestions that balance where people are coming from, preference memory that learns from completed outings, occasion-aware filtering (family sections, private rooms, large-group capacity), and group history so recurring groups don't rediscover the same debate.
 
-**Phase 3:** AI personalization built on the accumulated preference data, and a conversational option on the invite link for people who'd rather talk than fill a form.
+**Phase 3:** Personalization built on the accumulated preference data, and a conversational option on the invite link for people who'd rather talk than fill a form.
 
 ### 4.3 Why It Isn't Easily Replaceable
 

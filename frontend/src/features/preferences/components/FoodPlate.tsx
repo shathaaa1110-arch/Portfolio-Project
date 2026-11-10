@@ -1,3 +1,4 @@
+import { layoutDirection } from "@/shared/layout";
 import { Image } from "expo-image";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
 
     // Keep image coordinates consistent in Arabic layouts.
-    direction: "ltr",
+    ...layoutDirection("ltr"),
   },
 
   image: {
