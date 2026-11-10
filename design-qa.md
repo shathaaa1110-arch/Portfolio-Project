@@ -1,4 +1,53 @@
-# Session and discovery UI review — 10 November 2026
+# Haila generation screen review — 10 November 2026
+
+**final result: passed**
+
+## Current target and evidence
+
+The user requested one character combining the supplied expressive, map-carrying Haila with the existing watercolor/scarf Haila, and a simpler generation screen. The supplied screenshot is a character reference, not a request to reproduce its onboarding screen or surrounding desktop/chat content. That private screenshot is not included in the repository.
+
+- Character target: `frontend/assets/images/sessions/haila-gathering.png`, 1086 × 1448, with alpha. Retains watercolor olive ribs and ochre scarf; adds expressive eyes, curled tip, map and gold shoes. The original `haila.png` is preserved.
+- Visual brief: `Docs/mockups/haila-generation/illustration-brief.md`.
+- Before: `Docs/mockups/haila-generation/before-320.png`, 320 × 740.
+- After: `Docs/mockups/haila-generation/after-320.png`, 320 × 740, and `after-390.png`, 390 × 844. Captured from the actual `SessionGenerating` component with the same session name; a temporary visual entry was removed before validation/commit.
+- Combined evidence: `Docs/mockups/haila-generation/comparison.png`, 960 × 830, from `comparison.html`. The actual before/after screens are each displayed at their original 320 × 740 pixels, density 1. The character source occupies a separate 210 × 350 panel with its aspect ratio preserved. This combined artifact was opened and examined; source and implementation were not judged from paths alone.
+- State: Arabic RTL, cream theme, “عشاء الأربعاء”, pending generation. No browser chrome or device bezel is included. The standalone character reference is an asset, not a full-screen mockup; its proportions are assessed within the new screen rather than treating the source onboarding layout as a pixel target.
+- Integration evidence: `flow-generating-320.png` captures the same screen during the actual local mock request, followed by automatic navigation to the first restaurant card. DOM width/height confirmed 320 × 740. Browser console reported no errors.
+
+## Findings and five fidelity surfaces
+
+1. **P2 resolved — Character mismatch and visible cream image rectangle.** Replaced the loading/tip illustration with the merged transparent asset. Map, eyes and scarf remain visible at mobile size; the alpha edge blends into the cream canvas without a rectangular patch.
+2. **P2 resolved — Repetitive copy and button-like loading pill.** Replaced the large pill and repeated paragraphs with a short heading/subtitle, a clearly informational row for taste/budget/distance, and a plain pending indicator. There is no fake action or staged completion claim.
+3. **Fonts/typography:** existing IBM Plex Sans Arabic Regular/Bold retained. Heading is 27/42, body 14/26, supporting labels 12/21–23. At both inspected sizes, text is readable without clipping; title is one line. No source logo/calligraphy was approximated.
+4. **Spacing/layout:** image slot is 272 px high normally and 220 px on short screens/large font scale. Full visible content fits 320 × 740 and 390 × 844 without scrolling at default text size. ScrollView remains available for larger text and long session names; no fixed text container truncates the main message. Header and existing four phases are retained.
+5. **Colors/tokens:** existing forest green and cream are preserved, with restrained ochre icons/scarf. Rules are quiet neutral borders. The progress row no longer resembles a tappable button.
+6. **Image quality:** true alpha confirmed; no stretching, text baked into the illustration, new decorative code drawings or placeholders. Reused gold underline and the existing platform icon component. HailaTip uses the same merged character for visual consistency.
+7. **Copy/content:** the screen says it is preparing restaurants for the group, identifies the outing, and explains that voting follows automatically. Factors describe inputs, not live backend substeps. No percentage or countdown was introduced. The backend's district-based distance and allergy rules are unchanged.
+
+No actionable P0/P1/P2 findings remain in this scoped visual comparison. Character detail and text are legible at 1:1 in the combined image; separate cropped evidence was unnecessary.
+
+## Validation and limits
+
+- Local browser flow: create → invitation → private preferences → save/ready → pending Haila → first voting card. Uses mock data, not authenticated production requests.
+- `npm run check` passed: TypeScript, module architecture and 91 existing tests, including pending generation, empty results and failure recovery. No feature dependencies or API requests changed.
+- Production-mode web export passed with 16 routes and the new bundled character asset; the temporary preview route is absent. `git diff --check` passed.
+- Decorative float is gentler and respects the existing reduced-motion subscription; the spinner stops with reduced motion while pending copy remains. OS-level reduced-motion and large native text behavior were inspected in code, not tested on a physical device.
+- Architecture/source map and Arabic beginner flow guide updated. API/SQL/ERD are unchanged and were not redrawn.
+- Existing live multiplayer/device acceptance gaps remain. This update does not rebuild or install the iPhone app.
+
+## Checklist
+
+- [x] Blended character placed in the real component and shared tips.
+- [x] Before/source/after inspected together at matched screen sizes.
+- [x] Compact screen and normal mobile screen captured, no console errors.
+- [x] Actual pending-request transition to voting exercised.
+- [x] Temporary visual route removed; source and documentation checks passed.
+
+---
+
+# Earlier session and discovery UI review — 10 November 2026
+
+The following records the earlier completed revision. Its Haila screenshot and cream-background polish note are superseded by the review above.
 
 **final result: passed**
 

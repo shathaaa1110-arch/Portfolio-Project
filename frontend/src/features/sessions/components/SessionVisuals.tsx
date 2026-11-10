@@ -32,7 +32,7 @@ export function SessionSteps({ step }: { step: 0 | 1 | 2 | 3 }) {
 
 export function HailaTip({ children }: { children: ReactNode }) {
   return <View style={styles.tip}>
-    <Image source={require("../../../../assets/images/sessions/haila.png")} style={styles.haila} contentFit="contain" accessibilityLabel="هيلة، رفيقة الجلسة" />
+    <Image source={require("../../../../assets/images/sessions/haila-gathering.png")} style={styles.haila} contentFit="contain" accessibilityLabel="هيلة، رفيقة الجلسة" />
     <View style={styles.tipCopy}><AppText style={styles.tipName}>هيلة معكم</AppText><AppText style={styles.tipText}>{children}</AppText></View>
   </View>;
 }

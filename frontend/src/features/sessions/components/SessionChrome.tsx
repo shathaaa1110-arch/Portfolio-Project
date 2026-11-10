@@ -14,6 +14,8 @@ const names = {
   calendar: { ios: "calendar", android: "calendar_month", web: "calendar_month" },
   time: { ios: "clock", android: "schedule", web: "schedule" },
   location: { ios: "mappin.and.ellipse", android: "location_on", web: "location_on" },
+  taste: { ios: "fork.knife", android: "restaurant", web: "restaurant" },
+  budget: { ios: "banknote", android: "payments", web: "payments" },
   people: { ios: "person.2", android: "group", web: "group" },
   arrow: { ios: "arrow.left", android: "arrow_back", web: "arrow_back" },
   check: { ios: "checkmark.circle.fill", android: "check_circle", web: "check_circle" },
