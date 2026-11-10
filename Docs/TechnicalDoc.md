@@ -359,6 +359,15 @@ erDiagram
         text push_token
         timestamp created_at
     }
+    OTP_CODES {
+        uuid id PK
+        text phone
+        text code_hash
+        timestamp expires_at
+        int attempts
+        timestamp used_at
+        timestamp created_at
+    }
     GROUPS {
         uuid id PK
         text name
@@ -471,6 +480,32 @@ other tables in this diagram remain draft designs, not tables created by DB-03.
 | phone_number | text | yes | Unique. Used to log in; not part of the primary key |
 | push_token | text | no | Device token for push notifications |
 | created_at | timestamp | yes | Without time zone, matching the existing SQL schema |
+
+#### `otp_codes`
+
+DB-08 migration `0009_otp_codes` implements local login-code verification.
+Authentica delivers the code only; its verification endpoint is not used.
+Codes exist before sign-up, so this table has no user foreign key.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| id | uuid | yes | Sole primary key, supplied by the API |
+| phone | text | yes | Normalized local phone; indexed, not unique |
+| code_hash | text | yes | HMAC-SHA256 of phone and code using the server secret; no plaintext code |
+| expires_at | timestamp | yes | UTC without time zone; five minutes after creation |
+| attempts | integer | yes | Defaults to zero; five wrong attempts block verification |
+| used_at | timestamp | no | UTC consumption time; a used code cannot issue another token |
+| created_at | timestamp | yes | UTC creation time; determines the latest code |
+
+Request, resend and verify acquire the same PostgreSQL transaction advisory lock
+for the normalized phone before reading code state. Time is sampled after the
+lock is acquired. Only the latest code is checked; used codes and codes whose
+expiry is at or before that time are rejected. Account creation and code
+consumption commit together before token generation. Wrong attempts persist
+under the same lock, preventing concurrent requests from losing increments.
+A successful resend expires earlier unused codes; failed SMS delivery rolls back
+the replacement. `NAME_REQUIRED` leaves the code unused. SQLite unit tests cover
+sequential behavior; PostgreSQL tests establish concurrent single use.
 
 #### `groups`
 

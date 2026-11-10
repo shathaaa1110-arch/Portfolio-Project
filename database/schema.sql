@@ -145,7 +145,8 @@ CREATE TABLE IF NOT EXISTS votes (
     FOREIGN KEY (plan_item_id) REFERENCES plan_items(id)
 );
 
--- otp_codes table
+-- otp_codes table — DB-08, migration 0009_otp_codes; Authentica delivers only.
+-- The API verifies locally and serializes each phone’s code transactions.
 CREATE TABLE IF NOT EXISTS otp_codes (
     id UUID PRIMARY KEY,
     phone TEXT NOT NULL,

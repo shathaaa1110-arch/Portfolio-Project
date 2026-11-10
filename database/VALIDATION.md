@@ -287,3 +287,63 @@ The implementation tests do not duplicate or close the final read-only acceptanc
 work in [#133](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/133).
 **Pending:** PR/commit link, application device/build identification, short recording,
 and linked #133 acceptance evidence. No device E2E completion is claimed.
+
+## DB-08 — login-code storage (#15), 10 November 2026
+
+Implementation evidence from the working tree based on `f436bda`, using Python
+3.12.16 and the local PostgreSQL test database.
+
+- [Migration 0009](migrations/versions/0009_otp_codes.py) creates local OTP storage,
+  or validates and preserves a compatible draft table while adding a missing phone
+  index. Incompatible definitions abort without rewriting rows. Downgrade is refused.
+- [Auth transactions](../backend/app/services/auth/router.py) serialize request,
+  resend and verification by normalized phone using transaction advisory locks.
+  Used/expired codes return no token; attempts and consumption persist atomically.
+- [PostgreSQL acceptance tests](../backend/tests/test_otp_storage_integration.py)
+  cover fresh storage, repeated upgrade, draft adoption, incompatible tables,
+  stored hashes/defaults/attempts/used time, expiry and its boundary, replacement,
+  SMS-failure rollback, concurrent verification for new/existing accounts,
+  concurrent attempts, concurrent issuance, and resend versus verification.
+  Separate connections also prove locks block the same phone, permit another
+  phone, and release at transaction end. Isolated schemas are removed afterward.
+- [Auth API tests](../backend/tests/test_auth_api.py) make replacement deterministic,
+  assert rejected codes return no token, check expiry after lock acquisition, and
+  prove failed replacement leaves the previous code usable.
+
+Observed results:
+
+| Check | Result |
+| --- | --- |
+| Backend unit suite (`-m 'not integration'`) | **131 passed** |
+| DB-08 PostgreSQL tests plus database/account integration checks | **28 passed** |
+| Upgrade existing disposable test database from 0008 to 0009 | Passed |
+| Repeated migration/head check | Passed; head is `0009_otp_codes` |
+| Test schema cleanup | Zero `db08_` schemas remain |
+| `git diff --check` | Passed |
+
+Both test runs reported the existing Starlette/AnyIO deprecation warning.
+All SMS delivery was mocked; no live SMS or device acceptance is claimed.
+The runtime API contract is unchanged. The ERD now includes `OTP_CODES` without
+an account foreign key, matching codes issued before sign-up.
+
+Reproduce with the approved local test URL configured per [README.md](README.md):
+
+```bash
+ENVIRONMENT=test backend/.venv/bin/python -m alembic -c database/alembic.ini upgrade head
+backend/.venv/bin/python -m pytest -q backend/tests -m 'not integration'
+backend/.venv/bin/python -m pytest -q backend/tests/test_otp_storage_integration.py backend/tests/test_database_integration.py backend/tests/test_account_schema_integration.py
+```
+
+`TEST_DATABASE_URL` was absent in this session. As in the earlier DB-15 validation,
+verification temporarily set a generated credential on the disposable `thouq_test`
+role using the existing local administrator connection. It restored the original
+credential in `finally` and verified restoration. Tests and migrations used the
+restricted test role, not the administrator. No secret or `.env` file was written;
+no development database was reset or migrated. The test database was upgraded
+in place, without a reset.
+
+Deploy migration 0009 before the auth update and drain old auth workers before
+starting the updated workers: all writers must participate in the same lock.
+Local code and TechnicalDoc establish Authentica delivery with API-owned verification.
+
+[DB-08 issue](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/15#issue-5894351265).

@@ -1,4 +1,4 @@
-# Thouq database setup (DB-02 / DB-03 / DB-13 / DB-14 / DB-15)
+# Thouq database setup (DB-02 / DB-03 / DB-08 / DB-13 / DB-14 / DB-15)
 
 This workflow uses installed PostgreSQL 18, Python 3.12, SQLAlchemy/Psycopg,
 and Alembic 1.20.0. It provides separate local development and disposable test
@@ -111,9 +111,9 @@ alembic -c database/alembic.ini upgrade head
 alembic -c database/alembic.ini current
 ```
 
-Expected revision: `0008_general_restaurants (head)`. The migrations create
+Expected revision: `0009_otp_codes (head)`. The migrations create
 `alembic_version`, accounts/preferences, outing/district tables, restaurants, and
-`saved_restaurants`. `upgrade head` can be rerun without recreating the database. Migration files live in `database/migrations/versions/`.
+`saved_restaurants`, plus `otp_codes` for local login verification. `upgrade head` can be rerun without recreating the database. Migration files live in `database/migrations/versions/`.
 
 DB-03 starts from DB-02's empty baseline; it does not convert a database manually
 populated from the draft SQL. Its downgrade drops `users` and its account data,
@@ -143,7 +143,7 @@ python database/reset_test_db.py
 Expected output:
 
 ```text
-Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0008_general_restaurants
+Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0009_otp_codes
 ```
 
 This command always selects test mode, verifies the URL and local role attributes,
@@ -390,3 +390,31 @@ FROM restaurants WHERE id BETWEEN 2000000101 AND 2000000108;
 Expected sample counts: 8 / 8. Implementation tests and evidence are in
 [VALIDATION.md](VALIDATION.md); final device/build/recording acceptance remains
 [#133](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/133).
+
+
+## DB-08 login-code state (#15)
+
+Migration `0009_otp_codes` follows `0008_general_restaurants`. Authentica sends
+SMS; the API generates and verifies six-digit codes locally. Storage contains
+only the HMAC, normalized phone, five-minute expiry, attempt count, used time,
+and creation time. The API retains the existing five-attempt limit and 60-second
+resend cooldown. Codes precede accounts, so there is no user foreign key.
+
+A fresh database gets `otp_codes` and its phone index. An existing draft table
+is inspected for compatible types, nullability, primary key and default zero
+attempts, without extra foreign/unique keys. Compatible rows are preserved and
+a missing phone index is added. Incompatible tables abort migration for owner
+reconciliation; no rows are silently rewritten or deleted. Offline SQL generation
+is unsupported because adoption inspects the database. Downgrade is refused to
+preserve login state; use a forward migration.
+
+Apply `alembic -c database/alembic.ini upgrade head` before deploying the auth
+change. Deploy all auth workers together (drain old workers first), since the
+per-phone transaction lock must be used by every request, resend and verify
+worker. Each lock lasts through commit/rollback, including SMS delivery for
+issuance. Used/expired codes return no new token; issuing a replacement expires
+the prior code, and SMS failure rolls back that replacement.
+
+See [the schema and ERD](../Docs/TechnicalDoc.md#otp_codes),
+[validation evidence](VALIDATION.md#db-08--login-code-storage-15-10-november-2026),
+and [DB-08 #15](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/15#issue-5894351265).
