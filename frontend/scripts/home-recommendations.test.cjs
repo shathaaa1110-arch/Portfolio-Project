@@ -99,3 +99,64 @@ test("recommendation errors preserve backend codes needed by recovery actions", 
     await assert.rejects(() => apiWith(async () => { throw error; }).getPersonalRecommendations("token"), received => received === error);
   }
 });
+
+// The place chosen on Home must survive a new Home screen, but never reach another account (#155).
+const feature = require("./helpers/render-feature.cjs");
+const React = require("react");
+
+test("the chosen place is kept per account, and choosing no place forgets it", () => {
+  const store = feature.load("features/personalSuggestions/chosenLocation.ts");
+  const district = { location: { kind: "district", districtId: "d1" }, label: "العليا" };
+  assert.equal(store.recallLocation("A"), null);
+  store.rememberLocation("A", district);
+  assert.deepEqual(store.recallLocation("A"), district);
+  assert.equal(store.recallLocation("B"), null);
+  assert.equal(store.recallLocation(null), null);
+  store.rememberLocation("A", { location: { kind: "none" }, label: "حدّد موقعك" });
+  assert.equal(store.recallLocation("A"), null);
+});
+
+test("a new Home after saving preferences shows the place this account chose; another account starts empty", async () => {
+  const store = feature.load("features/personalSuggestions/chosenLocation.ts");
+  let session = { token: "A", userName: "فهد" };
+  let picker;
+  const { HomeLocationBar } = feature.load("application/HomeLocationBar.tsx", {
+    "expo-router": { useFocusEffect: effect => React.useEffect(effect, [effect]) },
+    "expo-location": {},
+    "expo-symbols": { SymbolView: "SymbolView" },
+    "react-native": { ...feature.native, Linking: {} },
+    "@/features/auth": { loadSession: async () => session },
+    "@/features/personalSuggestions": {
+      ...store,
+      LocationPicker: props => { picker = props; return null; },
+      requestRecommendationLocation: async () => ({ status: "denied", canAskAgain: true }),
+    },
+    "@/shared/components": feature.shared,
+    "@/shared/theme": feature.load("shared/theme.ts"),
+  });
+  const settle = () => feature.act(async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); });
+  const place = root => root.findAllByType("AppText").map(node => [].concat(node.props.children).join(""))[1];
+  async function openHome() {
+    const seen = [];
+    const home = await feature.render(HomeLocationBar, { onLocationChange: location => seen.push(location) });
+    await settle();
+    return { home, seen };
+  }
+
+  let { home, seen } = await openHome();
+  assert.equal(place(home.root), "حدّد موقعك");
+  await feature.act(async () => picker.onDistrict({ id: "d1", name_ar: "العليا" }));
+  await settle();
+  await home.close();
+
+  ({ home, seen } = await openHome());
+  assert.equal(place(home.root), "العليا");
+  assert.deepEqual(feature.plain(seen.at(-1)), { kind: "district", districtId: "d1" });
+  await home.close();
+
+  session = { token: "B", userName: "سارة" };
+  ({ home, seen } = await openHome());
+  assert.equal(place(home.root), "حدّد موقعك");
+  assert.deepEqual(feature.plain(seen.at(-1)), { kind: "none" });
+  await home.close();
+});
