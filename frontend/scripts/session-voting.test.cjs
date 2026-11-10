@@ -66,7 +66,7 @@ test('early end needs explicit in-app confirmation, organizer action and no unsa
   await act(async () => h.button('إنهاء التصويت مبكرًا').props.onPress());
   assert.equal(h.ends.length, 0);
   await act(async () => h.button('إنهاء وإظهار النتيجة').props.onPress());
-  assert.deepEqual(h.ends, [['o1', 'T']]);
+  assert.deepEqual(h.ends, [['o1', 'T', undefined]]);
   assert.equal(h.button('يعجبني'), undefined);
   assert(h.screen.root.findAllByType('AppText').some(n => String(n.props.children).includes('قبل وصول أي إجابة')));
   const member = await harness(t, { organizer: false });

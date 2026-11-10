@@ -24,7 +24,7 @@ const noPass = () => new ApiError(401, "NO_ACCESS", "This device has no pass for
 // in order, one request at a time, and a newer answer on the same card replaces the unsent one.
 // Unsaved answers are sent again after a failure; the server keeps one answer per card, so this
 // never counts a vote twice. The caller gives the token reader, so members and guests both work.
-export function useVoting(outingId: string, itemIds: string[], getToken: () => Promise<string | null>) {
+export function useVoting(outingId: string, itemIds: string[], getToken: () => Promise<string | null>, roundId?: string) {
   const [stage, setStage] = useState<VotingStage>("loading");
   const [outingStatus, setOutingStatus] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
@@ -36,7 +36,8 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
   const readToken = useRef(getToken);
   readToken.current = getToken;
   const pending = useRef(new Map<string, boolean>());
-  const sending = useRef(false);
+  const sending = useRef<number | null>(null);
+  const epoch = useRef(0);
   const open = useRef(false);
   const alive = useRef(true);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -44,14 +45,18 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
   // Read the saved answers when the screen opens, and again after reload().
   useEffect(() => {
     let current = true;
+    epoch.current++;
+    pending.current.clear(); sending.current = null;
     alive.current = true;
     open.current = false;
+    setAnswers({}); setProgress(null); setOutingStatus(null); setUnsaved(0); setError(null);
     setStage("loading");
     (async () => {
       try {
         const token = await readToken.current();
+        if (!current) return;
         if (token === null) throw noPass();
-        const mine = await loadMyVotes(outingId, token);
+        const mine = await loadMyVotes(outingId, token, roundId);
         if (!current) return;
         setAnswers(Object.fromEntries(mine.votes.map((vote) => [vote.plan_item_id, vote.liked])));
         setProgress(mine);
@@ -68,25 +73,28 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
     return () => {
       current = false;
       alive.current = false;
+      epoch.current++; open.current = false; pending.current.clear();
       clearTimeout(timer.current);
       timer.current = undefined;
     };
-  }, [outingId, attempt]);
+  }, [outingId, roundId, attempt]);
 
   // Send the oldest unsaved answer, then the next; stop on a failure and try again a little later.
   const flush = useCallback(async () => {
-    if (sending.current || !open.current) return;
+    if (sending.current !== null || !open.current || !alive.current) return;
+    const requestEpoch = epoch.current;
     const first = pending.current.entries().next();
     if (first.done) return;
     const [planItemId, liked] = first.value;
-    sending.current = true;
+    sending.current = requestEpoch;
     try {
       const token = await readToken.current();
+      if (!alive.current || requestEpoch !== epoch.current) return;
       if (token === null) throw noPass();
-      const saved = await saveVote(outingId, token, { plan_item_id: planItemId, liked });
+      const saved = await saveVote(outingId, token, { plan_item_id: planItemId, liked }, roundId);
+      if (!alive.current || requestEpoch !== epoch.current) return;
       // A newer answer on this card may have come while this one was on its way; that one stays queued.
       if (pending.current.get(planItemId) === liked) pending.current.delete(planItemId);
-      if (!alive.current) return;
       setProgress(saved);
       setError(null);
       if (saved.voting_complete || saved.status !== "voting") {
@@ -96,7 +104,7 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
         setStage("closed");
       }
     } catch (e) {
-      if (!alive.current) return;
+      if (!alive.current || requestEpoch !== epoch.current) return;
       const failure = asApiError(e);
       setError(failure);
       if (mayPass(failure)) {
@@ -121,11 +129,13 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
         }
       }
     } finally {
-      sending.current = false;
-      if (alive.current) setUnsaved(pending.current.size);
+      if (requestEpoch === epoch.current) {
+        sending.current = null;
+        if (alive.current) setUnsaved(pending.current.size);
+      }
     }
-    if (alive.current && open.current && timer.current === undefined) void flush();
-  }, [outingId]);
+    if (alive.current && requestEpoch === epoch.current && open.current && timer.current === undefined) void flush();
+  }, [outingId, roundId]);
 
   // Take an answer: it shows at once and is saved in the background. Returns false when voting is not open.
   const answer = useCallback(

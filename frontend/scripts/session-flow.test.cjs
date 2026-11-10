@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const React = require("react");
+const { roundApi } = require('./helpers/round-api.cjs');
 const { load, render, native, shared, act, deferred, plain } = require("./helpers/render-feature.cjs");
 const errors = load("shared/api/errors.ts");
 const theme = load("shared/theme.ts");
@@ -98,7 +99,8 @@ async function roomHarness(t, { organizer = true, pref = preferences, generation
     "expo-router": { router: {}, useLocalSearchParams: () => ({ id: "o1", code: "ABCD" }), useFocusEffect: callback => React.useEffect(callback, [callback]) },
     "@/features/preferences": { ...preferenceModel, PreferencesForm: "PreferencesForm" }, "@/features/restaurants": { RestaurantCard: "RestaurantCard" },
     "@/shared/components": shared, "@/shared/api/errors": errors, "@/shared/api/config": { USE_MOCK: false }, "@/shared/theme": theme,
-    "./api/outing": api, "./identity": { outingToken: async () => currentToken }, "./model": model,
+    "./api/outing": api, "./api/round": roundApi(undefined, false), "./components/SessionRetry": { SessionRetry: "Retry" },
+    "./identity": { outingToken: async () => currentToken }, "./model": model,
     "./guestPass": { loadGuestPass: async () => null, removeGuestPass: async () => {} },
     "./components/SessionVisuals": { SessionMasthead: "Masthead", SessionPaper: "Paper", SessionSteps: "Steps", HailaTip: "HailaTip" },
     "./components/SessionChrome": { SessionHeader: "Header", SessionIcon: "Icon", SessionSheet: "Sheet" },
@@ -153,6 +155,7 @@ test("an account switch cannot save another person's loaded outing draft", async
 test("outing APIs preserve the guest token and isolate preference PUT from account defaults", async () => {
   const calls = [];
   const api = load("features/sessions/api/outing.ts", {
+    "./round": roundApi(),
     "@/shared/api/errors": errors,
     "@/shared/api/client": { request: async (...args) => { calls.push(args); return { preferences_done: false }; } },
   });

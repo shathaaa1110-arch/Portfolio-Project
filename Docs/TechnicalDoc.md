@@ -19,9 +19,11 @@ location cache preserves the choice without re-requesting GPS.
 Public GET checks confirmed server-side `search` with filtered totals; it is now
 on by default in the frontend. This does not add district filtering or a separate
 restaurant-detail endpoint. Missing hours/prices are not synthesized. The current
-single-round outing API does not implement #90 retry; #91 remains blocked on its
-route, new-round identity and reset semantics. No SQL, ERD or backend algorithm
-changes are part of this frontend work.
+single-round outing API does not implement #90 retry. The #91 frontend now supports
+confirmation, same-session reset and stale-round protection in explicit local mock
+mode. Real activation awaits the [provisional round contract](Session-Retry-Contract.md)
+and #90; it is disabled by default. No SQL, ERD or backend algorithm changes are
+part of this frontend work.
 
 ## Implemented session frontend — 10 November 2026
 

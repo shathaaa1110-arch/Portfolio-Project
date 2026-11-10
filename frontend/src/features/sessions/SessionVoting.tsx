@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { router, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
@@ -17,6 +17,7 @@ import { QuietButton, room, SessionFooter, SessionSummary } from "./components/S
 type Props = {
   state: OutingState; plan: OutingPlan; getToken: () => Promise<string>;
   refresh: () => Promise<void>; stale: boolean; error: string;
+  retry?: ReactNode;
 };
 const arabic = (n: number) => n.toLocaleString("ar-SA");
 const itemName = (item: PlanItem) => item.restaurant.name_ar || item.restaurant.name_en || "مطعم";
@@ -27,8 +28,8 @@ function Suggestion({ item }: { item: PlanItem }) {
     spendHigh={r.spend_high} reason={item.reason} variant="featured" />;
 }
 
-export function SessionVoting({ state, plan, getToken, refresh, stale, error }: Props) {
-  const voting = useVoting(state.outing_id, plan.plan_items.map(i => i.plan_item_id), getToken);
+export function SessionVoting({ state, plan, getToken, refresh, stale, error, retry }: Props) {
+  const voting = useVoting(state.outing_id, plan.plan_items.map(i => i.plan_item_id), getToken, state.round_id);
   const [review, setReview] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -54,14 +55,18 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error }: 
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       try {
-        const mine = await loadMyVotes(state.outing_id, await getToken());
+        const mine = await loadMyVotes(state.outing_id, await getToken(), state.round_id);
         if (alive) { setCompleted(mine.completed_count); if (mine.status === "result") await refresh(); }
       } catch { /* The parent state refresh reports connection failures. */ }
       if (alive && state.status === "voting") timer = setTimeout(poll, 5000);
     }
     if (state.status === "voting") void poll();
     return () => { alive = false; clearTimeout(timer); };
-  }, [state.outing_id, state.status, getToken, refresh]));
+  }, [state.outing_id, state.round_id, state.status, getToken, refresh]));
+
+  useEffect(() => {
+    if (voting.outingStatus === "result" && state.status !== "result") void refresh();
+  }, [voting.outingStatus, state.status, refresh]);
 
   useEffect(() => {
     if (!closed) return;
@@ -69,18 +74,18 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error }: 
     setReview(false); setConfirmEnd(false);
     (async () => {
       try {
-        const next = await getVotingResult(state.outing_id, await getToken());
+        const next = await getVotingResult(state.outing_id, await getToken(), state.round_id);
         if (alive) { setResult(next); setFailure(""); }
       } catch (e) { if (alive) setFailure(sessionError(e)); }
     })();
     return () => { alive = false; };
-  }, [closed, state.outing_id, getToken, resultAttempt]);
+  }, [closed, state.outing_id, state.round_id, getToken, resultAttempt]);
 
   async function finish() {
     if (!canEnd || endLock.current) return;
     endLock.current = true; setEnding(true); setFailure("");
     try {
-      const next = await endVoting(state.outing_id, await getToken());
+      const next = await endVoting(state.outing_id, await getToken(), state.round_id);
       if (mounted.current) { setResult(next); setConfirmEnd(false); }
       await refresh();
     } catch (e) { if (mounted.current) setFailure(sessionError(e)); }
@@ -117,7 +122,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error }: 
           {winner && <View style={room.card}><View style={room.row}><SessionIcon name="check" /><AppText style={room.label}>اختيار الطلعة</AppText></View><Suggestion item={winner} /></View>}
           {result.winner && <QuietButton title={Platform.OS === "web" ? "نسخ نتيجة الطلعة" : "مشاركة نتيجة الطلعة"} onPress={shareResult} />}
           {!!shareNotice && <AppText accessibilityLiveRegion="polite" style={room.center}>{shareNotice}</AppText>}
-          {!result.winner && <HailaTip>تقدرون تبدأون جلسة جديدة وتغيّرون اختياراتكم.</HailaTip>}
+          {!result.winner && <HailaTip>لكل واحد ذوقه؛ تقدرون تراجعون اختياراتكم في جولة جديدة.</HailaTip>}
           {!!plan.allergy_warning.length && <AppText style={room.warning}>أبلغوا المطعم بالحساسيات المسجلة قبل الطلب؛ ظهور المطعم لا يضمن ملاءمة الطعام للحساسية.</AppText>}
           <View style={room.card}><AppText style={room.label}>كيف كانت أصواتنا؟</AppText>
             {result.items.map(item => <View key={item.plan_item_id} style={room.row}>
@@ -139,7 +144,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error }: 
           <Suggestion item={current} />
           {!!plan.allergy_warning.length && <AppText style={room.warning}>أبلغوا المطعم بالحساسيات المسجلة قبل الطلب.</AppText>}
         </View> : <View style={[room.card, styles.waiting]}>
-          <Image source={require("../../../assets/images/sessions/haila.png")} style={styles.haila} contentFit="contain" accessible={false} />
+          <Image source={require("../../../assets/images/sessions/haila-gathering.png")} style={styles.haila} contentFit="contain" accessible={false} />
           <AppText style={room.label}>{voting.unsaved ? "نحفظ اختياراتك..." : "تم حفظ اختياراتك"}</AppText>
           <AppText style={room.center}>{arabic(complete)} من {arabic(members)} أكملوا التصويت</AppText>
           <QuietButton title="مراجعة اختياراتي" onPress={() => setReview(true)} disabled={!canVote} />
@@ -157,7 +162,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error }: 
       {USE_MOCK && <AppText style={room.mock}>معاينة تجريبية</AppText>}
     </ScrollView>
     <SessionFooter>
-      {closed ? <AppButton title="العودة للرئيسية" onPress={() => router.replace("/")} /> : current ? <>
+      {closed ? <>{retry}<AppButton title="العودة للرئيسية" onPress={() => router.replace("/")} /></> : current ? <>
         <View style={room.row}>
           <AppButton title="يعجبني" accessibilityLabel={`يعجبني ${itemName(current)}`} disabled={!canVote}
             style={{ flex: 1 }} onPress={() => voting.answer(current.plan_item_id, true)} />

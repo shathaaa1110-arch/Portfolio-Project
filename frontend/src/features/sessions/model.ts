@@ -55,6 +55,9 @@ export function sessionError(error: unknown): string {
       RESULT_NOT_READY: "التصويت ما زال مفتوحًا. انتظر اكتمال المشاركين.",
       VOTING_UNAVAILABLE: "تعذّر الاتصال بالتصويت. حاول مرة أخرى.",
       PLAN_ITEM_NOT_FOUND: "تغيّرت قائمة المطاعم. حدّث الجلسة.",
+      STALE_ROUND: "بدأت جولة جديدة. حدّث الطلعة وراجع تفضيلاتك قبل المتابعة.",
+      ROUND_RETRY_UNAVAILABLE: "إعادة الجولة غير متاحة حاليًا. اختياراتكم ما تغيّرت.",
+      ROUND_RETRY_NOT_ALLOWED: "تغيّرت حالة الجولة. حدّث الطلعة قبل إعادة المحاولة.",
     };
     return messages[error.code] ?? "تعذّر إكمال الطلب. بياناتك باقية؛ حاول مرة أخرى.";
   }

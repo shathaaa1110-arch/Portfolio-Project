@@ -1,5 +1,5 @@
 import { request } from "@/shared/api/client";
-import { invalidResponseError } from "@/shared/api/errors";
+import { ApiError, invalidResponseError } from "@/shared/api/errors";
 
 // One answer on one suggestion card: liked it or passed.
 export type VoteAnswer = {
@@ -16,6 +16,7 @@ export type VoteProgress = {
 
 // My answers so far, read again after a reload (BE-19). status is the outing's stage, such as "voting".
 export type MyVotes = VoteProgress & {
+  round_id?: string;
   outing_id: string;
   status: string;
   votes: VoteAnswer[];
@@ -25,17 +26,19 @@ export type MyVotes = VoteProgress & {
 // What saving one answer returns; voting_complete is true when this answer ended voting for everyone.
 export type SavedVote = VoteProgress &
   VoteAnswer & {
+    round_id?: string;
     voting_complete: boolean;
     status: string;
   };
 
 // Save one answer. The server keeps one answer per card, so sending it again changes it instead of adding a vote.
-export async function saveVote(outingId: string, token: string, answer: VoteAnswer): Promise<SavedVote> {
+export async function saveVote(outingId: string, token: string, answer: VoteAnswer, roundId?: string): Promise<SavedVote> {
   const saved = await request<SavedVote>("POST", `/outings/${encodeURIComponent(outingId)}/votes`, {
     token,
-    // Only these two fields: the server rejects anything else.
-    body: { plan_item_id: answer.plan_item_id, liked: answer.liked },
+    // Legacy requests retain exactly two fields; round-aware servers also receive the expected round.
+    body: { plan_item_id: answer.plan_item_id, liked: answer.liked, ...(roundId ? { round_id: roundId } : {}) },
   });
+  if (roundId && saved?.round_id !== roundId) throw new ApiError(409, "STALE_ROUND", "Different round");
 
   if (
     !saved ||
@@ -50,12 +53,13 @@ export async function saveVote(outingId: string, token: string, answer: VoteAnsw
 }
 
 // My saved answers and the group's progress, so a reload continues where it stopped.
-export async function loadMyVotes(outingId: string, token: string): Promise<MyVotes> {
-  const mine = await request<MyVotes>("GET", `/outings/${encodeURIComponent(outingId)}/votes`, { token });
+export async function loadMyVotes(outingId: string, token: string, roundId?: string): Promise<MyVotes> {
+  const mine = await request<MyVotes>("GET", `/outings/${encodeURIComponent(outingId)}/votes${roundId ? `?round_id=${encodeURIComponent(roundId)}` : ""}`, { token });
+  if (roundId && mine?.round_id !== roundId) throw new ApiError(409, "STALE_ROUND", "Different round");
 
   if (
     !mine ||
-    typeof mine.outing_id !== "string" ||
+    mine.outing_id !== outingId ||
     typeof mine.status !== "string" ||
     !Array.isArray(mine.votes) ||
     !mine.votes.every(isAnswer) ||

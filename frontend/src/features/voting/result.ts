@@ -1,7 +1,8 @@
 import { request } from "@/shared/api/client";
-import { invalidResponseError } from "@/shared/api/errors";
+import { ApiError, invalidResponseError } from "@/shared/api/errors";
 
 export type VotingResult = {
+  round_id?: string;
   outing_id: string; status: "result";
   winner: null | {
     plan_item_id: string; restaurant_id: number; name_ar: string | null; name_en: string | null;
@@ -15,7 +16,8 @@ export type VotingResult = {
 const count = (n: unknown) => Number.isSafeInteger(n) && (n as number) >= 0;
 const text = (v: unknown) => v === null || typeof v === "string";
 const support = (n: unknown) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 100;
-function checked(r: VotingResult, id: string): VotingResult {
+function checked(r: VotingResult, id: string, roundId?: string): VotingResult {
+  if (roundId && r?.round_id !== roundId) throw new ApiError(409, "STALE_ROUND", "Different round");
   if (!r || r.outing_id !== id || r.status !== "result" || !count(r.members_count) || !count(r.completed_count) ||
       r.completed_count > r.members_count || !Array.isArray(r.items) || r.items.some(i => !i ||
         typeof i.plan_item_id !== "string" || !count(i.restaurant_id) || !count(i.rank) || !text(i.name_ar) ||
@@ -29,9 +31,9 @@ function checked(r: VotingResult, id: string): VotingResult {
   }
   return r;
 }
-export async function getVotingResult(id: string, token: string): Promise<VotingResult> {
-  return checked(await request<VotingResult>("GET", `/outings/${encodeURIComponent(id)}/result`, { token }), id);
+export async function getVotingResult(id: string, token: string, roundId?: string): Promise<VotingResult> {
+  return checked(await request<VotingResult>("GET", `/outings/${encodeURIComponent(id)}/result${roundId ? `?round_id=${encodeURIComponent(roundId)}` : ""}`, { token }), id, roundId);
 }
-export async function endVoting(id: string, token: string): Promise<VotingResult> {
-  return checked(await request<VotingResult>("POST", `/outings/${encodeURIComponent(id)}/end-voting`, { token }), id);
+export async function endVoting(id: string, token: string, roundId?: string): Promise<VotingResult> {
+  return checked(await request<VotingResult>("POST", `/outings/${encodeURIComponent(id)}/end-voting`, { token, ...(roundId ? { body: { round_id: roundId } } : {}) }), id, roundId);
 }

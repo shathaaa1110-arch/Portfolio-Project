@@ -5,6 +5,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { fromAccountPreferences, PreferencesForm, toPreferencesPayload, type PreferencesDraft } from "@/features/preferences";
 import { SessionGenerating } from "./SessionGenerating";
 import { SessionVoting } from "./SessionVoting";
+import { SessionRetry } from "./components/SessionRetry";
+import { retryRound, ROUND_RETRY_ENABLED } from "./api/round";
 import { QuietButton, SessionFooter, room } from "./components/SessionLayout";
 import { AppButton, AppText } from "@/shared/components";
 import { ApiError } from "@/shared/api/errors";
@@ -33,12 +35,15 @@ export function SessionScreen() {
   const [stale, setStale] = useState(false);
   const [emptyPlan, setEmptyPlan] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
-  const [editor, setEditor] = useState<{ value: PreferencesDraft; token: string } | null>(null);
+  const [editor, setEditor] = useState<{ value: PreferencesDraft; token: string; roundId?: string } | null>(null);
+  const [retryOpen, setRetryOpen] = useState(false);
+  const [retryError, setRetryError] = useState("");
   const [saveError, setSaveError] = useState("");
   const busyRef = useRef(false);
   const active = useRef(false);
   const serial = useRef(0);
   const loadedToken = useRef("");
+  const knownRound = useRef<{ outingId: string; id?: string; number: number }>({ outingId: id, number: 0 });
   const currentOuting = useRef(id);
   currentOuting.current = id;
 
@@ -49,9 +54,21 @@ export function SessionScreen() {
     try {
       token = await outingToken(id, code);
       const current = await getOuting(id, token);
+      if (!active.current || id !== currentOuting.current || requestId !== serial.current) return;
+      const previous = knownRound.current;
+      const number = current.round_number ?? 0;
+      if (previous.outingId === id && (number < previous.number ||
+          number === previous.number && previous.id !== current.round_id)) throw new ApiError(409, "STALE_ROUND", "Old state");
+      if (previous.outingId !== id || previous.id !== current.round_id) {
+        // Invalidate old editors/results as soon as the new round is observed, even if its preferences fail to load.
+        knownRound.current = { outingId: id, id: current.round_id, number };
+        loadedToken.current = token;
+        setState(current); setPlan(null); setPreferences(null); setEditor(null); setEmptyPlan(false);
+        setRetryOpen(false); setRetryError(""); setGenerating(false); setStale(true);
+      }
       const [own, result] = await Promise.all([
-        current.status === "preferences" ? getOutingPreferences(id, token) : Promise.resolve(null),
-        ["voting", "tiebreak", "result"].includes(current.status) ? getPlan(id, token) : Promise.resolve(null),
+        current.status === "preferences" ? getOutingPreferences(id, token, current.round_id) : Promise.resolve(null),
+        ["voting", "tiebreak", "result"].includes(current.status) ? getPlan(id, token, current.round_id) : Promise.resolve(null),
       ]);
       if (!active.current || id !== currentOuting.current || requestId !== serial.current) return;
       loadedToken.current = token;
@@ -72,6 +89,8 @@ export function SessionScreen() {
     active.current = true;
     setState(null); setPreferences(null); setPlan(null); setEditor(null); setGenerating(false); setStale(true);
     loadedToken.current = "";
+    if (knownRound.current.outingId !== id) knownRound.current = { outingId: id, number: 0 };
+    setRetryOpen(false); setRetryError(""); setEmptyPlan(false);
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     async function tick() {
@@ -82,12 +101,18 @@ export function SessionScreen() {
     return () => { stopped = true; active.current = false; serial.current++; clearTimeout(timer); };
   }, [refresh]));
 
+  function assertCurrent(roundId?: string) {
+    if (!active.current || id !== currentOuting.current || knownRound.current.id !== roundId) {
+      throw new ApiError(409, "STALE_ROUND", "Round changed");
+    }
+  }
   async function act(task: (token: string) => Promise<void>) {
     if (busyRef.current) return;
     busyRef.current = true; serial.current++; setBusy(true); setError("");
     try {
       const token = await outingToken(id, code);
       if (token !== loadedToken.current) throw new ApiError(401, "INVALID_TOKEN", "Account changed");
+      assertCurrent(state?.round_id);
       await task(token);
       await refresh();
     } catch (e) {
@@ -101,18 +126,20 @@ export function SessionScreen() {
     try {
       const token = await outingToken(id, code);
       if (token !== editor.token) throw new ApiError(401, "INVALID_TOKEN", "Account changed");
-      await saveOutingPreferences(id, token, toPreferencesPayload(value));
-      await markOutingReady(id, token);
+      assertCurrent(editor.roundId);
+      await saveOutingPreferences(id, token, toPreferencesPayload(value), editor.roundId);
+      assertCurrent(editor.roundId);
+      await markOutingReady(id, token, editor.roundId);
       if (active.current) { setEditor(null); setEmptyPlan(false); }
       await refresh();
     } catch (e) {
-      if (active.current) setSaveError(sessionError(e));
+      if (active.current && knownRound.current.id === editor.roundId) setSaveError(sessionError(e));
     } finally { busyRef.current = false; if (active.current) setBusy(false); }
   }
 
   function editPreferences() {
     if (!preferences) return;
-    setSaveError(""); setEditor({ value: fromAccountPreferences(preferences), token: loadedToken.current });
+    setSaveError(""); setEditor({ value: fromAccountPreferences(preferences), token: loadedToken.current, roundId: state?.round_id });
   }
   async function share() {
     if (!state) return;
@@ -129,19 +156,44 @@ export function SessionScreen() {
   async function beginVoting() {
     if (busyRef.current) return;
     setGenerating(true);
-    try { await act(async token => { const result = await generatePlan(id, token); setEmptyPlan(result.plan_items.length === 0); }); }
+    try { await act(async token => { const result = await generatePlan(id, token, state?.round_id); assertCurrent(state?.round_id); setEmptyPlan(result.plan_items.length === 0); }); }
     finally { if (active.current) setGenerating(false); }
   }
   const votingToken = useCallback(async () => {
     const token = await outingToken(id, code);
     if (token !== loadedToken.current) throw new ApiError(401, "INVALID_TOKEN", "Account changed");
+    if (!active.current || knownRound.current.outingId !== id || knownRound.current.id !== state?.round_id) throw new ApiError(409, "STALE_ROUND", "Round changed");
     return token;
-  }, [id, code]);
+  }, [id, code, state?.round_id]);
+  const canRetry = !!state?.me.is_organizer && ROUND_RETRY_ENABLED && !!state.round_id &&
+    !!state.round_number && state.actions.includes("retry_round");
+  async function restart() {
+    if (!canRetry || !retryOpen || !state?.round_id || !state.round_number || busyRef.current || stale) return;
+    busyRef.current = true; serial.current++; setBusy(true); setRetryError("");
+    try {
+      const token = await outingToken(id, code);
+      if (token !== loadedToken.current) throw new ApiError(401, "INVALID_TOKEN", "Account changed");
+      assertCurrent(state.round_id);
+      const next = await retryRound(id, token, { round_id: state.round_id, round_number: state.round_number });
+      if (!active.current || id !== currentOuting.current) return;
+      knownRound.current = { outingId: id, id: next.round_id, number: next.round_number };
+      setState(null); setPlan(null); setPreferences(null); setEditor(null); setEmptyPlan(false);
+      setRetryOpen(false); setStale(true);
+      await refresh();
+    } catch (e) {
+      if (active.current) { setRetryError(sessionError(e)); setStale(true); }
+    } finally { busyRef.current = false; if (active.current) setBusy(false); }
+  }
   const me = state?.participants.find(p => p.participant_id === state.me.participant_id);
   const disabled = busy || stale;
+  const noMatches = emptyPlan || state?.round_outcome === "no_matches";
+  const retry = state && <SessionRetry organizer={state.me.is_organizer} available={canRetry} disabled={disabled} busy={busy}
+    open={retryOpen} error={retryError} roundNumber={state.round_number ?? 1}
+    onOpen={() => { if (canRetry && !disabled) { setRetryError(""); setRetryOpen(true); } }}
+    onClose={() => { if (!busyRef.current) setRetryOpen(false); }} onConfirm={restart} onRefresh={refresh} />;
   const dateLabel = state ? new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: RIYADH }).format(new Date(state.starts_at)) : "";
   if (state && generating) return <SessionGenerating name={state.name} />;
-  if (state && plan) return <SessionVoting key={id} state={state} plan={plan} getToken={votingToken} refresh={refresh} stale={stale} error={error} />;
+  if (state && plan) return <SessionVoting key={`${id}:${state.round_id ?? "legacy"}`} state={state} plan={plan} getToken={votingToken} refresh={refresh} stale={stale || busy} error={error} retry={retry} />;
   return <SafeAreaView style={room.screen}>
     <View style={room.header}><SessionHeader title={state?.status === "preferences" ? "ذوق الجلسة" : "دعوة الجلسة"} />
       {state && <SessionSteps step={state.status === "invite" ? 0 : 1} />}</View>
@@ -157,6 +209,10 @@ export function SessionScreen() {
         <SessionPaper compact>
           <AppText accessibilityRole="header" style={styles.title}>{state.name}</AppText>
           <AppText style={room.center}>{dateLabel} · الرياض</AppText>
+          {(state.round_number ?? 1) > 1 && <View accessibilityLiveRegion="polite">
+            <AppText style={room.label}>جولة جديدة · {state.round_number!.toLocaleString("ar-SA")}</AppText>
+            <AppText style={room.text}>نفس جمعتكم وتفضيلاتكم. راجع ذوقك وأكّد جاهزيتك من جديد.</AppText>
+          </View>}
           {state.status === "invite" ? <>
             <View style={styles.rule} />
             <AppText style={room.center}>رمز الدعوة · حتى ٨ أشخاص</AppText>
@@ -170,8 +226,8 @@ export function SessionScreen() {
               <AppText style={[room.label, { flex: 1 }]}>{me?.preferences_done ? "جاهزيتك مؤكدة" : "ذوقي لهالجلسة"}</AppText></View>
             <AppText style={room.text}>{me?.preferences_done ? "اعتمدنا ذوقك. تقدر تعدّله إلى أن يبدأ التصويت." : preferences?.is_saved ? "تفضيلاتك موجودة؛ اعتمدها أو عدّل وش مشتهي اليوم." : "عبّ الصحن وحدّد ميزانيتك وحدودك، ثم أكّد جاهزيتك."}</AppText>
             {preferences?.is_saved ? <QuietButton title="تعديل ذوقي وتفضيلاتي" disabled={disabled} onPress={editPreferences} /> : <AppButton title="تعديل ذوقي وتفضيلاتي" disabled={disabled || !preferences} onPress={editPreferences} />}
-            {preferences?.is_saved && !me?.preferences_done && <AppButton title="اعتماد تفضيلاتي · أنا جاهز" disabled={disabled} onPress={() => act(token => markOutingReady(id, token))} />}
-            {!!emptyPlan && <AppText accessibilityRole="alert" style={room.warning}>ما لقينا مطعمًا يطابق شروط الجميع. راجعوا التفضيلات وأكدوا جاهزيتكم من جديد. حدودكم تبقى كما هي.</AppText>}
+            {preferences?.is_saved && !me?.preferences_done && <AppButton title="اعتماد تفضيلاتي · أنا جاهز" disabled={disabled} onPress={() => act(token => markOutingReady(id, token, state.round_id))} />}
+            {!!noMatches && <><AppText accessibilityRole="alert" style={room.warning}>ما لقينا مطعمًا يطابق شروط الجميع. تقدرون تراجعون تفضيلاتكم؛ حدودكم تبقى كما هي.</AppText>{retry}</>}
           </>}
           <View style={styles.rule} />
           <Pressable accessibilityRole="button" accessibilityLabel="عرض المشاركين وجاهزيتهم" onPress={() => setDetails(true)} style={styles.people}>

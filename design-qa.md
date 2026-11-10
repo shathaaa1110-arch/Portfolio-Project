@@ -1,3 +1,27 @@
+# Same-session retry review — 10 November 2026
+
+**Frontend validation: passed in local mock mode. Real backend acceptance remains open in #90/#91.**
+
+The existing cream/green theme, shared Arabic type, buttons, paper layout and blended Haila are reused. The organizer opens a short confirmation after a result or no matches. It explains unchanged invitation/participants/preferences and fresh readiness/votes. There is no new outing or automatic relaxation of participant limits.
+
+## Evidence
+
+- Actual local browser flow: create → invite → save preferences/ready → generation → three votes → winner → cancel retry (result retained) → confirm retry → round 2 readiness → explicitly ready → generation → first card with no saved votes.
+- The URL retained the same outing and invite code throughout. The round number changed to 2; the start-voting action stayed disabled until readiness was reconfirmed.
+- `Docs/mockups/session-retry/confirm-390.png` and `confirm-320.png`: confirmation at 390 × 844 and 320 × 740. Title wraps on the narrow screen, supporting copy and both actions remain readable and reachable. Haila has no opaque background or stretched proportions.
+- `round-two-390.png`: same outing, new round number and explicit readiness after confirmation; the paper content scrolls independently of the fixed action.
+- `new-votes-390.png`: round 2 starts at card 1 with zero completed participants and no review count carried from round 1.
+- No browser console errors were reported. Temporary viewport overrides were reset.
+
+## Checks and limits
+
+- `npm run check`: TypeScript, architecture and 99 tests passed. Includes cancellation, duplicate clicks, failed retry, non-organizer attempts, preserved hard limits, no matches and stale reads/writes. Guest/member round transitions are covered by tests; the browser walkthrough used one mock organizer.
+- Production web export passed with 16 routes, mock mode disabled and round support disabled.
+- Existing single-round API requests remain compatible. The new retry adapter is gated until #90 and the provisional contract in `Docs/Session-Retry-Contract.md` are agreed and implemented. No backend, SQL or ERD changes, persistent vote-history implementation, live multiplayer acceptance or phone installation are claimed.
+- Architecture/source ownership and the Arabic beginner guide were updated in the same change. Earlier reviews below describe their own revisions and test counts.
+
+---
+
 # Haila generation screen review — 10 November 2026
 
 **final result: passed**

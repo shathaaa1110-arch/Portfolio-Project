@@ -154,3 +154,37 @@ test("the answer that completes voting closes it, and without a pass nothing is 
   assert.equal(noPass.view.error.code, "NO_ACCESS");
   assert.equal(noPass.calls.load, 0);
 });
+
+test("changing rounds drops queued votes and ignores an old save that finishes after the new round loads", async t => {
+  const oldSave = deferred(), calls = [], view = {};
+  const hook = load('features/voting/useVoting.ts', {
+    '@/shared/api/errors': errors,
+    './api': {
+      loadMyVotes: async (id, token, round) => ({ outing_id: id, round_id: round, status: 'voting', votes: [], answered_count: 0, ...progress }),
+      saveVote: async (id, token, answer, round) => { calls.push({ answer, round }); return round === 'r1' ? oldSave.promise : { ...answer, round_id: round, status: 'voting', voting_complete: false, ...progress }; },
+    },
+  });
+  function Screen({ round }) { Object.assign(view, hook.useVoting('o1', round === 'r1' ? ['old1', 'old2'] : ['new1'], async () => 'T', round)); return null; }
+  const screen = await render(Screen, { round: 'r1' }); t.after(() => screen.close());
+  await act(async () => { view.answer('old1', true); view.answer('old2', true); });
+  assert.equal(calls.length, 1);
+  await screen.update({ round: 'r2' });
+  await act(async () => { oldSave.resolve({ plan_item_id: 'old1', liked: true, status: 'result', voting_complete: true, ...progress }); });
+  assert.deepEqual(plain(view.answers), {}); assert.equal(view.stage, 'open'); assert.equal(view.unsaved, 0);
+  await act(async () => view.answer('new1', false));
+  assert.deepEqual(calls.map(x => x.round), ['r1', 'r2']);
+  assert.deepEqual(plain(view.answers), { new1: false });
+});
+
+test("late vote restoration from a previous round cannot replace the current answers", async t => {
+  const oldRead = deferred(), view = {};
+  const hook = load('features/voting/useVoting.ts', { '@/shared/api/errors': errors, './api': {
+    loadMyVotes: async (id, token, round) => round === 'r1' ? oldRead.promise : { outing_id: id, status: 'voting', round_id: round, votes: [], ...progress },
+    saveVote: async () => { throw Error('No write expected'); },
+  } });
+  function Screen({ round }) { Object.assign(view, hook.useVoting('o1', ['i1'], async () => 'T', round)); return null; }
+  const screen = await render(Screen, { round: 'r1' }); t.after(() => screen.close());
+  await screen.update({ round: 'r2' });
+  await act(async () => oldRead.resolve({ outing_id: 'o1', status: 'result', round_id: 'r1', votes: [{ plan_item_id: 'i1', liked: true }], ...progress }));
+  assert.deepEqual(plain(view.answers), {}); assert.equal(view.stage, 'open'); assert.equal(view.outingStatus, 'voting');
+});
