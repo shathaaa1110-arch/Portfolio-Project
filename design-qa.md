@@ -1,77 +1,71 @@
-# Session design QA — 6 November 2026
+# Session and discovery UI review — 10 November 2026
 
 **final result: passed**
 
-This is visual/local frontend acceptance. Live backend integration, native device acceptance and production hosting have not been verified by this report.
+This covers the implemented local frontend and examined visual states. It does not close the live integration, native-device or missing backend dependencies in `Docs/Sprint-2-3-Frontend.ar.md`.
 
-## Target and evidence
+## Target and combined evidence
 
-- Source visual reference: `Docs/mockups/session-creation/reference.png`, the selected create-session design.
-- Implemented route: `http://localhost:8082/sessions/new`.
-- Final implementation: `Docs/mockups/session-creation/implementation.png`.
-- Combined comparison: `Docs/mockups/session-creation/comparison.png`, rendered from `comparison.html` in the in-app browser. Both images were judged together in that input.
-- Source: 852 × 1846 px, displayed at 390 × 845 CSS px. Implementation: 390 × 844 px, viewport 390 × 844 CSS px, device pixel ratio 1. The one-pixel height difference comes from source aspect ratio. Neither image includes device chrome.
-- State: cream theme, Arabic RTL, editable name “عشاء الأربعاء”, 20:30 Riyadh time and حي الملقا. The reference's 4 November date is past; the implementation selects Wednesday 11 November to satisfy the real future-date rule. This is an intentional state difference, not a calendar rendering defect.
-- Full-view comparison is 820 × 890 px. Labels, date/time controls, leaf, borders and buttons are legible at 390 CSS px per screen; a separate enlarged crop was not needed for the final judgement.
+The requested direction is the previous watercolor invitation and textured paper, with clearer steps and reachable actions. The temporary compressed redesign was rejected. Original creation typography, art, paper and date composition were restored; invitation/preferences retain that paper with a compact masthead.
 
-Additional rendered evidence, all under `Docs/mockups/session-creation/`:
+- Source: `Docs/mockups/session-creation/reference.png`, 852 × 1846 px.
+- Previous actual screen: `Docs/mockups/session-refresh/before-create.png`, 390 × 844 px.
+- Final actual screen: `Docs/mockups/session-refresh/create.png`, 390 × 844 px.
+- Combined comparison: `Docs/mockups/session-refresh/comparison.png`, 1234 × 906 px, rendered from `comparison.html`. All three images were inspected together.
+- Normalization: source displayed within 390 × 844 CSS px with preserved aspect ratio; approximately one pixel is letterboxing. Before/after are 390 × 844 captures at density 1. No device bezel/browser chrome.
+- State: cream, Arabic RTL, “عشاء الأربعاء”, 20:30 Riyadh. Reference date is 4 November; before/after use future-valid 11 November. Reference has a selected district; actual before/after show the empty required district. These are intentional content differences.
+- Each screen remains 390 px wide in the comparison. Text, controls and dividers are readable; a separate focused crop was unnecessary.
 
-| File | State |
+Final captures under `Docs/mockups/session-refresh/`:
+
+| File | Actual viewport / state |
 |---|---|
-| `invite.png` | Invite code and share action, 390 × 844 |
-| `invite-haila.png` | Scrolled invitation, Haila, participants and organizer action, 390 × 844 |
-| `readiness.png` | Explicit zero-of-one Ready state, 390 × 844 |
-| `preferences.png` | Reused preference artwork and outing-specific heading, 390 × 844 |
-| `plate.png` | “وش مشتهي اليوم؟”, plate and food choices, 390 × 844 |
-| `suggestions.png` | Compact session summary, allergy warning and first restaurant, 390 × 844 |
-| `create-320.png` | Creation at 320 × 740; no horizontal overflow; CTA reachable by normal scroll |
-| `join-320.png`, `join-invite-320.png` | Code entry and invitation at 320 × 740 |
-| `create-desktop.png` | Centered mobile composition at 1280 × 720 |
-| `flow-overview.png` | Browser-rendered overview of four actual captures; not a replacement for the interactive app |
+| `invite.png` | 390 × 844; paper invitation, participants and fixed action |
+| `preferences.png` | 390 × 844; outing preference summary |
+| `ready-320.png` | 320 × 740; ready state and fixed voting action |
+| `generating-320.png` | 320 × 740; Haila during generation |
+| `voting-320.png` | 320 × 740; one card, price and Like/Pass |
+| `result-320.png` | 320 × 740; mock winner and server-shaped counts |
+| `home-outing-selected.png` | 390 × 844; outing green, discovery neutral |
+| `home-other-restaurants.png` | 390 × 844; personal list rows, then public list |
 
-## Findings and comparison history
+## Findings and iteration history
 
-Earlier P2 findings were fixed and recaptured:
+1. **P1 — Visual direction drift:** temporary compression and plain summaries lost the original paper design. Restored original creation styles and paper-based invitation/readiness. Post-fix evidence: `comparison.png`, `invite.png`, `preferences.png`.
+2. **P2 — Long pages obscured the next action:** primary actions now sit outside the scroll area; participant details moved to a sheet and repeated explanations were shortened. Post-fix: invitation and 320-pixel readiness captures show reachable actions.
+3. **P2 — Home selection was hard-coded:** green now follows the selected action. Final Home capture and regression test cover choosing outing and returning to discovery.
+4. **P2 — Extra recommendations were hidden in the featured card:** removed expansion and passed the same response into regular list rows titled “مطاعم أخرى على ذوقك”. Final list capture and tests confirm placement; public search hides personal rows.
+5. **P2 — Loading framing/copy:** removed a redundant paper frame around Haila and corrected a literal line-break escape. Final loading capture shows readable lines and an indeterminate progress indicator.
 
-1. The initial paper spacing pushed the creation action below the 390 × 844 composition. Tightened section margins and date line heights while retaining scroll on shorter screens. Final evidence: `implementation.png` / `comparison.png`.
-2. The paper hint overlapped the olive decoration. Reallocated inner top/bottom padding so the hint and leaf occupy separate space. Final evidence: the lower paper region in `comparison.png`.
-3. The hero covered part of the “اسم الجلسة” label at the paper overlap. Raised the paper above the hero at their shared edge. Final evidence: `implementation.png`; the full label is visible.
-4. The suggestions screen repeated a large invitation summary before the restaurants. Added a compact paper variant and removed the redundant date row from this state. Final evidence: `suggestions.png`; the first restaurant image is visible in the initial viewport.
-5. Readiness with a slash was ambiguous in RTL. Replaced it with Arabic “٠ من ١”. Final evidence: `readiness.png`.
+No actionable P0/P1/P2 visual findings remain in the examined states. Backend acceptance gaps are explicitly separate.
 
-Initial observations were made in the browser during implementation; final captures above preserve the reviewed post-fix states. No actionable P0/P1/P2 findings remain in the examined states.
+## Five fidelity surfaces
 
-## Required fidelity surfaces
+- **Fonts/typography:** existing IBM Plex Sans Arabic Regular/Bold retained. The previous creation hierarchy and Arabic numerals remain. Titles, code, steps and controls are legible. Reference calligraphy differs from the product typeface; preserving the existing font is intentional. Long compact-card names truncate, with full names in details/accessibility labels.
+- **Spacing/layout:** hero/paper overlap, name divider, date/time columns and leaf preserved. Fixed footer improves reach while long content scrolls. Voting uses one card with stable bottom actions. DOM width was verified as 320 at the 320 × 740 viewport.
+- **Colors/tokens:** existing forest green/cream retained. Active Home action has green background/light text; inactive has pale background/green text. Disabled and warning states remain distinct.
+- **Images/assets:** reused watercolor hero, paper, gold stroke, Haila and category photos. No decorative vector/code substitutes. Category photos are described as illustrative. Haila's slight cream background is a minor P3 polish opportunity.
+- **Copy/content:** four explicit phases, real pending-request loading, server winner/counts, tie explanation only when relevant, and honest missing price/hours/maps states. Public browsing is not labelled personalized.
 
-- **Fonts/typography:** Uses the existing IBM Plex Sans Arabic Regular/Bold and established app text components. Hierarchy, right alignment, Arabic numerals and editable title/date are retained. The source lettering has some calligraphic differences; using the product's existing typeface is an intentional consistency choice. No clipped labels remain in the tested widths. Very long names wrap rather than truncate.
-- **Spacing/layout:** The hero, paper, name divider, two-column time/date, location row, people hint and green action follow the selected composition. The action aligns closely with the source at 390 × 844. At 320 × 740 the page scrolls vertically and the action remains reachable. Desktop keeps a readable centered mobile column.
-- **Colors/tokens:** Existing forest-green/cream theme retained across create, join, invitation, readiness, preference editing and suggestions. Ochre appears in artwork and Haila's helper label. Error and disabled states remain distinct.
-- **Images/assets:** Actual watercolor raster hero, paper, gold stroke and a proposed cardamom Haila asset are used. Existing preference food/plate assets and restaurant card imagery are reused. No decorative SVG/CSS drawings or emoji substitutes. Standard platform/library icons remain real UI icons. Generated illustration details differ from the source, while retaining its palette, subject and composition; exact pixel recreation is not claimed.
-- **Copy/content:** Editable fields use the reference's Arabic wording. Actual backend district selection replaces a hard-coded meeting area. Dates are future-valid. The form says “وش مشتهي اليوم؟”, outing changes are distinguished from account defaults, and results are described as suggestions without declaring a winner. Mock data is visibly labelled.
+## Interaction and validation
 
-Haila is a **new proposed** character, not a previously approved brand asset. It appears beside short invitation/readiness guidance and does not cover controls. Other session screens extend the source's visual language; no separate supplied source image exists for those states.
+- Local mock flow exercised: creation → invitation → outing preferences → readiness → generation → voting/result. Earlier voting exercise included changing an answer through review; regression tests also cover this.
+- A regression test also verifies that a restaurant present in both personal and public rows opens only one details sheet.
+- Account flow: choose حي الملقا → save preferences → return to existing Home. District stayed selected and recommendations refreshed without reopening the picker. Opened extra recommendation details and returned to the list.
+- Selected outing state and additional restaurant list placement inspected at 390 px. Readiness, generation and voting inspected at 320 px. Wider session layouts retain a centered column.
+- Final Home test tab reported no console errors. Earlier transient Metro/file-merge errors and a cold-start connection failure were resolved before final UI review.
+- `npm run check`: TypeScript, architecture and **91 tests**, zero failures. Four account tests passed separately.
+- Production web export succeeded with 16 routes, real API URL and mock mode disabled. No production deployment or authenticated live vote test is implied.
+- `git diff --check` passed.
 
-## Interaction and implementation validation
+## Remaining acceptance work
 
-- Edited name, date, time using Arabic digits, and a district returned by the explicit mock API; no GPS prompt.
-- Tried creation without authentication, completed a mock sign-in, returned with all form values retained, and created the session. No SMS was sent.
-- Opened preferences as organizer, verified suggestions were disabled while not Ready, completed all six steps, saved and became Ready, then requested suggestions.
-- Saw the allergy warning and suggestions; no voting or winner controls were rendered.
-- Exercised code lookup and the invitation card. Unit tests cover member/guest identity, join-to-room routing, ownership and readiness gates, full preference replacement, stale account rejection and guest storage failure.
-- Checked 390 px mobile, confirmed actual 320 × 740 DOM viewport and scroll width 320, and inspected a 1280 × 720 desktop render.
-- Browser console errors: none in the reviewed app tabs. One earlier Metro-disconnect warning occurred when restarting the dev server, before the final checks.
-- `npm run check`: TypeScript, architecture boundaries and 71 tests passed. Four account tests passed separately. Final web export succeeded with 16 routes. `git diff --check` passed.
-
-## Follow-up polish and integration limits
-
-- P3: the closest existing font, standard icons and generated brushwork are not identical to the reference raster. These are accepted consistency/art-direction differences rather than hidden defects.
-- Physical iOS/Android, accessibility text-size extremes and live multi-device synchronization remain untested. The mock is not a real restaurant-ranking engine and resets on reload.
-- Verify published endpoints, `INVITE_BASE_URL` and host rewrites for dynamic room/join routes before production handoff. No backend/SQL/ERD changes or production deployment are included.
+Physical iOS/Android, large accessibility text and live multi-participant synchronization remain untested. No phone build update, SMS or authenticated production writes were performed. Same-session retry needs #90's round contract; independent district filtering and standalone restaurant detail API are absent. Location cache is account-scoped memory for this app run, not permanent GPS storage; three native save cycles and denied-GPS behavior still need device acceptance.
 
 ## Completed checklist
 
-- [x] Source and rendered implementation compared together at matching density.
-- [x] P2 differences corrected and final states captured.
-- [x] All five fidelity surfaces reviewed.
-- [x] Primary local flow exercised and error logs inspected.
-- [x] Architecture/API/Arabic beginner documentation updated alongside the implementation.
+- [x] Reference, previous and final renders compared together at matching density.
+- [x] Original direction restored and post-fix captures inspected.
+- [x] Five fidelity surfaces and narrow-screen primary controls reviewed.
+- [x] Behavioral regressions and production export verified.
+- [x] Architecture, API usage, source map and Arabic delivery guide updated. SQL/ERD are unchanged.

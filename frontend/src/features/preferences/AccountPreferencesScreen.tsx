@@ -48,7 +48,7 @@ export function AccountPreferencesScreen() {
         const response = await getAccountPreferences(session.token);
         if (!active) return;
         if (onboarding === "1" && response.is_saved) {
-          router.replace(destination);
+          router.dismissTo(destination);
           return;
         }
         loadedToken.current = session.token;
@@ -83,7 +83,7 @@ export function AccountPreferencesScreen() {
       if (!await markPreferencesSaved(session.token)) {
         throw new ApiError(401, "INVALID_TOKEN", "Session changed");
       }
-      if (mounted.current) router.replace(destination);
+      if (mounted.current) router.dismissTo(destination);
     } catch (error) {
       if (!mounted.current) return;
       setSaveError(preferencesErrorMessage(error));
@@ -113,7 +113,7 @@ export function AccountPreferencesScreen() {
           ) : (
             <AppButton title="إعادة المحاولة" onPress={() => setAttempt(value => value + 1)} />
           ))}
-          <AppButton title="العودة للتصفح" onPress={() => router.replace("/")} />
+          <AppButton title="العودة للتصفح" onPress={() => router.dismissTo("/")} />
         </ScrollView>
       </SafeAreaView>
     );
@@ -124,7 +124,7 @@ export function AccountPreferencesScreen() {
       <PreferencesForm
         initialValue={initialValue}
         onSubmit={save}
-        onExit={() => router.navigate("/")}
+        onExit={() => router.dismissTo("/")}
         isSaving={saving}
         error={saveError}
         notice={USE_MOCK ? "وضع تجريبي: البيانات لا تُحفظ في حساب حقيقي." : ""}

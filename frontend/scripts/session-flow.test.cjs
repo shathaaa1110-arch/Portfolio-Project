@@ -45,6 +45,7 @@ async function createHarness(t, session = { token: "T" }) {
     "@/shared/api/config": { USE_MOCK: false }, "@/shared/api/errors": errors, "@/shared/theme": theme,
     "./model": model, "./components/SessionChrome": { SessionHeader: "Header", SessionIcon: "Icon" },
     "./components/SessionEditors": { SessionEditors: "Editors" },
+    "./components/SessionLayout": { SessionFooter: "Footer", room: {} },
     "./api/create": { createSession: (token, body) => { const pending = deferred(); calls.push({ token, body, ...pending }); return pending.promise; } },
   }).CreateSessionScreen;
   const screen = await render(Screen); t.after(() => screen.close());
@@ -79,7 +80,7 @@ test("creation without an account preserves the draft and starts sign-in instead
   assert.deepEqual(plain(h.routes), [{ pathname: "/login", params: { returnTo: "/sessions/new" } }]);
 });
 
-async function roomHarness(t, { organizer = true, pref = preferences } = {}) {
+async function roomHarness(t, { organizer = true, pref = preferences, generation } = {}) {
   const calls = []; let currentToken = "T";
   let state = { outing_id: "o1", name: "عشاء", starts_at: "2026-11-11T20:30:00+03:00", status: "preferences", district: "001", invite_code: "ABCD",
     me: { participant_id: "p1", is_organizer: organizer }, actions: [], readiness: { ready_count: 0, total_count: 1 },
@@ -90,7 +91,7 @@ async function roomHarness(t, { organizer = true, pref = preferences } = {}) {
     startPreferences: async () => { calls.push("start"); },
     saveOutingPreferences: async (id, token, body) => { calls.push({ method: "save", id, token, body }); },
     markOutingReady: async (id, token) => { calls.push({ method: "ready", id, token }); state.participants[0].preferences_done = true; state.readiness.ready_count = 1; state.actions = organizer ? ["start_voting"] : []; },
-    generatePlan: async () => { calls.push("generate"); return { outing_id: "o1", status: "preferences", plan_items: [], allergy_warning: [] }; },
+    generatePlan: async () => { calls.push("generate"); if (generation) return generation.promise; return { outing_id: "o1", status: "preferences", plan_items: [], allergy_warning: [] }; },
   };
   const Screen = load("features/sessions/SessionScreen.tsx", {
     "react-native": native, "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
@@ -100,29 +101,31 @@ async function roomHarness(t, { organizer = true, pref = preferences } = {}) {
     "./api/outing": api, "./identity": { outingToken: async () => currentToken }, "./model": model,
     "./guestPass": { loadGuestPass: async () => null, removeGuestPass: async () => {} },
     "./components/SessionVisuals": { SessionMasthead: "Masthead", SessionPaper: "Paper", SessionSteps: "Steps", HailaTip: "HailaTip" },
-    "./components/SessionChrome": { SessionHeader: "Header", SessionIcon: "Icon" },
+    "./components/SessionChrome": { SessionHeader: "Header", SessionIcon: "Icon", SessionSheet: "Sheet" },
+    "./components/SessionLayout": { SessionFooter: "Footer", QuietButton: "QuietButton", SessionSummary: "Summary", room: {} },
+    "expo-image": { Image: "Image" }, "./SessionVoting": { SessionVoting: "Voting" }, "./SessionGenerating": { SessionGenerating: "Generating" },
   }).SessionScreen;
   const screen = await render(Screen); t.after(() => screen.close());
-  const button = title => screen.root.findAllByType("AppButton").find(x => x.props.title === title);
+  const button = title => screen.root.findAll(x => ["AppButton", "QuietButton"].includes(x.type)).find(x => x.props.title === title);
   return { screen, calls, button, changeAccount: () => { currentToken = "different-account"; } };
 }
 
 test("server actions gate generation; the last Ready does not generate automatically", async t => {
   const h = await roomHarness(t);
-  assert.equal(h.button("اعرض اقتراحاتنا").props.disabled, true);
+  assert.equal(h.button("نبدأ التصويت").props.disabled, true);
   await act(async () => h.button("اعتماد تفضيلاتي · أنا جاهز").props.onPress());
   assert.equal(h.calls.filter(x => x === "generate").length, 0);
-  assert.equal(h.button("اعرض اقتراحاتنا").props.disabled, false);
-  await act(async () => h.button("اعرض اقتراحاتنا").props.onPress());
+  assert.equal(h.button("نبدأ التصويت").props.disabled, false);
+  await act(async () => h.button("نبدأ التصويت").props.onPress());
   assert.equal(h.calls.filter(x => x === "generate").length, 1);
   assert(h.screen.root.findAllByType("AppText").some(x => String(x.props.children).includes("ما لقينا مطعمًا")));
 });
 
 test("a member cannot see organizer generation controls", async t => {
   const h = await roomHarness(t, { organizer: false });
-  assert.equal(h.button("اعرض اقتراحاتنا"), undefined);
+  assert.equal(h.button("نبدأ التصويت"), undefined);
   await act(async () => h.button("اعتماد تفضيلاتي · أنا جاهز").props.onPress());
-  assert.equal(h.button("اعرض اقتراحاتنا"), undefined);
+  assert.equal(h.button("نبدأ التصويت"), undefined);
 });
 
 test("editing the plate sends the entire outing preference copy, preserves limits/allergies and confirms readiness after saving", async t => {
@@ -169,7 +172,7 @@ test("mock flow reflects membership/readiness gates and locks preferences after 
   const transport = load("shared/api/mockTransport.ts", { "./errors": errors });
   transport.registerMock("GET", "/users/me", () => ({ name: "شذى" }));
   transport.registerMock("GET", "/users/me/preferences", () => preferences);
-  load("features/sessions/flowMocks.ts", { "@/shared/api/errors": errors, "@/shared/api/mockTransport": transport }).registerSessionFlowMocks();
+  load("features/sessions/flowMocks.ts", { "@/shared/api/errors": errors, "@/shared/api/mockTransport": transport }).registerSessionFlowMocks({ generationDelayMs: 0 });
   const call = (method, path, body, token = "owner") => transport.mockTransport(method, path, body, token);
   const created = await call("POST", "/outings/session", { name: "عشاء", starts_at: "2026-11-11T20:30:00+03:00", district: "preview-malqa" });
   const path = `/outings/${created.outing_id}`;
@@ -184,4 +187,32 @@ test("mock flow reflects membership/readiness gates and locks preferences after 
   assert.equal(plan.status, "voting");
   await assert.rejects(call("PUT", `${path}/preferences`, preferences), { code: "PREFERENCES_LOCKED" });
   assert.deepEqual(plain(await call("GET", `${path}/plan`, undefined, guest.guest_token)), plain(plan));
+});
+
+
+test("generation screen lasts for the real request and returns to readiness on a failed request", async t => {
+  const generation = deferred();
+  const h = await roomHarness(t, { generation });
+  await act(async () => h.button("اعتماد تفضيلاتي · أنا جاهز").props.onPress());
+  let pending;
+  await act(async () => { pending = h.button("نبدأ التصويت").props.onPress(); });
+  assert.equal(h.screen.root.findAllByType("Generating").length, 1);
+  assert.equal(h.calls.filter(x => x === "generate").length, 1);
+  await act(async () => { generation.reject(error("PLAN_UNAVAILABLE")); await pending; });
+  assert.equal(h.screen.root.findAllByType("Generating").length, 0);
+  assert.equal(h.button("نبدأ التصويت").props.disabled, true);
+  assert(h.button("تحديث حالة الجلسة"));
+});
+
+test("a successful empty plan leaves the generation screen without changing anyone's limits", async t => {
+  const generation = deferred();
+  const h = await roomHarness(t, { generation });
+  await act(async () => h.button("اعتماد تفضيلاتي · أنا جاهز").props.onPress());
+  let pending;
+  await act(async () => { pending = h.button("نبدأ التصويت").props.onPress(); });
+  assert.equal(h.screen.root.findAllByType("Generating").length, 1);
+  await act(async () => { generation.resolve({ plan_items: [] }); await pending; });
+  assert.equal(h.screen.root.findAllByType("Generating").length, 0);
+  assert(h.screen.root.findAllByType("AppText").some(x => String(x.props.children).includes("ما لقينا مطعمًا")));
+  assert.equal(h.calls.filter(x => x.method === "save").length, 0);
 });

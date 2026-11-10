@@ -12,6 +12,7 @@ import { layoutDirection } from "@/shared/layout";
 import { theme } from "@/shared/theme";
 import { createSession } from "./api/create";
 import { RIYADH, riyadhDate, sessionError, sessionInput, shiftDate } from "./model";
+import { SessionFooter, room } from "./components/SessionLayout";
 import { SessionHeader, SessionIcon } from "./components/SessionChrome";
 import { SessionEditors, type SessionField } from "./components/SessionEditors";
 
@@ -56,9 +57,9 @@ export function CreateSessionScreen() {
   }
 
   return <SafeAreaView style={styles.screen}>
+    <View style={room.header}><SessionHeader title="جلسة جديدة" /></View>
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <View style={styles.page}>
-        <SessionHeader title="جلسة جديدة" />
         <View style={styles.intro}>
           <AppText accessibilityRole="header" style={styles.title}>خلّها جمعة حلوة.</AppText>
           <Image source={require("../../../assets/images/sessions/underline.png")} contentFit="cover" style={styles.underline} accessible={false} />
@@ -105,17 +106,19 @@ export function CreateSessionScreen() {
           </View>
         </View>
         <View style={styles.people}><SessionIcon name="people" size={27} /><AppText style={styles.peopleText}>حتى ٨ أشخاص، وكل شخص يضيف ذوقه.</AppText></View>
-        {!!error && <AppText accessibilityRole="alert" style={styles.error}>{error}</AppText>}
-        <Pressable accessibilityRole="button" accessibilityLabel={needsLogin ? "تسجيل الدخول لإنشاء الجلسة" : "إنشاء الجلسة"}
-          accessibilityState={{ disabled: saving, busy: saving }} disabled={saving} onPress={submit}
-          style={({ pressed }) => [styles.submit, (pressed || saving) && styles.pressed]}>
-          <AppText style={styles.submitText}>{saving ? "جارٍ إنشاء الجلسة..." : needsLogin ? "تسجيل الدخول" : "إنشاء الجلسة"}</AppText>
-          <SessionIcon name="arrow" color={theme.colors.onPrimary} size={27} />
-        </Pressable>
-        <AppText style={styles.footer}>بعدها ترسل الدعوة لأصحابك.</AppText>
-        {USE_MOCK && <AppText style={styles.mock}>معاينة تجريبية — لا تُنشئ جلسة حقيقية.</AppText>}
+        {USE_MOCK && <AppText style={styles.mock}>معاينة تجريبية</AppText>}
       </View>
     </ScrollView>
+    <SessionFooter>
+      {!!error && <AppText accessibilityRole="alert" style={styles.error}>{error}</AppText>}
+      <Pressable accessibilityRole="button" accessibilityLabel={needsLogin ? "تسجيل الدخول لإنشاء الجلسة" : "إنشاء الجلسة"}
+        accessibilityState={{ disabled: saving, busy: saving }} disabled={saving} onPress={submit}
+        style={({ pressed }) => [styles.submit, (pressed || saving) && styles.pressed]}>
+        <AppText style={styles.submitText}>{saving ? "جارٍ إنشاء الجلسة..." : needsLogin ? "تسجيل الدخول" : "إنشاء الجلسة"}</AppText>
+        <SessionIcon name="arrow" color={theme.colors.onPrimary} size={23} />
+      </Pressable>
+      <AppText style={room.center}>بعدها ترسل الدعوة لأصحابك.</AppText>
+    </SessionFooter>
     <SessionEditors field={field} name={name} date={date} time={time} onClose={() => setField(null)}
       onName={setName} onDate={setDate} onTime={setTime} onDistrict={setDistrict} />
   </SafeAreaView>;

@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { restaurantCategoryImage } from "../categoryImage";
-import { restaurantDistance, restaurantRating, restaurantSubtitle } from "../presentation";
+import { restaurantDistance, restaurantRating, restaurantSpendRange, restaurantSubtitle } from "../presentation";
 import { RestaurantMapLink } from "./RestaurantMapLink";
 import { RestaurantDetails } from "./RestaurantDetails";
 
@@ -31,6 +31,7 @@ export function RestaurantCard(props: Props) {
   const hasRating = ratingText !== null;
   const distance = restaurantDistance(distanceKm);
   const cuisine = restaurantSubtitle(cuisines, "");
+  const price = restaurantSpendRange(props.spendLow, props.spendHigh);
 
   return (
     <View style={styles.card}>
@@ -45,6 +46,7 @@ export function RestaurantCard(props: Props) {
           <AppText numberOfLines={1} style={styles.subtitle}>
             {[cuisine, distance].filter(Boolean).join(" · ")}
           </AppText>
+          {variant === "featured" && <AppText style={styles.subtitle}>{price ? `للشخص تقريبًا: ${price}` : "السعر غير متوفر"}</AppText>}
         </Pressable>
         {compact && action && <View style={styles.save}>{action}</View>}
       </View>

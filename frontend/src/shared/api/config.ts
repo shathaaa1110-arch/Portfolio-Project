@@ -4,8 +4,8 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 // 2. Read the mock flag and convert it to a boolean
 const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === "true";
 
-// Enable only after BE-27 supports search; the current server ignores unknown query fields.
-const RESTAURANT_SEARCH_ENABLED = process.env.EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED === "true";
+// Name/cuisine search is supported by the published API. Older servers can opt out.
+const RESTAURANT_SEARCH_ENABLED = process.env.EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED !== "false";
 
 // 3. If mock is off and the URL is empty -> throw a clear error
 if (!USE_MOCK && !API_BASE_URL) {

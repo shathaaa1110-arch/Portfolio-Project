@@ -8,7 +8,7 @@
       "preferences": ["auth"],
       "savedRestaurants": ["restaurants", "auth"],
       "personalSuggestions": ["restaurants"],
-      "sessions": ["auth", "preferences", "personalSuggestions", "restaurants"]
+      "sessions": ["auth", "preferences", "personalSuggestions", "restaurants", "voting"]
     }
   }
 }

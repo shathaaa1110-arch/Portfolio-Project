@@ -12,3 +12,4 @@ export {
   type LocationResult,
 } from "./location";
 export { recallLocation, rememberLocation, type ChosenLocation } from "./chosenLocation";
+export { registerPersonalSuggestionsMocks } from "./mocks";

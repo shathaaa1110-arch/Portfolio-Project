@@ -51,6 +51,10 @@ export function sessionError(error: unknown): string {
       PREFERENCES_NOT_OPEN: "انتظر المنظّم حتى يفتح مرحلة التفضيلات.",
       INVALID_STATUS_TRANSITION: "تغيّرت مرحلة الجلسة. حدّث الصفحة للمتابعة.",
       PLAN_NOT_READY: "الاقتراحات لم تجهز بعد.",
+      VOTING_NOT_OPEN: "انتهى التصويت. نحدّث النتيجة الآن.",
+      RESULT_NOT_READY: "التصويت ما زال مفتوحًا. انتظر اكتمال المشاركين.",
+      VOTING_UNAVAILABLE: "تعذّر الاتصال بالتصويت. حاول مرة أخرى.",
+      PLAN_ITEM_NOT_FOUND: "تغيّرت قائمة المطاعم. حدّث الجلسة.",
     };
     return messages[error.code] ?? "تعذّر إكمال الطلب. بياناتك باقية؛ حاول مرة أخرى.";
   }

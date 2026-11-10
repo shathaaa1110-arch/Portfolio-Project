@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
 import { RestaurantList, RestaurantPagination, useRestaurants, type RestaurantSummary } from "@/features/restaurants";
-import { type RecommendationLocation } from "@/features/personalSuggestions";
+import { usePersonalRecommendations, type RecommendationLocation } from "@/features/personalSuggestions";
 import { SaveRestaurantButton, useSavedRestaurants } from "@/features/savedRestaurants";
 import { AppText } from "@/shared/components";
 import { RESTAURANT_SEARCH_ENABLED } from "@/shared/api/config";
@@ -13,8 +13,10 @@ import { theme } from "@/shared/theme";
 import { HomeIntro } from "./HomeIntro";
 import { HomeLocationBar } from "./HomeLocationBar";
 import { HomeTodayPick } from "./HomeTodayPick";
+import { useHomePreferences } from "./useHomePreferences";
 
 export function HomePage() {
+  const [selectedAction, setSelectedAction] = useState<"restaurants" | "outing">("restaurants");
   const [browseRequest, setBrowseRequest] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -25,6 +27,10 @@ export function HomePage() {
     isRefreshing, error, canGoNext, canGoPrevious, nextPage, previousPage, refresh,
   } = useRestaurants(searchQuery);
   const savedList = useSavedRestaurants();
+  const preferences = useHomePreferences(refreshKey);
+  const recommendations = usePersonalRecommendations(preferences.state.status === "ready" ? preferences.state.token : null, location);
+  const otherRecommendations = !searchQuery.trim() && pageNumber === 1 && recommendations.status === "ready"
+    ? recommendations.restaurants.slice(1) : [];
 
   function renderSave(restaurant: RestaurantSummary) {
     return <SaveRestaurantButton iconOnly onImage restaurantId={restaurant.id}
@@ -33,7 +39,9 @@ export function HomePage() {
   }
 
   const header = <View style={styles.header}>
-    <HomeIntro onFindRestaurant={() => setBrowseRequest(value => value + 1)} onCreateSession={() => router.push("/sessions/new")} />
+    <HomeIntro selected={selectedAction}
+      onFindRestaurant={() => { setSelectedAction("restaurants"); setBrowseRequest(value => value + 1); }}
+      onCreateSession={() => { setSelectedAction("outing"); router.push("/sessions/new"); }} />
 
     {RESTAURANT_SEARCH_ENABLED && <View style={styles.searchGroup}>
       <View style={styles.searchField}>
@@ -51,9 +59,12 @@ export function HomePage() {
       </View>
     </View>}
 
-    <HomeTodayPick location={location} renderAction={renderSave} refreshKey={refreshKey}
+    {!searchQuery.trim() && <HomeTodayPick preferences={preferences} recommendations={recommendations} renderAction={renderSave}
       onChooseLocation={() => setPickerRequest(value => value + 1)} />
+    }
+  </View>;
 
+  const listHeading = (
     <View style={styles.section}>
       <View style={styles.sectionHeading}>
         <AppText variant="title" accessibilityRole="header" style={styles.sectionTitle}>{searchQuery.trim() ? "نتائج البحث" : "اكتشف المطاعم"}</AppText>
@@ -65,7 +76,7 @@ export function HomePage() {
       </View>
       <AppText style={styles.caption}>تصفّح المطاعم، واكتشف مكانك القادم.</AppText>
     </View>
-  </View>;
+  );
 
    return (
     <SafeAreaView
@@ -99,6 +110,8 @@ export function HomePage() {
 )}
       <RestaurantList
         header={header}
+        recommendedRestaurants={otherRecommendations}
+        resultsHeader={listHeading}
         restaurants={restaurants}
         searchQuery={searchQuery}
         status={status}

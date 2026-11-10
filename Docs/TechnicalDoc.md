@@ -7,22 +7,47 @@ Portfolio Project · Stage 3
 | Project | Thouq (ذوق), a group dining planner |
 | Team | Shatha Alanzi, Asim Alhubaishi, Hassan Alhuzali, Fahad Almidaj |
 
-## Implemented session frontend — 6 November 2026
+## Frontend scope and current API verification — 10 November 2026
 
-The frontend now follows the existing session backend: create → invite/join →
-organizer opens preferences → each participant saves their complete outing copy
-and confirms Ready → organizer requests suggestions → everyone reads the plan.
-The endpoint is named `start-voting`, but this frontend only displays suggestions:
-the voting router in this revision has no voting/final-result implementation.
+The implemented Sprint 2–3 frontend map and acceptance gaps are tracked in
+[Sprint-2-3-Frontend.ar.md](Sprint-2-3-Frontend.ar.md). Home now shares one personal
+recommendation response between the featured choice and regular list rows under
+“مطاعم أخرى على ذوقك”. The selected Home action changes its green state.
+Account preferences return to the existing Home; an account-scoped in-memory
+location cache preserves the choice without re-requesting GPS.
+
+Public GET checks confirmed server-side `search` with filtered totals; it is now
+on by default in the frontend. This does not add district filtering or a separate
+restaurant-detail endpoint. Missing hours/prices are not synthesized. The current
+single-round outing API does not implement #90 retry; #91 remains blocked on its
+route, new-round identity and reset semantics. No SQL, ERD or backend algorithm
+changes are part of this frontend work.
+
+## Implemented session frontend — 10 November 2026
+
+The implemented flow is create → invitation/join → private outing preferences and
+explicit readiness → Haila generation screen → one restaurant at a time, Like or
+Pass → review saved choices → the server's final result. The generation screen
+lasts for the actual request and state refresh, supports reduced motion, and exits
+on failure or an empty plan without relaxing participants' limits.
+
+The frontend integrates the voting requests and ordered save/retry hook from #161.
+The backend voting routes from #158 are merged in deployment. Votes save immediately;
+the last required answer settles the round automatically. An organizer can end early
+through a confirmation, only after local pending votes are saved. Missing answers do
+not count as Pass. The server resolves ties by recommendation rank and item ID; no
+client timer or tie-break screen is implemented. GET result supplies the winner or
+no-winner reason. The UI never calculates a winner itself.
+
 The existing engine uses the selected district center, not a participant midpoint.
-Allergies remain a warning and seating requirements are stored, not applied as a
-restaurant filter. No SQL/ERD or backend contract changes are included.
+Allergies remain a warning and seating requirements are stored, not used as a filter.
+No SQL/ERD changes: existing votes, plan_items.is_winner and outing status are reused.
+Public feature imports are declared in architecture.json (sessions → voting).
 
-The selected create-screen design is implemented with consistent invitation,
-join, readiness and result screens and a proposed Haila cardamom companion.
+The cream/green identity and shared Arabic type remain. Large repeated hero panels
+are replaced by compact summaries, participant details in a sheet, and fixed actions.
 See [the Arabic flow, API mapping, source files and validation limits](Session-Flow.ar.md).
-Later diagrams below describe the broader product contract, including planned
-voting behavior; they do not establish that every feature is currently implemented.
+Broader product diagrams include future scope; they do not imply every story is built.
 
 ## Contents
 
@@ -1604,7 +1629,7 @@ Response `200`
 ```
 - `me` is the caller's own participant, so the app can mark its row.
 - `readiness` counts the confirmed participants who are ready, and all confirmed participants.
-- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage, and `start_voting` in the `preferences` stage once everyone confirmed is ready. It is empty for everyone else, and in stages whose organizer actions are not built yet.
+- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage, and `start_voting` in the `preferences` stage once everyone confirmed is ready. In `voting`, it includes `end_voting`. It is empty for other participants and after the result.
 - `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.
 - A guest token is accepted for its own outing only, and stops working once the guest is removed.
 

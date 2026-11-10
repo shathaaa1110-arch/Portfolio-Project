@@ -7,11 +7,12 @@ import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 
 type HomeIntroProps = {
+  selected: "restaurants" | "outing";
   onFindRestaurant: () => void;
   onCreateSession: () => void;
 };
 
-export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps) {
+export function HomeIntro({ selected, onFindRestaurant, onCreateSession }: HomeIntroProps) {
   return (
     <View style={styles.container}>
      <View style={styles.hero}>
@@ -40,14 +41,15 @@ export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps)
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="ألقى مطعم، تصفّح قائمة المطاعم"
+          accessibilityState={{ selected: selected === "restaurants" }}
           onPress={onFindRestaurant}
           style={({ pressed }) => [
             styles.action,
-            styles.findAction,
+            selected === "restaurants" ? styles.activeAction : styles.outingAction,
             pressed && styles.pressed,
           ]}
         >
-          <AppText variant="button" style={styles.findText}>
+          <AppText variant="button" style={[styles.findText, { color: selected === "restaurants" ? theme.colors.onPrimary : theme.colors.primary }]}>
             ألقى مطعم
           </AppText>
 
@@ -57,7 +59,7 @@ export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps)
               android: "restaurant",
               web: "restaurant",
             }}
-            tintColor={theme.colors.onPrimary}
+            tintColor={selected === "restaurants" ? theme.colors.onPrimary : theme.colors.primary}
             size={27}
             accessible={false}
           />
@@ -67,11 +69,12 @@ export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps)
           accessible
           accessibilityRole="button"
           accessibilityLabel="أخطّط طلعة، إنشاء جلسة جديدة"
+          accessibilityState={{ selected: selected === "outing" }}
           onPress={onCreateSession}
-          style={[styles.action, styles.outingAction]}
+          style={({ pressed }) => [styles.action, selected === "outing" ? styles.activeAction : styles.outingAction, pressed && styles.pressed]}
         >
           <View style={styles.outingCopy}>
-            <AppText variant="label" style={styles.outingText}>
+            <AppText variant="label" style={[styles.outingText, { color: selected === "outing" ? theme.colors.onPrimary : theme.colors.primary }]}>
               أخطّط طلعة
             </AppText>
 
@@ -83,7 +86,7 @@ export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps)
               android: "map",
               web: "map",
             }}
-            tintColor={theme.colors.primary}
+            tintColor={selected === "outing" ? theme.colors.onPrimary : theme.colors.primary}
             size={27}
             accessible={false}
           />
@@ -145,7 +148,7 @@ description: {
     borderRadius: 20,
   },
 
-  findAction: {
+  activeAction: {
     backgroundColor: theme.colors.primary,
   },
 

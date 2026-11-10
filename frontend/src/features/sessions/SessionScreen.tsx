@@ -3,7 +3,9 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { fromAccountPreferences, PreferencesForm, toPreferencesPayload, type PreferencesDraft } from "@/features/preferences";
-import { RestaurantCard } from "@/features/restaurants";
+import { SessionGenerating } from "./SessionGenerating";
+import { SessionVoting } from "./SessionVoting";
+import { QuietButton, SessionFooter, room } from "./components/SessionLayout";
 import { AppButton, AppText } from "@/shared/components";
 import { ApiError } from "@/shared/api/errors";
 import { USE_MOCK } from "@/shared/api/config";
@@ -14,13 +16,15 @@ import { generatePlan, getOuting, getOutingPreferences, getPlan, markOutingReady
 import { outingToken } from "./identity";
 import { loadGuestPass, removeGuestPass } from "./guestPass";
 import { RIYADH, sessionError } from "./model";
-import { SessionHeader, SessionIcon } from "./components/SessionChrome";
-import { HailaTip, SessionMasthead, SessionPaper, SessionSteps } from "./components/SessionVisuals";
+import { SessionHeader, SessionIcon, SessionSheet } from "./components/SessionChrome";
+import { SessionMasthead, SessionPaper, SessionSteps } from "./components/SessionVisuals";
 
 export function SessionScreen() {
   const params = useLocalSearchParams<{ id: string; code?: string; inviteUrl?: string }>();
   const id = typeof params.id === "string" ? params.id : "";
   const code = typeof params.code === "string" ? params.code : "";
+  const [generating, setGenerating] = useState(false);
+  const [details, setDetails] = useState(false);
   const [state, setState] = useState<OutingState | null>(null);
   const [preferences, setPreferences] = useState<OutingPreferences | null>(null);
   const [plan, setPlan] = useState<OutingPlan | null>(null);
@@ -66,7 +70,7 @@ export function SessionScreen() {
   // Poll only while this route is focused; role, actions and readiness always come from the server.
   useFocusEffect(useCallback(() => {
     active.current = true;
-    setState(null); setPreferences(null); setPlan(null); setEditor(null); setStale(true);
+    setState(null); setPreferences(null); setPlan(null); setEditor(null); setGenerating(false); setStale(true);
     loadedToken.current = "";
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
@@ -122,90 +126,83 @@ export function SessionScreen() {
       } else { await Share.share({ message }); }
     } catch { setShareNotice("تعذّرت المشاركة. تقدر تنسخ رمز الجلسة الظاهر وترسله."); }
   }
+  async function beginVoting() {
+    if (busyRef.current) return;
+    setGenerating(true);
+    try { await act(async token => { const result = await generatePlan(id, token); setEmptyPlan(result.plan_items.length === 0); }); }
+    finally { if (active.current) setGenerating(false); }
+  }
+  const votingToken = useCallback(async () => {
+    const token = await outingToken(id, code);
+    if (token !== loadedToken.current) throw new ApiError(401, "INVALID_TOKEN", "Account changed");
+    return token;
+  }, [id, code]);
   const me = state?.participants.find(p => p.participant_id === state.me.participant_id);
   const disabled = busy || stale;
-  return <SafeAreaView style={styles.screen}>
-    <ScrollView contentContainerStyle={styles.content}>
-      <SessionHeader title={state?.status === "invite" ? "دعوة الجلسة" : state?.status === "preferences" ? "ذوقنا وجاهزيتنا" : "الجلسة"} />
-      {USE_MOCK && <AppText style={styles.mock}>جلسة تجريبية — لا تُرسل طلبات إلى الخادم.</AppText>}
-      {!state ? <View style={styles.section}>
+  const dateLabel = state ? new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: RIYADH }).format(new Date(state.starts_at)) : "";
+  if (state && generating) return <SessionGenerating name={state.name} />;
+  if (state && plan) return <SessionVoting key={id} state={state} plan={plan} getToken={votingToken} refresh={refresh} stale={stale} error={error} />;
+  return <SafeAreaView style={room.screen}>
+    <View style={room.header}><SessionHeader title={state?.status === "preferences" ? "ذوق الجلسة" : "دعوة الجلسة"} />
+      {state && <SessionSteps step={state.status === "invite" ? 0 : 1} />}</View>
+    <ScrollView style={room.scroll} contentContainerStyle={room.content} key={state?.status ?? "loading"}>
+      {!state ? <View style={room.card}>
         {!error && <ActivityIndicator color={theme.colors.primary} />}
-        <AppText style={styles.text}>{error || "نحمّل الجلسة..."}</AppText>
+        <AppText style={room.text}>{error || "نحمّل الجلسة..."}</AppText>
         {!!error && <><AppButton title="إعادة المحاولة" onPress={refresh} />
-          <AppButton title="العودة إلى الدعوة" onPress={() => router.replace({ pathname: "/join", params: { code } })} /></>}
+          <QuietButton title="العودة إلى الدعوة" onPress={() => router.replace({ pathname: "/join", params: { code } })} /></>}
       </View> : <>
-        <SessionSteps step={state.status === "invite" ? 0 : state.status === "preferences" ? 1 : 2} />
-        <SessionMasthead title={state.status === "invite" ? "جمعتكم صار لها موعد." : state.status === "preferences" ? "كل واحد يضيف ذوقه." : "اقتراحات تجمع أذواقكم."}
-          subtitle={state.status === "invite" ? "أرسل الدعوة، وخلّ الباقي على جمعتكم." : state.status === "preferences" ? "وش مشتهي اليوم؟ نبدأ باختيارات كل واحد." : "من اختياراتكم، لقائمة تشوفونها سوا."} />
-        <SessionPaper compact={!!plan}>
-          <AppText style={styles.eyebrow}>{state.status === "invite" ? "دعوتكم إلى" : "جلستكم"}</AppText>
-          <AppText accessibilityRole="header" style={[styles.title, !!plan && styles.compactTitle]}>{state.name}</AppText>
-          {!plan && <View style={styles.when}><SessionIcon name="calendar" size={20} />
-            <AppText style={styles.caption}>{new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { dateStyle: "medium", timeStyle: "short", timeZone: RIYADH }).format(new Date(state.starts_at))} · الرياض</AppText>
-          </View>}
-          {state.status === "invite" && <>
+        <SessionMasthead title={state.status === "invite" ? "جمعتكم صار لها موعد." : me?.preferences_done ? "ذوقك وصل للجمعة." : "كل واحد يضيف ذوقه."}
+          subtitle={state.status === "invite" ? "أرسل الدعوة، وخلّ الباقي على جمعتكم." : "وش مشتهي اليوم؟ اختياراتك لهذه الطلعة فقط."} compact />
+        <SessionPaper compact>
+          <AppText accessibilityRole="header" style={styles.title}>{state.name}</AppText>
+          <AppText style={room.center}>{dateLabel} · الرياض</AppText>
+          {state.status === "invite" ? <>
             <View style={styles.rule} />
-            <AppText style={styles.caption}>رمز الدعوة · حتى ٨ أشخاص</AppText>
+            <AppText style={room.center}>رمز الدعوة · حتى ٨ أشخاص</AppText>
             <AppText selectable style={styles.code}>{state.invite_code}</AppText>
             <AppButton title={Platform.OS === "web" ? "نسخ الدعوة" : "مشاركة الدعوة"} onPress={share} />
-            {!!shareNotice && <AppText accessibilityLiveRegion="polite" style={styles.caption}>{shareNotice}</AppText>}
-            <AppText style={styles.caption}>ينضمون من رابط الدعوة أو بالرمز، وباسمهم فقط بدون حساب.</AppText>
-          </>}
-          {state.status === "preferences" && <View style={styles.readySummary}>
-            <AppText style={styles.readyCount}>{state.readiness.ready_count.toLocaleString("ar-SA")} من {state.readiness.total_count.toLocaleString("ar-SA")}</AppText>
-            <AppText style={styles.caption}>أكدوا ذوقهم وجاهزين</AppText>
-          </View>}
-          {plan && <AppText style={styles.caption}>{plan.plan_items.length.toLocaleString("ar-SA")} اقتراحات · القرار لكم</AppText>}
-        </SessionPaper>
-        {["invite", "preferences"].includes(state.status) && <HailaTip>{state.status === "invite"
-          ? "كل واحد يجي باسمه وذوقه. أرسلوا الدعوة، ونكمّلها سوا."
-          : "مو لازم تتفقون على كل شيء. كل واحد يختار ذوقه ويأكد جاهزيته."}</HailaTip>}
-        {!!error && <View style={styles.section}><AppText accessibilityRole="alert" style={styles.error}>{error}</AppText><AppButton title="تحديث حالة الجلسة" onPress={refresh} disabled={busy} /></View>}
-
-        {["invite", "preferences"].includes(state.status) && <View style={styles.section}>
-          <AppText style={styles.sectionTitle}>أهل الجلسة · {state.participants.length.toLocaleString("ar-SA")} من ٨</AppText>
-          {state.participants.map(p => <View key={p.participant_id} style={styles.person}>
-            <View style={[styles.avatar, p.preferences_done && styles.avatarReady]}><SessionIcon name={p.preferences_done ? "check" : "people"} size={23} /></View>
-            <AppText style={styles.personName}>{p.name || "مشارك"}{p.participant_id === state.me.participant_id ? " (أنت)" : ""}{p.is_organizer ? " · المنظّم" : ""}</AppText>
-            <AppText style={styles.personStatus}>{p.attendance === "declined" ? "اعتذر" : state.status === "invite" ? "انضم" : p.preferences_done ? "جاهز" : "يختار ذوقه"}</AppText>
-          </View>)}
-          <AppText style={styles.caption}>تفضيلات كل شخص خاصة؛ يظهر للآخرين اسمه وجاهزيته فقط.</AppText>
-        </View>}
-
-        {state.status === "invite" && (state.me.is_organizer ? <View style={styles.section}>
-          <AppText style={styles.text}>إذا اجتمعتم، افتح التفضيلات. يبقى الانضمام متاحًا حتى تبدأ الاقتراحات.</AppText>
-          <AppButton title="نبدأ اختيار التفضيلات" disabled={disabled || !state.actions.includes("start_preferences")} onPress={() => act(token => startPreferences(id, token))} />
-        </View> : <AppText style={styles.center}>ننتظر المنظّم يفتح التفضيلات.</AppText>)}
-
-        {state.status === "preferences" && <>
-          <View style={styles.invite}>
-            <AppText style={styles.sectionTitle}>ذوقي لهالجلسة</AppText>
-            <AppText style={styles.text}>{preferences?.is_saved ? "نبدأ بالتفضيلات الموجودة في نسختك لهذه الجلسة. تقدر تعتمدها أو تغيّر وش مشتهي اليوم." : "اختر ذوقك وميزانيتك والمسافة المناسبة لك."}</AppText>
-            <AppText style={styles.caption}>تعديلاتك هنا لا تغيّر تفضيلات حسابك.</AppText>
-            <AppButton title="تعديل ذوقي وتفضيلاتي" disabled={disabled || !preferences} onPress={editPreferences} />
+            {!!shareNotice && <AppText accessibilityLiveRegion="polite" style={room.center}>{shareNotice}</AppText>}
+            <AppText style={room.center}>ينضمون باسمهم من الرابط، بدون حساب.</AppText>
+          </> : <>
+            <View style={styles.rule} />
+            <View style={room.row}><SessionIcon name={me?.preferences_done ? "check" : "edit"} size={23} />
+              <AppText style={[room.label, { flex: 1 }]}>{me?.preferences_done ? "جاهزيتك مؤكدة" : "ذوقي لهالجلسة"}</AppText></View>
+            <AppText style={room.text}>{me?.preferences_done ? "اعتمدنا ذوقك. تقدر تعدّله إلى أن يبدأ التصويت." : preferences?.is_saved ? "تفضيلاتك موجودة؛ اعتمدها أو عدّل وش مشتهي اليوم." : "عبّ الصحن وحدّد ميزانيتك وحدودك، ثم أكّد جاهزيتك."}</AppText>
+            {preferences?.is_saved ? <QuietButton title="تعديل ذوقي وتفضيلاتي" disabled={disabled} onPress={editPreferences} /> : <AppButton title="تعديل ذوقي وتفضيلاتي" disabled={disabled || !preferences} onPress={editPreferences} />}
             {preferences?.is_saved && !me?.preferences_done && <AppButton title="اعتماد تفضيلاتي · أنا جاهز" disabled={disabled} onPress={() => act(token => markOutingReady(id, token))} />}
-            {me?.preferences_done && <AppText accessibilityLiveRegion="polite" style={styles.center}>تم تأكيد جاهزيتك. تعديل تفضيلاتك يحتاج تأكيدًا جديدًا.</AppText>}
-          </View>
-          {!!emptyPlan && <View style={styles.section}><AppText accessibilityRole="alert" style={styles.text}>ما لقينا مطعمًا يطابق شروط الجميع. راجعوا التفضيلات، ثم أكدوا جاهزيتكم وحاولوا مرة أخرى. لن نغيّر حدودكم تلقائيًا.</AppText></View>}
-          {state.me.is_organizer ? <View style={styles.section}>
-            <AppButton title={busy ? "لحظات..." : "اعرض اقتراحاتنا"} disabled={disabled || !state.actions.includes("start_voting")}
-              onPress={() => act(async token => { const result = await generatePlan(id, token); setEmptyPlan(result.plan_items.length === 0); })} />
-            <AppText style={styles.caption}>بعد جاهزية الجميع، تبدأ الاقتراحات ويُغلق الانضمام وتعديل التفضيلات.</AppText>
-          </View> : <AppText style={styles.caption}>بعد جاهزية الجميع، يطلب المنظّم اقتراحاتكم.</AppText>}
-        </>}
-
-        {plan && <View style={styles.section}>
-          <AppText style={styles.text}>هذه قائمة اقتراحات الجلسة، ولم يتم اختيار مطعم نهائي.</AppText>
-          {!!plan.allergy_warning.length && <AppText style={styles.warning}>في الجلسة حساسيات غذائية مسجلة. أبلغوا المطعم بها قبل الطلب؛ الاقتراح لا يضمن ملاءمة الطعام للحساسية.</AppText>}
-          {plan.plan_items.map(item => <View key={item.plan_item_id} style={styles.planCard}>
-            <AppText style={styles.rank}>اقتراح {item.rank.toLocaleString("ar-SA")} · توافق {item.match_score.toLocaleString("ar-SA")}٪</AppText>
-            <RestaurantCard name={item.restaurant.name_ar || item.restaurant.name_en || "مطعم"} cuisines={item.restaurant.cuisines}
-              district={item.restaurant.district ?? ""} rating={item.restaurant.rating} mapsUrl={item.restaurant.maps_url}
-              distanceKm={item.restaurant.distance_km} spendLow={item.restaurant.spend_low} spendHigh={item.restaurant.spend_high} reason={item.reason} variant="featured" />
-          </View>)}
-        </View>}
+            {!!emptyPlan && <AppText accessibilityRole="alert" style={room.warning}>ما لقينا مطعمًا يطابق شروط الجميع. راجعوا التفضيلات وأكدوا جاهزيتكم من جديد. حدودكم تبقى كما هي.</AppText>}
+          </>}
+          <View style={styles.rule} />
+          <Pressable accessibilityRole="button" accessibilityLabel="عرض المشاركين وجاهزيتهم" onPress={() => setDetails(true)} style={styles.people}>
+            <SessionIcon name="people" size={23} />
+            <AppText style={[room.label, { flex: 1 }]}>{state.status === "invite" ? `أهل الجلسة · ${state.participants.length.toLocaleString("ar-SA")} من ٨` : `جاهزين · ${state.readiness.ready_count.toLocaleString("ar-SA")} من ${state.readiness.total_count.toLocaleString("ar-SA")}`}</AppText>
+            <SessionIcon name="next" size={18} />
+          </Pressable>
+        </SessionPaper>
+        {!!error && <View><AppText accessibilityRole="alert" style={room.error}>{error}</AppText><QuietButton title="تحديث حالة الجلسة" onPress={refresh} disabled={busy} /></View>}
+        {USE_MOCK && <AppText style={room.mock}>معاينة تجريبية</AppText>}
       </>}
     </ScrollView>
+    {state && <SessionFooter>
+      {state.status === "invite" ? state.me.is_organizer ? <>
+        <AppButton title="نبدأ اختيار التفضيلات" disabled={disabled || !state.actions.includes("start_preferences")} onPress={() => act(token => startPreferences(id, token))} />
+        <AppText style={room.center}>يبقى الانضمام مفتوحًا حتى يبدأ التصويت.</AppText>
+      </> : <AppText style={room.center}>ننتظر المنظّم يفتح التفضيلات.</AppText> : state.me.is_organizer ? <>
+        <AppButton title={busy ? "نجهّز مطاعمكم..." : "نبدأ التصويت"} disabled={disabled || !state.actions.includes("start_voting")}
+          onPress={beginVoting} />
+        <AppText style={room.center}>{state.actions.includes("start_voting") ? "الكل جاهز. بنقفل الانضمام وتعديل التفضيلات." : "ننتظر تأكيد جاهزية الجميع."}</AppText>
+      </> : <AppText style={room.center}>بعد جاهزية الجميع، يبدأ المنظّم التصويت.</AppText>}
+    </SessionFooter>}
+    <SessionSheet visible={details} title="أهل الجلسة" onClose={() => setDetails(false)}>
+      {state && <><AppText style={room.label}>{state.name}</AppText><AppText style={room.text}>{dateLabel} · الرياض</AppText>
+        {state.participants.map(p => <View key={p.participant_id} style={styles.person}>
+          <SessionIcon name={p.preferences_done ? "check" : "people"} size={22} />
+          <AppText style={styles.personName}>{p.name || "مشارك"}{p.participant_id === state.me.participant_id ? " (أنت)" : ""}{p.is_organizer ? " · المنظّم" : ""}</AppText>
+          <AppText style={room.small}>{p.attendance === "declined" ? "اعتذر" : state.status === "invite" ? "انضم" : p.preferences_done ? "جاهز" : "يختار ذوقه"}</AppText>
+        </View>)}
+        <AppText style={room.small}>تفضيلات كل شخص خاصة به.</AppText></>}
+    </SessionSheet>
     <Modal visible={editor !== null} animationType="slide" onRequestClose={() => { if (!busy) setEditor(null); }}>
       {editor && <View style={{ flex: 1 }} pointerEvents={busy ? "none" : "auto"}>
         <PreferencesForm initialValue={editor.value} context="outing" onSubmit={save} onExit={() => { if (!busy) setEditor(null); }}
@@ -215,27 +212,10 @@ export function SessionScreen() {
   </SafeAreaView>;
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.colors.background },
-  content: { paddingHorizontal: 12, width: "100%", maxWidth: 460, alignSelf: "center", paddingBottom: 40 },
-  title: { fontFamily: theme.typography.fontFamilyBold, fontSize: 30, lineHeight: 44, textAlign: "center", writingDirection: "rtl" },
-  compactTitle: { fontSize: 23, lineHeight: 34 },
-  text: { fontSize: 15, lineHeight: 27, textAlign: "right", writingDirection: "rtl" },
-  caption: { fontSize: 13, lineHeight: 24, textAlign: "center", color: theme.colors.placeholder, writingDirection: "rtl" },
-  center: { textAlign: "center", fontSize: 17, lineHeight: 29, writingDirection: "rtl" },
-  section: { gap: 16, paddingHorizontal: 12, marginTop: 24 }, sectionTitle: { textAlign: "right", fontSize: 20, fontFamily: theme.typography.fontFamilyBold },
-  invite: { backgroundColor: "#EFEFDF", borderRadius: 24, padding: 22, gap: 14, marginTop: 24 },
-  code: { fontSize: 42, letterSpacing: 6, textAlign: "center", writingDirection: "ltr", fontFamily: theme.typography.fontFamilyBold },
+  title: { fontSize: 26, lineHeight: 40, fontFamily: theme.typography.fontFamilyBold, textAlign: "center", writingDirection: "rtl" },
+  rule: { height: 1, backgroundColor: "#C7C5A9", marginVertical: 4 },
+  code: { fontSize: 36, lineHeight: 48, letterSpacing: 6, textAlign: "center", writingDirection: "ltr", fontFamily: theme.typography.fontFamilyBold },
+  people: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 8, minHeight: 48 },
   person: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  avatar: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: "#EDEBDD" },
-  avatarReady: { backgroundColor: "#DBE6D9" },
-  personName: { flex: 1, textAlign: "right", writingDirection: "rtl", fontSize: 15 }, personStatus: { fontSize: 12, color: theme.colors.placeholder },
-  error: { color: theme.colors.error, textAlign: "right", lineHeight: 26 },
-  warning: { backgroundColor: "#F4E8CB", padding: 16, borderRadius: 16, textAlign: "right", lineHeight: 26 },
-  planCard: { gap: 10, paddingBottom: 24 }, rank: { textAlign: "right", fontFamily: theme.typography.fontFamilyBold, fontSize: 15 },
-  mock: { textAlign: "center", fontSize: 12, color: theme.colors.placeholder },
-  eyebrow: { textAlign: "center", fontSize: 13, color: "#63745B" },
-  when: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" },
-  rule: { height: 1, backgroundColor: "#B5B586", marginVertical: 5 },
-  readySummary: { alignItems: "center", gap: 3, paddingTop: 6, borderTopWidth: 1, borderTopColor: "#C7C5A9" },
-  readyCount: { fontSize: 32, lineHeight: 52, fontFamily: theme.typography.fontFamilyBold, writingDirection: "rtl" },
+  personName: { flex: 1, textAlign: "right", writingDirection: "rtl", fontSize: 14 },
 });

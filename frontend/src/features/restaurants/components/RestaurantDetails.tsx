@@ -38,9 +38,10 @@ export function RestaurantDetails({
   // Supplied by the personal recommendation flow after saved preferences load.
   const recommendationReason = reason?.trim();
   const facts = [
-    ...(price ? [["السعر التقريبي للشخص", price]] : []),
+    ["السعر التقريبي للشخص", price || "غير متوفر"],
     ["التقييم", ratingText ? `${ratingText} من ٥` : "غير متوفر"],
     ...(distance ? [["المسافة", distance]] : []),
+    ["ساعات العمل", "غير متوفرة حاليًا"],
   ];
 
   return (
