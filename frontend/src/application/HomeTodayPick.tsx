@@ -1,25 +1,22 @@
 import { layoutDirection } from "@/shared/layout";
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { router } from "expo-router";
-import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { RestaurantCard, type RestaurantSummary } from "@/features/restaurants";
-import { usePersonalRecommendations, type RecommendationLocation } from "@/features/personalSuggestions";
+import { type usePersonalRecommendations } from "@/features/personalSuggestions";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
-import { useHomePreferences } from "./useHomePreferences";
+import { type useHomePreferences } from "./useHomePreferences";
 
 type Props = {
-  location: RecommendationLocation;
+  preferences: ReturnType<typeof useHomePreferences>;
+  recommendations: ReturnType<typeof usePersonalRecommendations>;
   renderAction: (restaurant: RestaurantSummary) => ReactNode;
-  refreshKey?: number;
   onChooseLocation: () => void;
 };
 
-export function HomeTodayPick({ location, renderAction, refreshKey = 0, onChooseLocation }: Props) {
-  const { width, fontScale } = useWindowDimensions();
-  const [showMore, setShowMore] = useState(false);
-  const { state, reload } = useHomePreferences(refreshKey);
-  const recommendations = usePersonalRecommendations(state.status === "ready" ? state.token : null, location);
+export function HomeTodayPick({ preferences, recommendations, renderAction, onChooseLocation }: Props) {
+  const { state, reload } = preferences;
   const restaurant = recommendations.restaurants[0];
   const loading = state.status === "checking" || recommendations.status === "loading";
   const expired = recommendations.error?.status === 401;
@@ -62,20 +59,6 @@ export function HomeTodayPick({ location, renderAction, refreshKey = 0, onChoose
         mapsUrl={restaurant.maps_url} distanceKm={restaurant.distance_km} reason={restaurant.reason}
         spendLow={restaurant.spend_low} spendHigh={restaurant.spend_high}
         action={renderAction(restaurant)} />
-      {recommendations.restaurants.length > 1 && <Pressable accessibilityRole="button"
-        accessibilityState={{ expanded: showMore }} onPress={() => setShowMore(value => !value)} style={styles.action}>
-        <AppText style={styles.actionText}>{showMore ? "إخفاء بقية الاقتراحات" :
-          `شوف بقية الاقتراحات (${(recommendations.restaurants.length - 1).toLocaleString("ar-SA-u-nu-arab")})`}</AppText>
-      </Pressable>}
-      {showMore && <View style={styles.moreGrid}>
-        {recommendations.restaurants.slice(1).map(item => <View key={item.id}
-          style={{ width: width < 390 || fontScale > 1.25 ? "100%" : "48%" }}>
-          <RestaurantCard variant="tile" name={item.name_ar} cuisines={item.cuisines}
-            district={item.district} rating={item.rating} mapsUrl={item.maps_url}
-            distanceKm={item.distance_km} reason={item.reason}
-            spendLow={item.spend_low} spendHigh={item.spend_high} action={renderAction(item)} />
-        </View>)}
-      </View>}
     </> : <View>
         <AppText style={styles.copy}>{message}</AppText>
         {action && <Pressable accessibilityRole="button" onPress={action} style={styles.action}>
@@ -92,5 +75,4 @@ const styles = StyleSheet.create({
   loading: { ...layoutDirection("ltr"), flexDirection: "row-reverse", gap: 8, alignItems: "center" },
   action: { alignSelf: "flex-end", minHeight: 44, justifyContent: "center" },
   actionText: { textAlign: "right", textDecorationLine: "underline" },
-  moreGrid: { ...layoutDirection("ltr"), flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "space-between", rowGap: 18 },
 });

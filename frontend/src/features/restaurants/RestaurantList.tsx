@@ -21,10 +21,14 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-/// Describe the list data, search text, and available actions.
+// The application supplies recommendations; this feature only renders restaurant data.
+type ListRestaurant = RestaurantSummary & { reason?: string | null; distance_km?: number | null };
+type ListRow = { key: string; restaurants?: ListRestaurant[]; heading?: ReactNode; empty?: boolean };
 type RestaurantListProps = {
   restaurants: RestaurantSummary[];
   header?: ReactElement;
+  resultsHeader?: ReactElement;
+  recommendedRestaurants?: ListRestaurant[];
   footer?: ReactElement;
   searchQuery?: string;
   status?: "ready" | "loading" | "error";
@@ -41,6 +45,8 @@ onRefresh?: () => void;
 export function RestaurantList({
   restaurants,
   header,
+  resultsHeader,
+  recommendedRestaurants = [],
   footer,
   searchQuery = "",
   status = "ready",
@@ -57,9 +63,9 @@ export function RestaurantList({
 // نستخدم عمودًا واحدًا عند ضيق الشاشة أو تكبير الخط.
 const columns = width < 360 || fontScale > 1.25 ? 1 : 2;
 
-  const listRef = useRef<FlatList<RestaurantSummary[]>>(null);
+  const listRef = useRef<FlatList<ListRow>>(null);
   const headerHeight = useRef(0);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // The Home discovery button reaches the rows without opening a keyboard.
   useEffect(() => {
@@ -85,11 +91,20 @@ const columns = width < 360 || fontScale > 1.25 ? 1 : 2;
   useEffect(() => setExpandedId(null), [searchQuery]);
   // Search and pagination are performed together by the API, not on these 20 rows.
   const normalizedQuery = searchQuery.trim();
-  const visibleRestaurants = restaurants;
-  const rows: RestaurantSummary[][] = [];
-  for (let index = 0; index < visibleRestaurants.length; index += columns) {
-    rows.push(visibleRestaurants.slice(index, index + columns));
+  const rows: ListRow[] = [];
+  function addRestaurants(items: ListRestaurant[], prefix: string) {
+    for (let index = 0; index < items.length; index += columns) {
+      const row = items.slice(index, index + columns);
+      rows.push({ key: `${prefix}-${row.map(item => item.id).join(":")}`, restaurants: row });
+    }
   }
+  if (recommendedRestaurants.length) {
+    rows.push({ key: "recommendation-title", heading: <AppText variant="title" accessibilityRole="header" style={styles.sectionTitle}>مطاعم أخرى على ذوقك</AppText> });
+    addRestaurants(recommendedRestaurants, "recommended");
+  }
+  if (resultsHeader) rows.push({ key: "public-title", heading: resultsHeader });
+  if (status === "ready" && restaurants.length) addRestaurants(restaurants, "public");
+  else rows.push({ key: "public-state", empty: true });
 
     // Show the message that matches the current state.
 function renderEmptyState() {
@@ -152,18 +167,19 @@ key={`restaurants-${columns}`}
   onRefresh={onRefresh}
   style={styles.list}
       contentContainerStyle={styles.content}
-      data={status === "ready" ? rows : []}
-      keyExtractor={(row) => row.map(restaurant => restaurant.id).join(":" )}
+      data={rows}
+      keyExtractor={row => row.key}
       extraData={expandedId}
-      renderItem={({item: row}) => (
+      renderItem={({item: row}) => row.heading ? <View>{row.heading}</View> : row.empty ? renderEmptyState() : (
         <View style={styles.row}>
-          {row.map(item => <View key={item.id} style={{width: columns === 1 ? "100%" : "48%"}}>
+          {row.restaurants?.map(item => <View key={item.id} style={{width: columns === 1 ? "100%" : "48%"}}>
             <RestaurantCard variant="tile" name={item.name_ar} cuisines={item.cuisines}
               district={item.district} rating={item.rating} mapsUrl={item.maps_url} imageUrl={item.image_url}
               spendLow={item.spend_low} spendHigh={item.spend_high}
+              reason={item.reason} distanceKm={item.distance_km}
               action={renderAction?.(item)}
-              expanded={expandedId === item.id}
-              onExpandedChange={open => setExpandedId(open ? item.id : null)} />
+              expanded={expandedId === `${row.key}:${item.id}`}
+              onExpandedChange={open => setExpandedId(open ? `${row.key}:${item.id}` : null)} />
           </View>)}
         </View>
       )}
@@ -176,7 +192,6 @@ key={`restaurants-${columns}`}
       ListFooterComponentStyle={footer ? styles.footer : undefined}
       ListHeaderComponentStyle={styles.header}
       ItemSeparatorComponent={RestaurantSeparator}
-      ListEmptyComponent={renderEmptyState()}
     />
   );
 }
@@ -187,6 +202,8 @@ function RestaurantSeparator() {
 }
 
 const styles = StyleSheet.create({
+
+  sectionTitle: { fontSize: 23, lineHeight: 34, textAlign: "right", writingDirection: "rtl" },
 
   row: {
   ...layoutDirection("ltr"),

@@ -2,46 +2,65 @@
 
 [Arabic architecture and learning guide](../Docs/Frontend-Architecture.ar.md)
 
-## Current implementation — 2 November 2026
+## Current implementation — 10 November 2026
 
 Home is public and includes the approved hero, greeting/location, search,
-Today's suggestion, and restaurant cards. Outing planning is marked Coming soon.
+Today's suggestion, and restaurant cards. Create session opens the selected watercolor/paper design and the backend-supported invitation → per-person preferences/readiness → suggestions flow.
 Saved uses Fahad's `savedRestaurants` feature. The current Account composition
-shows the session, preferences, and sign-out; it is not the unmerged account PR.
+shows the account, preferences, and sign-out.
 
 Home requests one page of 20 restaurants with `limit/offset`, without a token.
 Next/Previous sit at the list footer; pull-to-refresh reloads the current page.
 Failures keep the last successful page with retry. Initial failures display an
 error state. There is no automatic fallback to mock data.
 
-Search is prepared for server-side `search` filtering before pagination, with
-a 350 ms typing delay and stale-response protection. The deployed API checked
-on 2 November exposes only `limit/offset`, so
-`EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false` remains the default. Home hides the
-search field while it is disabled. The “ألقى مطعم” button scrolls to the restaurant
-rows using the measured header height; it does not focus a hidden search input.
-Enable the flag only after the server actually filters and returns matching totals.
+Search uses server-side name/cuisine filtering before pagination, a 350 ms typing
+delay and stale-response protection. Public read-only requests on 10 November
+verified a filtered total of 3,730 for “سعودي”, 33,784 unfiltered, and zero for an
+unmatched query. Search is enabled by default; set
+`EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false` only for older servers.
+The selected Home action turns green. “ألقى مطعم” scrolls to the list and
+“أخطّط طلعة” selects the outing action before opening creation.
 
 Cards use illustrative category photos, Eastern Arabic numbers, and map links.
 Details open in a separate bottom sheet, with one back action. Price/distance
 appear only when valid values exist; opening details makes no extra API call.
-There are no opening hours or voting controls.
+Missing price/hours are labelled unavailable; no values are invented. Voting lives in the session screen.
 
 GPS is requested only from the location chooser. A district alternative uses
 server IDs from `GET /districts`; browsing remains possible without location.
 Personal suggestions require saved account preferences and a valid API reply.
-Today's choice displays the server's Arabic reason; the remaining results can
-also be opened. Failed services do not become fabricated recommendations.
+Today's choice displays one restaurant. Remaining personal recommendations are
+regular list rows under “مطاعم أخرى على ذوقك”, followed by the public restaurant
+section. One request supplies both sections; search hides personal rows. Failed services do not become fabricated recommendations.
 
 The six-step preferences flow reads and writes `/users/me/preferences`.
 After login, incomplete accounts enter preferences; completed accounts enter
 Home. Successful saving updates the same session's completion flag and returns
-to Home for fresh preferences/recommendations. Failed saves keep the answers.
+to the existing Home using `dismissTo`, retaining its selected location. The
+account-scoped location memory also survives a Home remount during this app run;
+it is cleared for a different account and is not permanent GPS storage. Failed saves keep the answers.
 Initial load failures offer retry/browse rather than an empty replacement form.
 
-The deployed OpenAPI checked on 2 November does not yet expose preferences,
-recommendations, or districts. See the
-[Arabic delivery checklist and backend dependencies](../Docs/Frontend-Delivery-2026-11-02.ar.md).
+See the current [Sprint 2–3 frontend delivery and remaining dependencies](../Docs/Sprint-2-3-Frontend.ar.md).
+Older dated verification notes below describe those historical revisions, not the current backend.
+
+### Direct sessions
+
+The organizer supplies a name, Riyadh date/time and a district ID. The current
+backend uses the district center, not a midpoint of participants' locations.
+No GPS is requested in this flow. Sign-in retains the creation draft in memory;
+new accounts still complete onboarding before returning.
+
+Invite/join, a five-second focused state refresh, full outing preference saves,
+explicit Ready and organizer-triggered suggestions use existing backend routes.
+Account defaults remain unchanged. A compact session flow now includes an actual-request
+Haila generation screen, one-card voting, review, early-end confirmation and the server result.
+The voting API and ordered retry hook from #161 are integrated with their commit history.
+The shared paper, watercolor hero, typography and proposed Haila character keep
+invite, join, readiness and voting consistent with the create screen. Fixed actions remain
+visible on small screens; participant details open in a sheet.
+See the [Arabic walkthrough and exact file ownership](../Docs/Session-Flow.ar.md).
 
 ## Install and run
 
@@ -96,6 +115,10 @@ Paths below are relative to `frontend`.
 | `src/app/(tabs)/account.tsx` | Opens the My account screen |
 | `src/app/sign-up.tsx` | Opens the sign-up screen |
 | `src/app/preferences.tsx` | Opens account preferences |
+| `src/app/sessions/new.tsx` | Opens session creation |
+| `src/app/sessions/[id].tsx` | Opens invitation, readiness or suggestions based on server state |
+| `src/app/join/[code].tsx` | Supports backend invite links ending in /join/CODE |
+| `src/features/sessions` | Session screens, editors, shared visuals, identity, API wrappers and explicit mocks |
 | `src/application/ApplicationRoot.tsx` | Loads fonts and composes the root navigation |
 | `src/application/MainTabs.tsx` | Defines the three bottom tabs |
 | `src/application/HomePage.tsx` | Composes Home, search, location, recommendations, and paginated list |
@@ -163,10 +186,12 @@ npm run check
 git diff --check
 ```
 
-`npm run check` runs TypeScript, architecture boundary checks and 49 tests:
-7 architecture, 10 restaurant/API/presentation, 18 preference, and 14 discovery
-and recommendation tests. Component tests use real React state/effects with
-stubbed services. The test renderer emits a deprecation notice; it is a dev-only dependency.
+`npm run check` runs TypeScript, architecture boundaries and 91 tests:
+7 architecture, 10 restaurant/API/presentation, 18 preference, 18 discovery,
+24 session/join and 14 voting tests. Four account tests are run separately via
+`node --test scripts/auth.test.cjs`. Component tests use real React state/effects
+with stubbed services. Native devices and live multi-participant writes still
+need acceptance testing; no phone build is included in this change.
 
 ### Web review — 24 October 2026
 
@@ -257,6 +282,19 @@ After reconciling the account PR with deployment, `npm run check` passed
 passed separately. Documentation keeps the current Home and preferences flow
 and describes AccountScreen. This check did not repeat device or live API tests.
 
+### Session flow verification — 6 November 2026
+
+Session tests cover creation validation/deduplication, sign-in return, role and
+readiness gates, full preference replacement, account isolation, guest bearer
+tokens, blocked-storage recovery, and locks after suggestion generation. Local
+web QA exercised edits, the sign-in round trip, invitation, all six preference
+steps, Ready, and suggestions with explicit mock data; no SMS or live writes.
+See `../design-qa.md` for visual evidence and viewport checks.
+
+Mock-created sessions live in memory; a reload clears them. Create a new session
+for full-flow preview. The older TEST/MAXX/SHUT fixtures cover join preview only.
+Production export is a build check, not proof that the live API supports the flow.
+
 ### Remaining integration and device checks
 
 Publish and validate preferences, recommendations, districts, and global search
@@ -268,3 +306,15 @@ Review the final flow on a physical iPhone and Android. Issue #58 additionally
 needs a shared app identifier, Apple signing, and installation on the required
 team devices. ESLint setup is separate from the currently passing check suite.
 No database or ERD changes are included.
+
+### Session refresh verification — 10 November 2026
+
+The current session-voting tests cover one-card navigation, editing answers, pending-save
+and role gates for early ending, automatic closure, private guest identity, no-vote/all-pass
+results, malformed responses, and a two-participant mock round. Generation tests hold the
+request pending and exercise errors and empty results; there is no production minimum delay.
+The explicit mock simulates three seconds for this request so the Haila state is inspectable.
+
+The live OpenAPI exposes start-voting, GET/POST votes, end-voting and result. This was a
+read-only schema check, not an authenticated multi-device end-to-end test. Existing DB
+constraints and the backend settlement transaction are reused, with no migration in this UI change.

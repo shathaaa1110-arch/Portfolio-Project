@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,6 +8,8 @@ import { AppButton, AppInput, AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { joinOuting, joinOutingAsGuest, lookupInvite, type InvitePreview } from "./api/join";
 import { loadGuestPass, saveGuestPass } from "./guestPass";
+import { SessionHeader } from "./components/SessionChrome";
+import { HailaTip, SessionMasthead, SessionPaper } from "./components/SessionVisuals";
 
 // Invite codes are 4 characters, as agreed with Asem for BE-08.
 const CODE_LENGTH = 4;
@@ -119,12 +121,12 @@ export function JoinSessionScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <AppText style={styles.eyebrow}>مكانك معنا</AppText>
-        <AppText variant="title" style={styles.title}>معك رمز الجلسة؟</AppText>
-        <AppText style={styles.subtitle}>انضم باسمك فقط، بدون حساب أو تحميل التطبيق.</AppText>
-
+        <SessionHeader title="دعوة إلى جلسة" />
+        <SessionMasthead title={joined ? "حلوة الجمْعة بوجودك." : "مكانك بيننا."} subtitle="انضم باسمك فقط، بدون حساب أو تحميل التطبيق." />
+        <SessionPaper>
         {preview === null ? (
           <>
+            <AppText variant="title" style={styles.title}>معك رمز الجلسة؟</AppText>
             <AppText variant="label" style={styles.label}>رمز الدعوة</AppText>
             <AppInput
               style={styles.codeInput}
@@ -144,8 +146,12 @@ export function JoinSessionScreen() {
             />
           </>
         ) : joined ? (
-          // FE-10 replaces this with the waiting room.
-          <AppText style={styles.success}>تم انضمامك إلى «{preview.name}».</AppText>
+          <>
+            <AppText style={styles.success}>تم انضمامك إلى «{preview.name}».</AppText>
+            <AppButton title="افتح الجلسة" style={styles.button} onPress={() => router.replace({
+              pathname: "/sessions/[id]", params: { id: preview.outing_id, code },
+            })} />
+          </>
         ) : (
           <>
             <View style={styles.card}>
@@ -184,6 +190,8 @@ export function JoinSessionScreen() {
             <AppText style={styles.note}>يرى الآخرون اسمك وجاهزيتك، وتبقى تفضيلاتك خاصة.</AppText>
           </>
         )}
+        </SessionPaper>
+        <HailaTip>{joined ? "باقي تختار وش مشتهي اليوم، وتلقى أصحابك داخل الجلسة." : "معك دعوة؟ اكتب رمزها، ومكانك محفوظ بين أصحابك بعد الانضمام."}</HailaTip>
       </ScrollView>
     </SafeAreaView>
   );
@@ -220,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   content: {
-    padding: theme.spacing.pagePadding,
+    paddingHorizontal: 12, paddingBottom: 32, width: "100%", maxWidth: 460, alignSelf: "center",
   },
   // Small green line above the title, as in the design.
   eyebrow: {
@@ -229,18 +237,18 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     marginBottom: theme.spacing.labelGap,
   },
-  title: { textAlign: "auto", marginBottom: theme.spacing.labelGap },
+  title: { textAlign: "center", fontSize: 27, lineHeight: 42, marginBottom: theme.spacing.labelGap },
   subtitle: { marginBottom: theme.spacing.titleGap },
-  label: { marginBottom: theme.spacing.labelGap },
+  label: { textAlign: "right", marginBottom: theme.spacing.labelGap },
   // Codes are Latin letters and digits, so they read left to right.
-  codeInput: { textAlign: "left", writingDirection: "ltr" },
+  codeInput: { textAlign: "center", writingDirection: "ltr", fontSize: 29, letterSpacing: 8, minHeight: 65, backgroundColor: "#F9F7EC" },
   error: { color: theme.colors.error, marginTop: theme.spacing.labelGap },
   button: { marginTop: theme.spacing.fieldGap },
   card: {
     gap: theme.spacing.labelGap,
     padding: theme.spacing.cardPadding,
-    backgroundColor: theme.colors.surface,
-    borderWidth: theme.borders.control,
+    backgroundColor: "transparent",
+    borderBottomWidth: theme.borders.control,
     borderColor: theme.colors.border,
     borderRadius: theme.radii.card,
     marginBottom: theme.spacing.fieldGap,
@@ -248,11 +256,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: theme.typography.fontFamilyBold,
     fontSize: theme.typography.sessionTitleSize,
+    textAlign: "right",
   },
   success: {
     fontFamily: theme.typography.fontFamilyBold,
     fontSize: theme.typography.sectionTitleSize,
     color: theme.colors.primary,
+    textAlign: "center", lineHeight: 38,
   },
   // Tall enough to tap easily, like the text link on the login screen.
   link: {

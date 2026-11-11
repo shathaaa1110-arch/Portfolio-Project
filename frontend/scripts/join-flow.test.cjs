@@ -18,14 +18,16 @@ const apiError = (status, code) => new errors.ApiError(status, code, "");
 
 // The join screen with fake API, account and storage; calls are recorded for checks.
 function joinScreen({ preview = open, session = null, saved = null, link = {}, lookup, join, guest } = {}) {
-  const calls = { lookup: [], join: [], guest: [], saved: [], cleared: 0 };
+  const calls = { lookup: [], join: [], guest: [], saved: [], routes: [], cleared: 0 };
   const Screen = load("features/sessions/JoinSessionScreen.tsx", {
-    "expo-router": { useLocalSearchParams: () => link },
+    "expo-router": { useLocalSearchParams: () => link, router: { replace: value => calls.routes.push(value) } },
     "react-native": native,
     "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
     "@/shared/api/errors": errors,
     "@/shared/components": shared,
     "@/shared/theme": theme,
+    "./components/SessionChrome": { SessionHeader: "Header" },
+    "./components/SessionVisuals": { SessionMasthead: "Masthead", SessionPaper: "Paper", HailaTip: "HailaTip" },
     "@/features/auth": {
       loadSession: async () => session,
       clearSession: async () => { calls.cleared++; },
@@ -141,6 +143,8 @@ test("a guest sees a clean card, needs a name, joins with the trimmed name and t
   assert.equal(calls.saved[0][0], "TEST");
   assert.equal(calls.saved[0][1].guest_token, "token");
   assert(texts(root).includes(JOINED));
+  await press(root.findAllByType("AppButton").find(node => node.props.title === "افتح الجلسة"));
+  assert.deepEqual(plain(calls.routes[0]), { pathname: "/sessions/[id]", params: { id: "o1", code: "TEST" } });
 });
 
 test("join failures: 409 goes back to the code, an ended sign-in continues as a guest, others keep the form", async () => {
@@ -213,4 +217,17 @@ test("the guest pass keeps three fields and ignores broken saved values", async 
   saved.set("thouq.guest.BAD2", JSON.stringify({ outing_id: "o1" }));
   assert.equal(await store.loadGuestPass("BAD1"), null);
   assert.equal(await store.loadGuestPass("BAD2"), null);
+});
+
+test("a joined guest can continue if storage is blocked, and a rejected pass cannot be loaded again", async () => {
+  const old = { outing_id: "o1", participant_id: "g1", guest_token: "expired" };
+  const localStorage = { getItem: () => JSON.stringify(old), setItem: () => { throw Error("blocked"); }, removeItem: () => { throw Error("blocked"); } };
+  const store = load("features/sessions/guestPass.ts", { "react-native": { Platform: { OS: "web" } }, "expo-secure-store": {} }, { globalThis: { localStorage } });
+  const fresh = { ...old, guest_token: "fresh" };
+  await store.saveGuestPass("TEST", fresh);
+  assert.deepEqual(plain(await store.loadGuestPass("TEST")), fresh);
+  await store.removeGuestPass("TEST");
+  assert.equal(await store.loadGuestPass("TEST"), null);
+  await store.saveGuestPass("TEST", fresh);
+  assert.equal((await store.loadGuestPass("TEST")).guest_token, "fresh");
 });

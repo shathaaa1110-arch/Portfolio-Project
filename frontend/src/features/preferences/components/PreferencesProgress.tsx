@@ -6,10 +6,11 @@ import { preferenceSteps } from "../steps";
 
 type PreferencesProgressProps = {
   stepIndex: number;
+  title?: string;
 };
 
 export function PreferencesProgress({
-  stepIndex,
+  stepIndex, title = "تفضيلاتك",
 }: PreferencesProgressProps) {
   // Show step numbers starting from one.
   const currentNumber = (stepIndex + 1).toLocaleString("ar-SA");
@@ -24,7 +25,7 @@ export function PreferencesProgress({
         accessibilityRole="header"
         style={styles.title}
       >
-        تفضيلاتك
+        {title}
       </AppText>
 
       <View
