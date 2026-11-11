@@ -1968,10 +1968,11 @@ Response `409`: `PLAN_NOT_READY` before the plan is generated. Response `403`: `
 
 ```http
 GET /restaurants/{restaurant_id}
+GET /restaurants/{restaurant_id}?outing_id=uuid
 ```
-Requires: Authorization
+Requires: nothing, like browsing. With `outing_id`: Authorization (a login or that outing's guest token) of someone still in the outing (BE-27, #46).
 
-Optional query parameter `outing_id` adds this outing's `reason` for the restaurant, when it was part of that outing's plan.
+Returns every stored field. Nothing is guessed: unknown hours, rating, spend, location or photo come back as `null`. `opening_hours` is `null` when neither the times nor `open_24h` are known; `days_open` below 7 means the days are not known. `reason` is `null` without `outing_id`, and also when this place was not one of that outing's suggestions.
 
 Response `200`
 ```json
@@ -1979,25 +1980,35 @@ Response `200`
   "id": 101,
   "name_ar": "string",
   "name_en": "string",
-  "cuisines": ["italian"],
-  "district": "string",
+  "cuisines": ["italian", "pizza"],
+  "district": "العليا",
+  "district_id": "00100001141",
   "price_tier": 3,
   "rating": 4.6,
-  "opening_hours": {},
+  "rating_count": 120,
+  "spend_low": 40,
+  "spend_high": 90,
+  "opening_hours": { "open_24h": false, "opens": "16:00", "closes": "01:30", "days_open": 7 },
   "summary": "string",
+  "latitude": 24.69,
+  "longitude": 46.68,
   "maps_url": "string",
+  "image_url": null,
   "reason": "string | null"
 }
 ```
+
+Errors: `404 RESTAURANT_NOT_FOUND`; `422 VALIDATION_ERROR` for an id outside 1–2147483647 or a bad `outing_id`. Only with `outing_id`: `401 INVALID_TOKEN`/`TOKEN_EXPIRED`, `404 OUTING_NOT_FOUND`, `403 NOT_A_PARTICIPANT`, `403 REMOVED_FROM_OUTING`, `403 LEFT_OUTING`. `503 RESTAURANTS_UNAVAILABLE`.
 
 #### Browse restaurants
 
 ```http
 GET /restaurants?limit=20&offset=0
+GET /restaurants?search=شاورما&cuisine=grill,levant&district_id=00100001141
 ```
 Requires: nothing. Public browsing works without an account, outing, or group, and returns no account or session data.
 
-A plain query against `restaurants`; it does not call the recommendation engine. Results are ordered by `quality_score`, then `rating`, best first. `limit` is 1–50 (default 20); `offset` starts at 0. `search` filters names or cuisine labels before paging; separate cuisine/district filters are not implemented. ID breaks ordering ties. DB-13 adds no ranking logic.
+A plain query against `restaurants`; it does not call the recommendation engine. Results are ordered by `quality_score`, then `rating`, best first. `limit` is 1–50 (default 20); `offset` starts at 0. Filters, all optional and combined with AND before paging (BE-27, #46): `search` matches names or cuisine labels; `cuisine` takes comma-separated category keys from the 18 used by preferences (`plan/cuisines.py`), expanded to their dataset codes (an unknown key is `422` with `fields: ["query.cuisine"]`); `district_id` takes an id from `GET /districts` (`422 UNKNOWN_DISTRICT` otherwise). Empty values are ignored. ID breaks ordering ties. DB-13 adds no ranking logic.
 
 Response `200`
 ```json
@@ -2825,8 +2836,8 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `PUT /outings/{id}/preferences` | Updated (200) | Locked after voting (409) |
 | `POST /outings/{id}/preferences/ready` | Marked ready (200) | Already ready (409) |
 | `GET /outings/{id}/plan` | Plan returned (200) | No plan yet (404) |
-| `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
-| `GET /restaurants` | List returned (200), empty list (200) | Bad `limit` (422), database unavailable (503) |
+| `GET /restaurants/{id}` | Details returned (200), with the outing's reason for a member (200) | Not found (404), outing reason for a non-member (403) |
+| `GET /restaurants` | List returned (200), filtered list (200), empty list (200) | Bad `limit`, unknown cuisine key or district (422), database unavailable (503) |
 | `GET /users/me/recommendations` | Suggestions returned (200), empty list (200) | No auth or guest pass (401), distance limit without a location (422), unknown district (404) |
 | `POST /outings/{id}/votes` | Vote recorded or changed (200); the last answer ends voting | Wrong stage (409), another outing's suggestion (404), not a participant (403) |
 | `GET /outings/{id}/votes` | Own answers and counts (200) | Not a participant (403) |
