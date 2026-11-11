@@ -1,0 +1,45 @@
+{
+  "note": "Synthetic test data, not real restaurants. Columns follow database/schema.sql; the opening_hours shape is illustrative until the dataset format is documented.",
+  "restaurants": [
+    {
+      "id": 990001, "name_ar": "مطعم تجريبي 1", "name_en": "Test Kitchen 1", "brand_id": 99001,
+      "cuisine": "saudi_gulf", "district": "Olaya", "latitude": 24.69, "longitude": 46.685,
+      "spend_low": 40, "spend_high": 80, "price_tier": 2,
+      "rating": 4.6, "rating_count": 320, "quality_score": 4.5,
+      "group_fit": 8, "meal_fit_breakfast": 1, "meal_fit_late_night": 2,
+      "opening_hours": {"sun": ["12:00-23:00"]},
+      "summary": "Synthetic row with every field filled.",
+      "maps_url": "https://example.com/thouq-test/990001"
+    },
+    {
+      "id": 990002, "name_ar": "مطعم تجريبي 2", "name_en": "Test Kitchen 2", "brand_id": 99002,
+      "cuisine": "levant", "district": "Yasmin", "latitude": 24.83, "longitude": 46.64,
+      "spend_low": 25, "spend_high": 50, "price_tier": 1,
+      "rating": null, "rating_count": null, "quality_score": null,
+      "group_fit": null, "meal_fit_breakfast": null, "meal_fit_late_night": null,
+      "opening_hours": {"sun": ["06:00-14:00"]},
+      "summary": "Synthetic row without ratings or fit scores.",
+      "maps_url": "https://example.com/thouq-test/990002"
+    },
+    {
+      "id": 990003, "name_ar": "مطعم تجريبي 3", "name_en": null, "brand_id": null,
+      "cuisine": "italian,american", "district": "Malqa", "latitude": 24.81, "longitude": 46.61,
+      "spend_low": 60, "spend_high": 120, "price_tier": 3,
+      "rating": 3.9, "rating_count": 12, "quality_score": 3.4,
+      "group_fit": 6, "meal_fit_breakfast": 0, "meal_fit_late_night": 3,
+      "opening_hours": null,
+      "summary": null,
+      "maps_url": "https://example.com/thouq-test/990003"
+    },
+    {
+      "id": 990004, "name_ar": "مطعم تجريبي 1 - فرع 2", "name_en": "Test Kitchen 1 - Branch 2", "brand_id": 99001,
+      "cuisine": "saudi_gulf", "district": "Nakheel", "latitude": 24.75, "longitude": 46.63,
+      "spend_low": 250, "spend_high": 400, "price_tier": 4,
+      "rating": 4.8, "rating_count": 95, "quality_score": 4.7,
+      "group_fit": 9, "meal_fit_breakfast": 0, "meal_fit_late_night": 1,
+      "opening_hours": {"sun": ["18:00-02:00"]},
+      "summary": "Synthetic expensive branch of the same brand as 990001.",
+      "maps_url": "https://example.com/thouq-test/990004"
+    }
+  ]
+}
