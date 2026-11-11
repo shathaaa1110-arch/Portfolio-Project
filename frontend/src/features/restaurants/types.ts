@@ -4,6 +4,7 @@ export type RestaurantSummary = {
   name_ar: string;
   cuisines: string[];
   district: string;
+  image_url?: string | null;
   rating: number | null;
   maps_url?: string | null;
   // Optional until the API exposes the database spend range.

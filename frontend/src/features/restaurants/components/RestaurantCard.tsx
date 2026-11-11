@@ -5,13 +5,14 @@ import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
-import { restaurantCategoryImage } from "../categoryImage";
+import { useRestaurantImage } from "../useRestaurantImage";
 import { restaurantDistance, restaurantRating, restaurantSpendRange, restaurantSubtitle } from "../presentation";
 import { RestaurantMapLink } from "./RestaurantMapLink";
 import { RestaurantDetails } from "./RestaurantDetails";
 
 type Props = {
   name: string; cuisines: string[]; district: string; rating: number | null;
+  imageUrl?: string | null;
   mapsUrl?: string | null; distanceKm?: number | null; reason?: string | null;
   spendLow?: number | null; spendHigh?: number | null;
   action?: ReactNode; variant?: "list" | "tile" | "featured";
@@ -26,6 +27,7 @@ export function RestaurantCard(props: Props) {
     setLocalExpanded(next);
     props.onExpandedChange?.(next);
   }
+  const photo = useRestaurantImage(props.imageUrl, cuisines);
   const compact = variant !== "list";
   const ratingText = restaurantRating(rating);
   const hasRating = ratingText !== null;
@@ -40,7 +42,7 @@ export function RestaurantCard(props: Props) {
         <Pressable accessibilityRole="button" accessibilityLabel={`عرض تفاصيل ${name}`}
           accessibilityState={{expanded: detailsOpen}}
           onPress={() => setDetailsOpen(true)} style={({ pressed }) => pressed && styles.pressed}>
-          <Image source={restaurantCategoryImage(cuisines)} contentFit="cover" accessible={false}
+          <Image source={photo.source} onError={photo.onError} contentFit="cover" accessible={false}
             style={[styles.image, variant === "featured" && styles.featuredImage]} />
           <AppText variant="title" numberOfLines={compact ? 1 : 2} style={styles.name}>{name}</AppText>
           <AppText numberOfLines={1} style={styles.subtitle}>
@@ -77,7 +79,7 @@ export function RestaurantCard(props: Props) {
       )}
       {!compact && action}
       <RestaurantDetails visible={detailsOpen}
-        name={name} cuisines={cuisines} district={district} rating={rating}
+        name={name} cuisines={cuisines} district={district} rating={rating} imageUrl={props.imageUrl}
         distanceKm={distanceKm} mapsUrl={mapsUrl}
         spendLow={props.spendLow} spendHigh={props.spendHigh}
         reason={reason}

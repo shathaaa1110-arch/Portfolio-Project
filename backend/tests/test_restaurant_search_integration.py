@@ -25,7 +25,7 @@ TABLE = """
 CREATE TABLE restaurants (
     id INTEGER PRIMARY KEY, name_ar TEXT NOT NULL, name_en TEXT, cuisine TEXT NOT NULL,
     district TEXT NOT NULL, price_tier SMALLINT NOT NULL, rating NUMERIC, quality_score NUMERIC,
-    maps_url TEXT NOT NULL)
+    maps_url TEXT NOT NULL, image_url TEXT)
 """
 
 

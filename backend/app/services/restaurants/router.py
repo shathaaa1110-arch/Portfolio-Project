@@ -23,7 +23,7 @@ router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 # Best places first; id keeps the order stable between pages.
 LIST_SQL = text(
     """
-    SELECT id, name_ar, name_en, cuisine, district, price_tier, rating, maps_url
+    SELECT id, name_ar, name_en, cuisine, district, price_tier, rating, maps_url, image_url
     FROM restaurants
     ORDER BY quality_score DESC NULLS LAST, rating DESC NULLS LAST, id
     LIMIT :limit OFFSET :offset
@@ -41,7 +41,7 @@ SEARCH_WHERE = f"""
        OR {CUISINE_CODES} && CAST(:codes AS TEXT[])
 """
 SEARCH_SQL = text(
-    "SELECT id, name_ar, name_en, cuisine, district, price_tier, rating, maps_url FROM restaurants"
+    "SELECT id, name_ar, name_en, cuisine, district, price_tier, rating, maps_url, image_url FROM restaurants"
     + SEARCH_WHERE
     + "ORDER BY quality_score DESC NULLS LAST, rating DESC NULLS LAST, id LIMIT :limit OFFSET :offset"
 )
@@ -62,6 +62,8 @@ def _row(r) -> dict:
         "price_tier": r.price_tier,
         "rating": float(r.rating) if r.rating is not None else None,
         "maps_url": r.maps_url,
+        # Recommendation summaries also reuse this serializer without selecting photos.
+        "image_url": getattr(r, "image_url", None),
     }
 
 

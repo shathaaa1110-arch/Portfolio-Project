@@ -54,6 +54,7 @@ export function SavedRestaurantsScreen() {
               district={restaurant.district}
               rating={restaurant.rating}
               mapsUrl={restaurant.maps_url}
+              imageUrl={restaurant.image_url}
               spendLow={restaurant.spend_low}
               spendHigh={restaurant.spend_high}
               action={

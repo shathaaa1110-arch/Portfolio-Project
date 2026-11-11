@@ -174,7 +174,7 @@ key={`restaurants-${columns}`}
         <View style={styles.row}>
           {row.restaurants?.map(item => <View key={item.id} style={{width: columns === 1 ? "100%" : "48%"}}>
             <RestaurantCard variant="tile" name={item.name_ar} cuisines={item.cuisines}
-              district={item.district} rating={item.rating} mapsUrl={item.maps_url}
+              district={item.district} rating={item.rating} mapsUrl={item.maps_url} imageUrl={item.image_url}
               spendLow={item.spend_low} spendHigh={item.spend_high}
               reason={item.reason} distanceKm={item.distance_km}
               action={renderAction?.(item)}

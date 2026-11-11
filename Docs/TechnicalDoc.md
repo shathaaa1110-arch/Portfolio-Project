@@ -320,7 +320,7 @@ Read the diagram from top to bottom: the app sends every request to the REST API
 | OTP provider | External | Authentica (chosen and tested in OPS-14) | Delivers the verification code by SMS. The API server generates and checks the code |
 | Push notifications | External | Expo push notification service | Attendance and plan notifications. The back-end sends the message and the recipients' device tokens to Expo, which delivers it to Android and iOS devices |
 
-The restaurants table is filled once from the team's dataset by an import script. The app does not call any external restaurant service at run time.
+The restaurants table supports the private dataset and the separately authored DB-13 synthetic Home sample. `database/seed_general_restaurants.py` imports the committed sample transactionally and repeatably; it does not run automatically. The app does not call any external restaurant service at run time.
 
 ### Data flow
 
@@ -403,6 +403,15 @@ erDiagram
         text push_token
         timestamp created_at
     }
+    OTP_CODES {
+        uuid id PK
+        text phone
+        text code_hash
+        timestamp expires_at
+        int attempts
+        timestamp used_at
+        timestamp created_at
+    }
     GROUPS {
         uuid id PK
         text name
@@ -454,7 +463,7 @@ erDiagram
         text name_ar
         text name_en
         int brand_id
-        text[] cuisines
+        text cuisine
         text district
         numeric latitude
         numeric longitude
@@ -468,6 +477,7 @@ erDiagram
         jsonb opening_hours
         text summary
         text maps_url
+        text image_url
     }
     DISTRICTS {
         text id PK
@@ -514,6 +524,32 @@ other tables in this diagram remain draft designs, not tables created by DB-03.
 | phone_number | text | yes | Unique. Used to log in; not part of the primary key |
 | push_token | text | no | Device token for push notifications |
 | created_at | timestamp | yes | Without time zone, matching the existing SQL schema |
+
+#### `otp_codes`
+
+DB-08 migration `0009_otp_codes` implements local login-code verification.
+Authentica delivers the code only; its verification endpoint is not used.
+Codes exist before sign-up, so this table has no user foreign key.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| id | uuid | yes | Sole primary key, supplied by the API |
+| phone | text | yes | Normalized local phone; indexed, not unique |
+| code_hash | text | yes | HMAC-SHA256 of phone and code using the server secret; no plaintext code |
+| expires_at | timestamp | yes | UTC without time zone; five minutes after creation |
+| attempts | integer | yes | Defaults to zero; five wrong attempts block verification |
+| used_at | timestamp | no | UTC consumption time; a used code cannot issue another token |
+| created_at | timestamp | yes | UTC creation time; determines the latest code |
+
+Request, resend and verify acquire the same PostgreSQL transaction advisory lock
+for the normalized phone before reading code state. Time is sampled after the
+lock is acquired. Only the latest code is checked; used codes and codes whose
+expiry is at or before that time are rejected. Account creation and code
+consumption commit together before token generation. Wrong attempts persist
+under the same lock, preventing concurrent requests from losing increments.
+A successful resend expires earlier unused codes; failed SMS delivery rolls back
+the replacement. `NAME_REQUIRED` leaves the code unused. SQLite unit tests cover
+sequential behavior; PostgreSQL tests establish concurrent single use.
 
 #### `groups`
 
@@ -604,7 +640,7 @@ relationship is preserved in existing databases, not required by clean installs.
 
 #### `restaurants`
 
-A reduced copy of the team's Riyadh restaurants dataset: open places only, with the fields the recommendation engine needs. It is filled once by an import script and is read-only for the app. The dataset files are not committed to this repository, because its terms do not allow republishing.
+Restaurant storage is read-only for the app. The private Riyadh dataset is not committed because its terms prohibit republishing. DB-13 adds a separate eight-record fictional Home sample, labelled in both languages, with explicit nulls for unknown information. Migration `0008_general_restaurants` preserves existing rows and references, adds optional photos, and permits missing coordinates, prices and map links. This general browsing data makes no preference, allergy, meal or distance suitability claim. Historical dataset snapshot provenance above is unchanged.
 
 | Column | Type | Required | Notes |
 |---|---|---|---|
@@ -612,11 +648,11 @@ A reduced copy of the team's Riyadh restaurants dataset: open places only, with 
 | name_ar | text | yes | |
 | name_en | text | no | |
 | brand_id | integer | no | Lets the engine return one branch per brand |
-| cuisines | text[] | yes | Cuisine codes from the dataset |
+| cuisine | text | yes | Comma-separated cuisine codes in storage; API exposes `cuisines: string[]` |
 | district | text | yes | |
-| latitude, longitude | numeric | yes | |
-| spend_low, spend_high | integer | yes | Estimated spend per person in SAR |
-| price_tier | smallint | yes | 1 to 4. Shown on the card |
+| latitude, longitude | numeric | no | NULL when unknown |
+| spend_low, spend_high | integer | no | Estimated spend per person in SAR; NULL when unknown |
+| price_tier | smallint | no | 1 to 4 when known |
 | rating | numeric | no | Rating from map listings. Known for about two thirds of places; shown only when present |
 | rating_count | integer | no | Number of ratings behind `rating` |
 | quality_score | numeric | no | Rating adjusted for the number of reviews |
@@ -624,7 +660,8 @@ A reduced copy of the team's Riyadh restaurants dataset: open places only, with 
 | meal_fit_breakfast … meal_fit_late_night | smallint | no | Five columns, 0 to 3 each. Not drawn in the diagram to keep it compact |
 | opening_hours | jsonb | no | Opening periods per weekday. Known for about half of places; shown only when present |
 | summary | text | no | Shown on the restaurant details screen |
-| maps_url | text | yes | Opened by the app |
+| maps_url | text | no | Opened by the app only when present |
+| image_url | text | no | Optional actual photo URL; NULL uses a labelled cuisine illustration |
 
 #### `districts`
 
@@ -1458,6 +1495,7 @@ Response `200`
 | 15 | POST | `/outings/{outing_id}/start-preferences` | 10 |
 | 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 (generates the plan, D05) |
 | 17 | DELETE | `/outings/{outing_id}/participants/{participant_id}` | 24 |
+|17a | POST | `/outings/{outing_id}/leave` | 24 (BE-29) |
 
 #### Create a one-off session
 
@@ -1723,17 +1761,28 @@ or `INVALID_STATUS_TRANSITION` before the preferences stage.
 
 One round per outing for now; separate rounds for a retry come with DB-07 (#14) and BE-31 (#90).
 
-#### Remove a participant from an outing
+#### Leave an outing, or remove a participant (BE-29, #88)
 
 ```http
+POST   /outings/{outing_id}/leave
 DELETE /outings/{outing_id}/participants/{participant_id}
 ```
-Requires: Authorization, caller must be the organizer
+Requires: Authorization (Bearer or guest). `leave`: any participant except the organizer. `DELETE`: the organizer only, never themselves.
+
+Only in the `invite` and `preferences` stages. Both take the outing's row lock, the same lock plan generation takes, so a change racing with generation waits and is then refused; the saved plan's group never changes. The row is kept: leaving stores `attendance = declined` (the person may rejoin from the link while the outing is open), removal stores `removed` (migration `0010_participant_removed`; rejoining is refused). Either way the person drops out of the readiness count, the participant list and the 8-person count, and their old token gets `403` on every outing route.
 
 Response `200`
 ```json
-{ "message": "participant removed" }
+{ "outing_id": "uuid", "participant_id": "uuid", "attendance": "removed", "status": "preferences",
+  "ready_count": 2, "total_count": 2 }
 ```
+
+Errors:
+- `409 MEMBERSHIP_LOCKED`: the plan is already generated.
+- `409 ORGANIZER_CANNOT_LEAVE`: the organizer tried to leave or remove themselves.
+- `403 ORGANIZER_ONLY`: a participant tried to remove someone.
+- `404 PARTICIPANT_NOT_FOUND`: not in this outing, or already removed.
+- With the old token: `403 REMOVED_FROM_OUTING` or `403 LEFT_OUTING`. A removed account joining again also gets `403 REMOVED_FROM_OUTING`.
 
 ### 4.6 Preferences API
 
@@ -1942,7 +1991,7 @@ GET /restaurants?limit=20&offset=0
 ```
 Requires: nothing. Public browsing works without an account, outing, or group, and returns no account or session data.
 
-A plain query against `restaurants`; it does not call the recommendation engine. Results are ordered by `quality_score`, then `rating`, best first. `limit` is 1–50 (default 20); `offset` starts at 0. Search by name and filters (`search`, `cuisine`, `district`) come later with story 22.
+A plain query against `restaurants`; it does not call the recommendation engine. Results are ordered by `quality_score`, then `rating`, best first. `limit` is 1–50 (default 20); `offset` starts at 0. `search` filters names or cuisine labels before paging; separate cuisine/district filters are not implemented. ID breaks ordering ties. DB-13 adds no ranking logic.
 
 Response `200`
 ```json
@@ -1956,7 +2005,8 @@ Response `200`
       "district": "string",
       "price_tier": 3,
       "rating": 4.6,
-      "maps_url": "string"
+      "maps_url": null,
+      "image_url": null
     }
   ],
   "total": 1234,
@@ -1964,6 +2014,8 @@ Response `200`
   "offset": 0
 }
 ```
+
+`name_en`, `price_tier`, `rating`, `maps_url` and `image_url` may be null. Image URLs are additive; older frontend responses without this field retain the cuisine fallback. Saved-list summaries share this field. Deploy migration 0008 before the API update.
 
 An empty dataset returns `200` with `"restaurants": []` and `"total": 0`.
 

@@ -214,6 +214,7 @@ def test_expired_code(ctx):
     r = verify(ctx, ctx.last_code(), name="Asim")
     assert r.status_code == 401
     assert r.json()["error"]["code"] == "CODE_EXPIRED"
+    assert "token" not in r.json()
 
 
 def test_code_works_only_once(ctx):
@@ -223,6 +224,7 @@ def test_code_works_only_once(ctx):
     r = verify(ctx, code)
     assert r.status_code == 401
     assert r.json()["error"]["code"] == "INVALID_CODE"
+    assert "token" not in r.json()
 
 
 def test_five_wrong_attempts_lock_the_code(ctx):
@@ -262,7 +264,9 @@ def test_resend_without_request_returns_404(ctx):
     assert r.json()["error"]["code"] == "NO_PENDING_CODE"
 
 
-def test_resend_replaces_the_old_code(ctx):
+def test_resend_replaces_the_old_code(ctx, monkeypatch):
+    codes = iter(["123456", "654321"])
+    monkeypatch.setattr(auth_router, "generate_code", lambda: next(codes))
     request_code(ctx)
     old = ctx.last_code()
     age_latest_code(ctx, 61)
@@ -271,6 +275,35 @@ def test_resend_replaces_the_old_code(ctx):
     assert r.json()["message"] == "new code sent"
     new = ctx.last_code()
 
-    if old != new:
-        assert verify(ctx, old, name="Asim").status_code == 401
+    rejected = verify(ctx, old, name="Asim")
+    assert rejected.status_code == 401
+    assert "token" not in rejected.json()
     assert verify(ctx, new, name="Asim").status_code == 200
+
+
+def test_expiry_boundary_is_checked_after_lock(ctx, monkeypatch):
+    request_code(ctx)
+    with ctx.session() as db:
+        expiry = db.query(OtpCode).one().expires_at
+    clock = [expiry - timedelta(seconds=1)]
+    monkeypatch.setattr(auth_router, "utcnow", lambda: clock[0])
+    monkeypatch.setattr(auth_router, "_lock_phone", lambda db, phone: clock.__setitem__(0, expiry))
+    response = verify(ctx, ctx.last_code(), name="Asim")
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "CODE_EXPIRED"
+    assert "token" not in response.json()
+
+
+def test_failed_resend_preserves_previous_code(ctx, monkeypatch):
+    request_code(ctx)
+    old = ctx.last_code()
+    age_latest_code(ctx, 61)
+
+    def broken(phone, code):
+        raise SmsSendError("down")
+
+    monkeypatch.setattr(auth_router, "send_code", broken)
+    assert ctx.client.post("/api/v1/auth/resend-code", json={"phone": PHONE}).status_code == 503
+    with ctx.session() as db:
+        assert db.query(OtpCode).count() == 1
+    assert verify(ctx, old, name="Asim").status_code == 200

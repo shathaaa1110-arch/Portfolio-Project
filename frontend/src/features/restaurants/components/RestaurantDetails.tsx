@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
-import { restaurantCategoryImage } from "../categoryImage";
+import { useRestaurantImage } from "../useRestaurantImage";
 import { restaurantCuisineLabels, restaurantDistance, restaurantRating, restaurantSpendRange } from "../presentation";
 import { RestaurantMapLink } from "./RestaurantMapLink";
 
@@ -16,6 +16,7 @@ type Props = {
   cuisines: string[];
   district: string;
   rating: number | null;
+  imageUrl?: string | null;
   mapsUrl?: string | null;
   distanceKm?: number | null;
   spendLow?: number | null;
@@ -26,8 +27,9 @@ type Props = {
 
 // A separate sheet preserves the list position and never changes its card layout.
 export function RestaurantDetails({
-  visible, name, cuisines, district, rating, mapsUrl, distanceKm, spendLow, spendHigh, reason, onClose,
+  visible, name, cuisines, district, rating, imageUrl, mapsUrl, distanceKm, spendLow, spendHigh, reason, onClose,
 }: Props) {
+  const photo = useRestaurantImage(imageUrl, cuisines);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "ios" ? 0 : insets.top;
@@ -50,7 +52,7 @@ export function RestaurantDetails({
       <SafeAreaView edges={["bottom", "left", "right"]} style={styles.screen}
         accessibilityViewIsModal onAccessibilityEscape={onClose}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Image source={restaurantCategoryImage(cuisines)} contentFit="cover"
+          <Image source={photo.source} onError={photo.onError} contentFit="cover"
             style={[styles.photo, { height: heroHeight }]} accessible={false} />
 
           <View style={styles.surface}>
@@ -83,7 +85,7 @@ export function RestaurantDetails({
             <View style={styles.actions}>
               <RestaurantMapLink mapsUrl={mapsUrl} restaurantName={name} variant="button" />
             </View>
-            <AppText style={styles.caption}>الصورة تعبيرية عن التصنيف، وليست صورة المطعم.</AppText>
+            {photo.illustrative && <AppText style={styles.caption}>الصورة تعبيرية عن التصنيف، وليست صورة المطعم.</AppText>}
           </View>
         </ScrollView>
 
