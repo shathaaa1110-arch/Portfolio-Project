@@ -18,7 +18,7 @@ from app.core.database import get_db
 from app.core.errors import ApiError
 from app.services.auth.models import User
 from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
-from app.services.outings.models import PREFERENCES, Outing, Participant
+from app.services.outings.models import GONE, PREFERENCES, Outing, Participant
 from app.services.outings.stages import move, organizer_actions, readiness
 
 logger = logging.getLogger(__name__)
@@ -30,11 +30,14 @@ def _unavailable() -> ApiError:
 
 
 def _participants(db: Session, outing: Outing) -> list[dict]:
-    """Organizer first, then by name, so the list does not jump around between polls."""
+    """Organizer first, then by name, so the list does not jump around between polls.
+
+    People who left or were removed (BE-29) are no longer part of the outing and are not listed.
+    """
     rows = db.execute(
         select(Participant, User.name)
         .outerjoin(User, User.id == Participant.user_id)
-        .where(Participant.outing_id == outing.id)
+        .where(Participant.outing_id == outing.id, Participant.attendance.not_in(GONE))
     ).all()
     people = [
         {
