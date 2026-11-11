@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +15,7 @@ const PHONE_PATTERN = /^[0٠][5٥][0-9٠-٩]{8}$/;
 
 // Login uses the same phone field as sign-up, without asking for the name again
 export function LoginScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [error, setError] = useState("");
@@ -32,11 +33,11 @@ export function LoginScreen() {
     setError("");
     try {
       const response = await requestCode(cleanPhone);
-      goToVerify({ phone: cleanPhone, codeLength: response.code_length });
+      goToVerify({ phone: cleanPhone, codeLength: response.code_length, returnTo });
     } catch (e) {
       if (e instanceof ApiError && e.code === "RATE_LIMITED") {
         // A code was sent less than a minute ago and still works: continue to the code screen
-        goToVerify({ phone: cleanPhone, codeLength: 6, waitSeconds: e.retryAfterSeconds });
+        goToVerify({ phone: cleanPhone, codeLength: 6, waitSeconds: e.retryAfterSeconds, returnTo });
       } else {
         setError(errorMessage(e));
       }
@@ -86,7 +87,7 @@ export function LoginScreen() {
           onPress={handleSubmit}
         />
 
-        <Pressable style={styles.link} onPress={() => router.replace("/sign-up")}>
+        <Pressable style={styles.link} onPress={() => router.replace({ pathname: "/sign-up", params: { returnTo } })}>
           <AppText style={styles.linkText}>أول مرة؟ أنشئ حسابًا</AppText>
         </Pressable>
 

@@ -31,11 +31,12 @@ type PreferencesFormProps = {
   notice?: string;
   onSignIn?: () => void;
   submitLabel?: string;
+  context?: "account" | "outing";
 };
 
 export function PreferencesForm({
   initialValue, onSubmit, onExit, isSaving = false, error = "",
-  notice = "", onSignIn, submitLabel = "حفظ تفضيلاتي",
+  notice = "", onSignIn, submitLabel = "حفظ تفضيلاتي", context = "account",
 }: PreferencesFormProps) {
   // Start with the first form step.
   const [stepIndex, setStepIndex] = useState(0);
@@ -123,7 +124,7 @@ const [allergyChoices, setAllergyChoices] =
 
   return (
        <SafeAreaView style={styles.screen}>
-      <PreferencesProgress stepIndex={stepIndex} />
+      <PreferencesProgress stepIndex={stepIndex} title={context === "outing" ? "ذوقي لهذه الجلسة" : "تفضيلاتك"} />
 
       <ScrollView
   key={currentStep.id}
@@ -145,12 +146,14 @@ const [allergyChoices, setAllergyChoices] =
     accessibilityRole="header"
     style={styles.arabicText}
   >
-    {currentStep.title}
+    {context === "outing" && currentStep.id === "food" ? "وش مشتهي اليوم؟" : currentStep.title}
   </AppText>
 
   {/* Show the current step description. */}
   <AppText style={[styles.arabicText, styles.description]}>
-    {currentStep.description}
+    {context === "outing" && currentStep.id === "distance"
+      ? "المسافة من مركز منطقة اللقاء، وليست من موقع هاتفك."
+      : currentStep.description}
   </AppText>
 </View>
 
@@ -416,7 +419,7 @@ placeholder={isBudgetUnlimited ? "—" : "120"}
           ]}
         >
           <AppText style={styles.backText}>
-            {stepIndex === 0 ? "العودة للتصفح" : "السابق"}
+            {stepIndex === 0 ? (context === "outing" ? "العودة للجلسة" : "العودة للتصفح") : "السابق"}
           </AppText>
         </Pressable>
       </View>

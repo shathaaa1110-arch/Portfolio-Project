@@ -115,7 +115,7 @@ async function accountHarness({ isSaved = false, onboarding, loadFailure } = {})
   const writes = [], routes = [], marks = [];
   const { AccountPreferencesScreen } = load("features/preferences/AccountPreferencesScreen.tsx", {
     "react-native": native, "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
-    "expo-router": { useLocalSearchParams: () => ({ onboarding }), router: { replace: route => routes.push(route) } },
+    "expo-router": { useLocalSearchParams: () => ({ onboarding }), router: { replace: route => routes.push(route), dismissTo: route => routes.push(route) } },
     "@/features/auth": { loadSession: async () => token ? { token } : null, markPreferencesSaved: async value => { marks.push(value); return value === token; } },
     "@/shared/api/config": { USE_MOCK: false }, "@/shared/api/errors": errors,
     "@/shared/components": shared, "@/shared/theme": theme,
