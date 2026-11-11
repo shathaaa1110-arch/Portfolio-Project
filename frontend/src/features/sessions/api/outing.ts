@@ -2,7 +2,7 @@ import { request } from "@/shared/api/client";
 import { invalidResponseError } from "@/shared/api/errors";
 import type { PreferencesPayload, AccountPreferences } from "@/features/preferences";
 import type { OutingStatus } from "./join";
-import { checkRound, roundBody, roundQuery, validRoundIdentity, type RoundIdentity } from "./round";
+import { checkRound, roundBody, roundQuery, validRoundIdentity, ROUND_RETRY_ENABLED, type RoundIdentity } from "./round";
 
 export type Participant = {
   participant_id: string; name: string | null; attendance: string;
@@ -40,7 +40,7 @@ const path = (id: string) => `/outings/${encodeURIComponent(id)}`;
 
 export async function getOuting(id: string, token: string): Promise<OutingState> {
   const s = await request<OutingState>("GET", path(id), { token });
-  if (!s || s.outing_id !== id || typeof s.name !== "string" || !validRoundIdentity(s) ||
+  if (!s || s.outing_id !== id || typeof s.name !== "string" || (ROUND_RETRY_ENABLED && !validRoundIdentity(s)) ||
       (s.round_outcome != null && s.round_outcome !== "no_matches") ||
       !["invite", "preferences", "voting", "tiebreak", "result"].includes(s.status) ||
       typeof s.starts_at !== "string" || !Number.isFinite(Date.parse(s.starts_at)) || typeof s.district !== "string" || typeof s.invite_code !== "string" ||
@@ -52,7 +52,8 @@ export async function getOuting(id: string, token: string): Promise<OutingState>
         typeof p.attendance !== "string" || typeof p.preferences_done !== "boolean" || typeof p.is_organizer !== "boolean")) {
     throw invalidResponseError(200);
   }
-  return s;
+  // Early server metadata must not opt this client into an unsupported contract.
+  return ROUND_RETRY_ENABLED ? s : { ...s, round_id: undefined, round_number: undefined };
 }
 
 export async function startPreferences(id: string, token: string): Promise<void> {
@@ -73,7 +74,7 @@ export async function getOutingPreferences(id: string, token: string, roundId?: 
 
 export async function saveOutingPreferences(id: string, token: string, body: PreferencesPayload, roundId?: string): Promise<void> {
   // PUT replaces every field: always send the full draft, including allergies and other limits.
-  const r = await request<{ preferences_done: boolean; round_id?: string }>("PUT", `${path(id)}/preferences`, { token, body: roundId ? { ...body, round_id: roundId } : body });
+  const r = await request<{ preferences_done: boolean; round_id?: string }>("PUT", `${path(id)}/preferences`, { token, body: { ...body, ...roundBody(roundId).body } });
   checkRound(r, roundId);
   if (!r || r.preferences_done !== false) throw invalidResponseError(200);
 }

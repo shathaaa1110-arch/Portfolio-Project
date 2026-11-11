@@ -19,7 +19,7 @@ export function SessionRetry(props: Props) {
       <AppText style={room.center}>{props.available ? "بنفس الطلعة وأهلها، وكل واحد يراجع ذوقه." : "إعادة الجولة غير متاحة حاليًا."}</AppText>
     </View>
     <SessionSheet visible={props.open} title="نعطي جمعتنا فرصة ثانية؟" onClose={props.onClose}>
-      <Image source={require("../../../../assets/images/sessions/haila-gathering.png")} contentFit="contain" style={styles.haila} accessible={false} />
+      <Image source={require("../../../../assets/images/sessions/haila-gathering.webp")} contentFit="contain" style={styles.haila} accessible={false} />
       <AppText style={room.label}>الجولة {(props.roundNumber + 1).toLocaleString("ar-SA")}</AppText>
       <AppText style={room.text}>نفس الدعوة ونفس المشاركين. كل واحد يراجع تفضيلاته ويؤكّد جاهزيته من جديد.</AppText>
       <View style={room.card}>

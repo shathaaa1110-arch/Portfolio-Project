@@ -4,6 +4,9 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 // 2. Read the mock flag and convert it to a boolean
 const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === "true";
 
+// Enable for real requests only after BE-31 supports the complete round contract.
+const ROUND_RETRY_ENABLED = USE_MOCK || process.env.EXPO_PUBLIC_SESSION_ROUNDS_ENABLED === "true";
+
 // Name/cuisine search is supported by the published API. Older servers can opt out.
 const RESTAURANT_SEARCH_ENABLED = process.env.EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED !== "false";
 
@@ -15,4 +18,4 @@ if (!USE_MOCK && !API_BASE_URL) {
 }
 
 // 4. Export both values
-export { API_BASE_URL, USE_MOCK, RESTAURANT_SEARCH_ENABLED };
+export { API_BASE_URL, USE_MOCK, RESTAURANT_SEARCH_ENABLED, ROUND_RETRY_ENABLED };

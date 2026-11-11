@@ -62,21 +62,21 @@ export function CreateSessionScreen() {
       <View style={styles.page}>
         <View style={styles.intro}>
           <AppText accessibilityRole="header" style={styles.title}>خلّها جمعة حلوة.</AppText>
-          <Image source={require("../../../assets/images/sessions/underline.png")} contentFit="cover" style={styles.underline} accessible={false} />
+          <Image source={require("../../../assets/images/sessions/underline.webp")} contentFit="cover" style={styles.underline} accessible={false} />
           <AppText style={styles.subtitle}>حدّد التفاصيل، وذوق يجمع اختياراتكم.</AppText>
         </View>
-        <Image source={require("../../../assets/images/sessions/restaurant-hero.png")} style={styles.hero} contentFit="cover" accessible={false} />
+        <Image source={require("../../../assets/images/sessions/restaurant-hero.webp")} style={styles.hero} contentFit="cover" accessible={false} />
         <View style={styles.paper}>
-          <Image source={require("../../../assets/images/sessions/invitation-paper.png")} style={StyleSheet.absoluteFill} contentFit="fill" accessible={false} />
+          <Image source={require("../../../assets/images/sessions/invitation-paper.webp")} style={StyleSheet.absoluteFill} contentFit="fill" accessible={false} />
           <View style={styles.paperContent}>
             <AppText style={styles.label}>اسم الجلسة</AppText>
             <Pressable accessibilityRole="button" accessibilityLabel={`تعديل اسم الجلسة: ${name}`} disabled={saving} onPress={() => setField("name")} style={styles.nameRow}>
               <AppText style={styles.name}>{name}</AppText><SessionIcon name="edit" size={24} />
             </Pressable>
             <View style={styles.meetRow}>
-              <Image source={require("../../../assets/images/sessions/underline.png")} contentFit="cover" style={styles.meetStroke} accessible={false} />
+              <Image source={require("../../../assets/images/sessions/underline.webp")} contentFit="cover" style={styles.meetStroke} accessible={false} />
               <AppText style={styles.meet}>نلتقي</AppText>
-              <Image source={require("../../../assets/images/sessions/underline.png")} contentFit="cover" style={styles.meetStroke} accessible={false} />
+              <Image source={require("../../../assets/images/sessions/underline.webp")} contentFit="cover" style={styles.meetStroke} accessible={false} />
             </View>
             <View style={styles.dateTime}>
               <Pressable accessibilityRole="button" accessibilityLabel={`تعديل تاريخ الجلسة: ${date}`} onPress={() => setField("date")} disabled={saving} style={styles.dateCell}>

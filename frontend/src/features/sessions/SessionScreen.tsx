@@ -43,6 +43,8 @@ export function SessionScreen() {
   const active = useRef(false);
   const serial = useRef(0);
   const loadedToken = useRef("");
+  const cachedPlan = useRef<{ id: string; roundId?: string; token: string; value: OutingPlan } | null>(null);
+  const resultSettled = useRef(false);
   const knownRound = useRef<{ outingId: string; id?: string; number: number }>({ outingId: id, number: 0 });
   const currentOuting = useRef(id);
   currentOuting.current = id;
@@ -66,12 +68,17 @@ export function SessionScreen() {
         setState(current); setPlan(null); setPreferences(null); setEditor(null); setEmptyPlan(false);
         setRetryOpen(false); setRetryError(""); setGenerating(false); setStale(true);
       }
+      const cache = cachedPlan.current;
+      const reusablePlan = cache?.id === id && cache.roundId === current.round_id && cache.token === token ? cache.value : null;
       const [own, result] = await Promise.all([
         current.status === "preferences" ? getOutingPreferences(id, token, current.round_id) : Promise.resolve(null),
-        ["voting", "tiebreak", "result"].includes(current.status) ? getPlan(id, token, current.round_id) : Promise.resolve(null),
+        ["voting", "tiebreak", "result"].includes(current.status)
+          ? reusablePlan ?? getPlan(id, token, current.round_id) : Promise.resolve(null),
       ]);
       if (!active.current || id !== currentOuting.current || requestId !== serial.current) return;
       loadedToken.current = token;
+      cachedPlan.current = result ? { id, roundId: current.round_id, token, value: result } : null;
+      resultSettled.current = current.status === "result" && !(ROUND_RETRY_ENABLED && current.round_id);
       setState(current); setPreferences(own); setPlan(result); setStale(false); setError("");
     } catch (e) {
       if (!active.current || requestId !== serial.current) return;
@@ -80,6 +87,7 @@ export function SessionScreen() {
         if (e.status === 401 && code && (await loadGuestPass(code))?.guest_token === token) await removeGuestPass(code);
         if (!active.current || requestId !== serial.current) return;
         setState(null); setPreferences(null); setPlan(null); setEditor(null);
+        cachedPlan.current = null;
       }
     }
   }, [id, code]);
@@ -89,13 +97,15 @@ export function SessionScreen() {
     active.current = true;
     setState(null); setPreferences(null); setPlan(null); setEditor(null); setGenerating(false); setStale(true);
     loadedToken.current = "";
+    cachedPlan.current = null; resultSettled.current = false;
     if (knownRound.current.outingId !== id) knownRound.current = { outingId: id, number: 0 };
     setRetryOpen(false); setRetryError(""); setEmptyPlan(false);
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     async function tick() {
       if (!busyRef.current) await refresh();
-      if (!stopped) timer = setTimeout(tick, 5000);
+      // A single-round result is final. Round-enabled guests keep observing the next round.
+      if (!stopped && !resultSettled.current) timer = setTimeout(tick, 5000);
     }
     void tick();
     return () => { stopped = true; active.current = false; serial.current++; clearTimeout(timer); };
@@ -187,7 +197,7 @@ export function SessionScreen() {
   const me = state?.participants.find(p => p.participant_id === state.me.participant_id);
   const disabled = busy || stale;
   const noMatches = emptyPlan || state?.round_outcome === "no_matches";
-  const retry = state && <SessionRetry organizer={state.me.is_organizer} available={canRetry} disabled={disabled} busy={busy}
+  const retry = state && ROUND_RETRY_ENABLED && !!state.round_id && <SessionRetry organizer={state.me.is_organizer} available={canRetry} disabled={disabled} busy={busy}
     open={retryOpen} error={retryError} roundNumber={state.round_number ?? 1}
     onOpen={() => { if (canRetry && !disabled) { setRetryError(""); setRetryOpen(true); } }}
     onClose={() => { if (!busyRef.current) setRetryOpen(false); }} onConfirm={restart} onRefresh={refresh} />;

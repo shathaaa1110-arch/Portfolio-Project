@@ -26,8 +26,8 @@ test('round-aware preferences, plans, votes and results reject replies from a di
   const calls = [];
   const client = { request: async (...args) => { calls.push(args); return { round_id: 'old' }; } };
   const outing = load('features/sessions/api/outing.ts', { '@/shared/api/client': client, '@/shared/api/errors': errors, './round': roundApi() });
-  const voting = load('features/voting/api.ts', { '@/shared/api/client': client, '@/shared/api/errors': errors });
-  const result = load('features/voting/result.ts', { '@/shared/api/client': client, '@/shared/api/errors': errors });
+  const voting = load('features/voting/api.ts', { '@/shared/api/client': client, '@/shared/api/errors': errors, '@/shared/api/config': { ROUND_RETRY_ENABLED: true } });
+  const result = load('features/voting/result.ts', { '@/shared/api/client': client, '@/shared/api/errors': errors, '@/shared/api/config': { ROUND_RETRY_ENABLED: true } });
   for (const run of [() => outing.getOutingPreferences('o1', 'guest', 'r2'), () => outing.getPlan('o1', 'guest', 'r2'),
     () => outing.saveOutingPreferences('o1', 'guest', pref, 'r2'), () => outing.markOutingReady('o1', 'guest', 'r2'),
     () => voting.loadMyVotes('o1', 'guest', 'r2'), () => voting.saveVote('o1', 'guest', { plan_item_id: 'i2', liked: true }, 'r2'),
@@ -106,13 +106,13 @@ test('no-match retry is visible to the guest and never relaxes an incompatible b
   assert.equal((await call('POST', `${base}/start-voting`, { round_id: second.round_id })).plan_items.length, 0);
 });
 
-async function screenHarness(t, { organizer = true } = {}) {
-  let current = { outing_id: 'o1', round_id: 'r1', round_number: 1, name: 'عشاء', starts_at: '2026-11-11T20:30:00+03:00', status: 'result', district: '001', invite_code: 'ABCD',
+async function screenHarness(t, { organizer = true, enabled = true, status = 'result' } = {}) {
+  let current = { outing_id: 'o1', round_id: 'r1', round_number: 1, name: 'عشاء', starts_at: '2026-11-11T20:30:00+03:00', status, district: '001', invite_code: 'ABCD',
     me: { participant_id: 'p1', is_organizer: organizer }, actions: organizer ? ['retry_round'] : [], readiness: { ready_count: 1, total_count: 1 },
     participants: [{ participant_id: 'p1', name: 'شذى', preferences_done: true, attendance: 'confirmed', is_organizer: organizer }] };
-  let delayedState = null; const reset = deferred(); const calls = [], timers = [];
-  const api = { getOuting: async () => { if (delayedState) { const pending = delayedState; delayedState = null; return pending.promise; } return structuredClone(current); },
-    getPlan: async () => ({ outing_id: 'o1', round_id: current.round_id, status: current.status, plan_items: [], allergy_warning: [] }),
+  let delayedState = null; const reset = deferred(); const calls = [], timers = [], reads = { state: 0, plan: 0 };
+  const api = { getOuting: async () => { reads.state++; if (delayedState) { const pending = delayedState; delayedState = null; return pending.promise; } return structuredClone(current); },
+    getPlan: async () => { reads.plan++; return { outing_id: 'o1', round_id: current.round_id, status: current.status, plan_items: [], allergy_warning: [] }; },
     getOutingPreferences: async () => ({ ...pref, preferences_done: false, round_id: current.round_id }),
     saveOutingPreferences: async (...args) => calls.push(['save', ...args]), markOutingReady: async (...args) => calls.push(['ready', ...args]),
   };
@@ -122,7 +122,7 @@ async function screenHarness(t, { organizer = true } = {}) {
     'expo-router': { router: {}, useLocalSearchParams: () => ({ id: 'o1', code: 'ABCD' }), useFocusEffect: cb => React.useEffect(cb, [cb]) },
     '@/features/preferences': { ...preferences, PreferencesForm: 'Form' }, '@/shared/components': shared,
     '@/shared/api/errors': errors, '@/shared/api/config': { USE_MOCK: true }, '@/shared/theme': theme,
-    './api/outing': api, './api/round': { ROUND_RETRY_ENABLED: true, retryRound: (...args) => { calls.push(['retry', ...args]); return reset.promise; } },
+    './api/outing': api, './api/round': { ROUND_RETRY_ENABLED: enabled, retryRound: (...args) => { calls.push(['retry', ...args]); return reset.promise; } },
     './identity': { outingToken: async () => 'T' }, './guestPass': { loadGuestPass: async () => null, removeGuestPass: async () => {} },
     './model': load('features/sessions/model.ts', { '@/shared/api/errors': errors }), './SessionGenerating': { SessionGenerating: 'Generating' }, './SessionVoting': { SessionVoting: 'Voting' },
     './components/SessionRetry': { SessionRetry: 'Retry' },
@@ -131,7 +131,7 @@ async function screenHarness(t, { organizer = true } = {}) {
     './components/SessionVisuals': { SessionMasthead: 'Masthead', SessionPaper: 'Paper', SessionSteps: 'Steps' },
   }, { setTimeout: fn => { timers.push(fn); return timers.length; }, clearTimeout() {} });
   const screen = await render(Screen.SessionScreen); t.after(() => screen.close());
-  return { screen, calls, reset, timers, state: () => current, setState: value => { current = value; }, delay: value => { delayedState = value; },
+  return { screen, calls, reads, reset, timers, state: () => current, setState: value => { current = value; }, delay: value => { delayedState = value; },
     retry: () => screen.root.findByType('Voting').props.retry.props,
     second: () => ({ ...current, ...next, actions: [], readiness: { ready_count: 0, total_count: 1 }, participants: current.participants.map(p => ({ ...p, preferences_done: false })) }),
   };
@@ -172,4 +172,68 @@ test('failed retry preserves the result; non-organizers cannot submit and old pr
   assert.equal(h.screen.root.findAllByType('Form').length, 0);
   await act(async () => oldForm.onSubmit(oldForm.initialValue));
   assert.equal(h.calls.length, 0);
+});
+
+test('disabled rounds hide the entire retry section for organizer and guest and stop final-result polling', async t => {
+  for (const organizer of [true, false]) {
+    const h = await screenHarness(t, { organizer, enabled: false });
+    assert.equal(h.screen.root.findByType('Voting').props.retry, false);
+    assert.equal(h.screen.root.findAllByType('Retry').length, 0);
+    assert.equal(h.timers.length, 0);
+    assert.deepEqual(h.reads, { state: 1, plan: 1 });
+  }
+});
+
+test('round-enabled guests observe a new round without refetching the settled plan on every poll', async t => {
+  const h = await screenHarness(t, { organizer: false });
+  for (let i = 0; i < 3; i++) await act(async () => h.timers.at(-1)());
+  assert.deepEqual(h.reads, { state: 4, plan: 1 });
+  h.setState(h.second());
+  await act(async () => h.timers.at(-1)());
+  assert.equal(h.screen.root.findAllByType('Voting').length, 0);
+  h.setState({ ...h.state(), status: 'voting' });
+  await act(async () => h.timers.at(-1)());
+  assert.equal(h.reads.plan, 2);
+  assert.equal(h.screen.root.findByType('Voting').props.plan.round_id, 'r2');
+});
+
+test('legacy voting caches its plan while polling and stops once the server returns the result', async t => {
+  const h = await screenHarness(t, { enabled: false, status: 'voting' });
+  await act(async () => h.timers.at(-1)());
+  assert.deepEqual(h.reads, { state: 2, plan: 1 });
+  h.setState({ ...h.state(), status: 'result' });
+  const before = h.timers.length;
+  await act(async () => h.timers.at(-1)());
+  assert.equal(h.timers.length, before);
+  assert.equal(h.reads.plan, 1);
+  assert.equal(h.screen.root.findByType('Voting').props.state.status, 'result');
+});
+
+test('legacy APIs ignore early round metadata and retain the deployed request shapes', async () => {
+  const calls = []; let response;
+  const client = { request: async (...args) => { calls.push(args); return response; } };
+  const deps = { '@/shared/api/client': client, '@/shared/api/errors': errors, '@/shared/api/config': { ROUND_RETRY_ENABLED: false } };
+  const outing = load('features/sessions/api/outing.ts', { ...deps, './round': roundApi(undefined, false) });
+  const voting = load('features/voting/api.ts', deps), result = load('features/voting/result.ts', deps);
+  const round = 'early-r1';
+  response = { outing_id: 'o1', name: 'Test', status: 'result', starts_at: '2026-11-11T20:30:00+03:00', district: '001', invite_code: 'ABCD', round_id: round, me: { participant_id: 'p1', is_organizer: true }, actions: [], readiness: { ready_count: 0, total_count: 0 }, participants: [] };
+  const state = await outing.getOuting('o1', 'T');
+  assert.equal(state.round_id, undefined); assert.equal(state.round_number, undefined);
+  response = { ...pref, round_id: round };
+  await outing.getOutingPreferences('o1', 'T', round);
+  response = { preferences_done: false };
+  await outing.saveOutingPreferences('o1', 'T', pref, round);
+  response = { preferences_done: true, participant_id: 'p1' };
+  await outing.markOutingReady('o1', 'T', round);
+  response = { outing_id: 'o1', status: 'voting', allergy_warning: [], plan_items: [] };
+  await outing.generatePlan('o1', 'T', round); await outing.getPlan('o1', 'T', round);
+  response = { plan_item_id: 'i1', liked: true, voting_complete: false, status: 'voting', items_count: 1, members_count: 2, completed_count: 0 };
+  await voting.saveVote('o1', 'T', { plan_item_id: 'i1', liked: true }, round);
+  response = { outing_id: 'o1', status: 'voting', votes: [], answered_count: 0, items_count: 1, members_count: 2, completed_count: 0 };
+  await voting.loadMyVotes('o1', 'T', round);
+  response = { outing_id: 'o1', status: 'result', winner: null, no_winner_reason: 'no_votes', members_count: 2, completed_count: 0, items: [] };
+  await result.getVotingResult('o1', 'T', round); await result.endVoting('o1', 'T', round);
+  assert.equal(calls.length, 10);
+  for (const [, path, options] of calls) { assert(!path.includes('?')); assert.equal(options.body?.round_id, undefined); }
+  assert.deepEqual(plain(calls[6][2].body), { plan_item_id: 'i1', liked: true });
 });

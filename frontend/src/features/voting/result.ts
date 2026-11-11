@@ -1,4 +1,5 @@
 import { request } from "@/shared/api/client";
+import { ROUND_RETRY_ENABLED } from "@/shared/api/config";
 import { ApiError, invalidResponseError } from "@/shared/api/errors";
 
 export type VotingResult = {
@@ -32,8 +33,10 @@ function checked(r: VotingResult, id: string, roundId?: string): VotingResult {
   return r;
 }
 export async function getVotingResult(id: string, token: string, roundId?: string): Promise<VotingResult> {
+  roundId = ROUND_RETRY_ENABLED ? roundId : undefined;
   return checked(await request<VotingResult>("GET", `/outings/${encodeURIComponent(id)}/result${roundId ? `?round_id=${encodeURIComponent(roundId)}` : ""}`, { token }), id, roundId);
 }
 export async function endVoting(id: string, token: string, roundId?: string): Promise<VotingResult> {
+  roundId = ROUND_RETRY_ENABLED ? roundId : undefined;
   return checked(await request<VotingResult>("POST", `/outings/${encodeURIComponent(id)}/end-voting`, { token, ...(roundId ? { body: { round_id: roundId } } : {}) }), id, roundId);
 }

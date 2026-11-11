@@ -9,7 +9,7 @@ const result = { outing_id: 'o1', status: 'result', winner: null, no_winner_reas
 test('result APIs use the participant token, only the server chooses a winner, and malformed results are rejected', async () => {
   const calls = []; let response = result;
   const api = load('features/voting/result.ts', {
-    '@/shared/api/errors': errors,
+    '@/shared/api/errors': errors, '@/shared/api/config': { ROUND_RETRY_ENABLED: false },
     '@/shared/api/client': { request: async (...args) => { calls.push(args); return response; } },
   });
   assert.equal((await api.getVotingResult('o1', 'guest')).no_winner_reason, 'no_votes');
@@ -144,4 +144,14 @@ test('result shows server completion and a real tie, and shares only the winning
   assert.match(h.shares[0].message, /اختيار طلعتنا: الأول/);
   assert.match(h.shares[0].message, /https:\/\/maps.google.com/);
   assert.doesNotMatch(h.shares[0].message, /الثاني|guest|token/);
+});
+
+test('no-winner results do not promise an unavailable new round', async t => {
+  for (const reason of ['no_votes', 'everyone_passed']) {
+    const h = await harness(t, { endResponse: { ...result, no_winner_reason: reason } });
+    h.props.state = { ...h.props.state, status: 'result' }; await h.update();
+    const copy = h.screen.root.findAllByType('Tip').map(n => n.props.children).join(' ');
+    assert.doesNotMatch(copy, /جولة جديدة|إعادة الجولة/);
+    assert.match(copy, /ما حصلنا على اختيار مشترك/);
+  }
 });

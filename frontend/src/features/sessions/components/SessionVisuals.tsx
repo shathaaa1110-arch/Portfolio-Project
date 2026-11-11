@@ -8,15 +8,15 @@ import { theme } from "@/shared/theme";
 export function SessionMasthead({ title, subtitle, compact = false }: { title: string; subtitle: string; compact?: boolean }) {
   return <View style={styles.masthead}>
     <AppText accessibilityRole="header" style={[styles.title, compact && styles.compactTitle]}>{title}</AppText>
-    <Image source={require("../../../../assets/images/sessions/underline.png")} contentFit="cover" style={styles.underline} accessible={false} />
+    <Image source={require("../../../../assets/images/sessions/underline.webp")} contentFit="cover" style={styles.underline} accessible={false} />
     <AppText style={[styles.subtitle, compact && styles.compactSubtitle]}>{subtitle}</AppText>
-    <Image source={require("../../../../assets/images/sessions/restaurant-hero.png")} contentFit="cover" style={[styles.hero, compact && styles.compactHero]} accessible={false} />
+    <Image source={require("../../../../assets/images/sessions/restaurant-hero.webp")} contentFit="cover" style={[styles.hero, compact && styles.compactHero]} accessible={false} />
   </View>;
 }
 
 export function SessionPaper({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return <View style={styles.paper}>
-    <Image source={require("../../../../assets/images/sessions/invitation-paper.png")} contentFit="fill" style={StyleSheet.absoluteFill} accessible={false} />
+    <Image source={require("../../../../assets/images/sessions/invitation-paper.webp")} contentFit="fill" style={StyleSheet.absoluteFill} accessible={false} />
     <View style={[styles.paperContent, compact && styles.paperCompact]}>{children}</View>
   </View>;
 }
@@ -32,7 +32,7 @@ export function SessionSteps({ step }: { step: 0 | 1 | 2 | 3 }) {
 
 export function HailaTip({ children }: { children: ReactNode }) {
   return <View style={styles.tip}>
-    <Image source={require("../../../../assets/images/sessions/haila-gathering.png")} style={styles.haila} contentFit="contain" accessibilityLabel="هيلة، رفيقة الجلسة" />
+    <Image source={require("../../../../assets/images/sessions/haila-gathering.webp")} style={styles.haila} contentFit="contain" accessibilityLabel="هيلة، رفيقة الجلسة" />
     <View style={styles.tipCopy}><AppText style={styles.tipName}>هيلة معكم</AppText><AppText style={styles.tipText}>{children}</AppText></View>
   </View>;
 }

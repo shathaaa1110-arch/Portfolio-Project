@@ -36,7 +36,7 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
   const readToken = useRef(getToken);
   readToken.current = getToken;
   const pending = useRef(new Map<string, boolean>());
-  const sending = useRef<number | null>(null);
+  const sending = useRef<Promise<void> | null>(null);
   const epoch = useRef(0);
   const open = useRef(false);
   const alive = useRef(true);
@@ -46,13 +46,17 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
   useEffect(() => {
     let current = true;
     epoch.current++;
-    pending.current.clear(); sending.current = null;
+    pending.current.clear();
     alive.current = true;
     open.current = false;
     setAnswers({}); setProgress(null); setOutingStatus(null); setUnsaved(0); setError(null);
     setStage("loading");
     (async () => {
       try {
+        // A reload cannot cancel a write already on the server. Wait for it before
+        // restoring answers or allowing another write to overtake it.
+        await sending.current;
+        if (!current) return;
         const token = await readToken.current();
         if (!current) return;
         if (token === null) throw noPass();
@@ -86,7 +90,9 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
     const first = pending.current.entries().next();
     if (first.done) return;
     const [planItemId, liked] = first.value;
-    sending.current = requestEpoch;
+    let release!: () => void;
+    const flight = new Promise<void>(resolve => { release = resolve; });
+    sending.current = flight;
     try {
       const token = await readToken.current();
       if (!alive.current || requestEpoch !== epoch.current) return;
@@ -129,8 +135,9 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
         }
       }
     } finally {
+      if (sending.current === flight) sending.current = null;
+      release();
       if (requestEpoch === epoch.current) {
-        sending.current = null;
         if (alive.current) setUnsaved(pending.current.size);
       }
     }
@@ -152,6 +159,7 @@ export function useVoting(outingId: string, itemIds: string[], getToken: () => P
 
   // Read everything again, for example after a failed first load.
   const reload = useCallback(() => {
+    open.current = false;
     pending.current.clear();
     setUnsaved(0);
     setAttempt((value) => value + 1);

@@ -22,7 +22,11 @@ restaurant-detail endpoint. Missing hours/prices are not synthesized. The curren
 single-round outing API does not implement #90 retry. The #91 frontend now supports
 confirmation, same-session reset and stale-round protection in explicit local mock
 mode. Real activation awaits the [provisional round contract](Session-Retry-Contract.md)
-and #90; it is disabled by default. No SQL, ERD or backend algorithm changes are
+and #90; it is hidden and disabled by default. The same shared flag gates every
+round-scoped request, including vote bodies, even if early server metadata includes
+a round ID. Vote reload waits for the pending save before restoring answers.
+Single-round result screens stop polling; round-enabled screens poll state and
+reuse the current plan until the round changes or the screen refocuses. No SQL, ERD or backend algorithm changes are
 part of this frontend work.
 
 ## Implemented session frontend — 10 November 2026

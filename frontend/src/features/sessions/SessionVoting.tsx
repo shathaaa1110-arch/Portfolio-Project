@@ -122,7 +122,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error, re
           {winner && <View style={room.card}><View style={room.row}><SessionIcon name="check" /><AppText style={room.label}>اختيار الطلعة</AppText></View><Suggestion item={winner} /></View>}
           {result.winner && <QuietButton title={Platform.OS === "web" ? "نسخ نتيجة الطلعة" : "مشاركة نتيجة الطلعة"} onPress={shareResult} />}
           {!!shareNotice && <AppText accessibilityLiveRegion="polite" style={room.center}>{shareNotice}</AppText>}
-          {!result.winner && <HailaTip>لكل واحد ذوقه؛ تقدرون تراجعون اختياراتكم في جولة جديدة.</HailaTip>}
+          {!result.winner && <HailaTip>لكل واحد ذوقه؛ ما حصلنا على اختيار مشترك هالمرة.</HailaTip>}
           {!!plan.allergy_warning.length && <AppText style={room.warning}>أبلغوا المطعم بالحساسيات المسجلة قبل الطلب؛ ظهور المطعم لا يضمن ملاءمة الطعام للحساسية.</AppText>}
           <View style={room.card}><AppText style={room.label}>كيف كانت أصواتنا؟</AppText>
             {result.items.map(item => <View key={item.plan_item_id} style={room.row}>
@@ -144,7 +144,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error, re
           <Suggestion item={current} />
           {!!plan.allergy_warning.length && <AppText style={room.warning}>أبلغوا المطعم بالحساسيات المسجلة قبل الطلب.</AppText>}
         </View> : <View style={[room.card, styles.waiting]}>
-          <Image source={require("../../../assets/images/sessions/haila-gathering.png")} style={styles.haila} contentFit="contain" accessible={false} />
+          <Image source={require("../../../assets/images/sessions/haila-gathering.webp")} style={styles.haila} contentFit="contain" accessible={false} />
           <AppText style={room.label}>{voting.unsaved ? "نحفظ اختياراتك..." : "تم حفظ اختياراتك"}</AppText>
           <AppText style={room.center}>{arabic(complete)} من {arabic(members)} أكملوا التصويت</AppText>
           <QuietButton title="مراجعة اختياراتي" onPress={() => setReview(true)} disabled={!canVote} />

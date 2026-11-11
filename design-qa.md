@@ -1,3 +1,39 @@
+# PR #159 review fixes — 11 November 2026
+
+- Retry and its organizer/guest copy are hidden when round support is off. No-winner results do not promise a new round.
+- One shared flag gates all round-scoped requests. Tests pass an early server round ID with the flag off and verify legacy vote/preference/plan/result payloads.
+- Vote reload waits for the pending save before restoring answers; a regression test checks that the last choice matches server state with at most one save in flight.
+- Single-round results stop polling. Round-enabled guests still observe new state; the existing plan is reused between polls and replaced for a new round.
+- Merged `deployment` through `b75b17c`, resolving both conflicts. `RestaurantCard` keeps `useRestaurantImage` and its category fallback, plus price/reason data. Both API guide sections are retained.
+- `/sessions/[id]` is the current #159 session screen. Coordination with #157 remains a team handoff, not an agreement made in this change.
+
+## Asset size and visual check
+
+Same illustrations, aspect ratios and Haila alpha; WebP quality 88, alpha quality 100. The unused 1,597,874-byte `haila.png` was removed. Original sources remain in Git history.
+
+| Asset | New dimensions | Previous bytes | New bytes |
+|---|---|---:|---:|
+| Haila gathering | 612 × 816 | 1,217,168 | 63,024 |
+| Invitation paper | 1080 × 1214 | 2,051,325 | 43,918 |
+| Restaurant hero | 1080 × 360 | 2,905,159 | 104,166 |
+| Underline | 246 × 82 | 1,014,540 | 790 |
+| Total used images | | 7,188,192 | 211,898 |
+
+About 97% smaller. Dimensions target roughly 3× mobile display width/height while preserving source aspect ratios and existing contentFit behavior. The underline keeps its source ratio for both cover and fill uses.
+
+The actual creation screen was opened and visually checked on iPhone 17 Simulator / iOS 26.4 through Expo Go 58 in local mock mode. Paper texture, hero and gold rule rendered without missing assets. The optimized Haila was inspected with transparency intact. `Docs/mockups/session-review/preview-ios.png` captures the subsequent round-2 readiness screen during the user’s local preview; it is visual evidence, not a claimed automated multi-device run. No native phone build was installed.
+
+## Validation
+
+- `npm run check`: TypeScript, architecture rules and 106 tests passed.
+- Production web export: passed, 16 routes, `EXPO_PUBLIC_USE_MOCK=false` and rounds disabled.
+- SQL, ERD and backend algorithms were not changed by these fixes. Incoming deployment changes retain their own history and documentation.
+- Real retry still awaits #90 and backend integration acceptance.
+
+Earlier sections below describe their original revisions and counts.
+
+---
+
 # Same-session retry review — 10 November 2026
 
 **Frontend validation: passed in local mock mode. Real backend acceptance remains open in #90/#91.**
@@ -30,7 +66,7 @@ The existing cream/green theme, shared Arabic type, buttons, paper layout and bl
 
 The user requested one character combining the supplied expressive, map-carrying Haila with the existing watercolor/scarf Haila, and a simpler generation screen. The supplied screenshot is a character reference, not a request to reproduce its onboarding screen or surrounding desktop/chat content. That private screenshot is not included in the repository.
 
-- Character target: `frontend/assets/images/sessions/haila-gathering.png`, 1086 × 1448, with alpha. Retains watercolor olive ribs and ochre scarf; adds expressive eyes, curled tip, map and gold shoes. The original `haila.png` is preserved.
+- Character target: `frontend/assets/images/sessions/haila-gathering.png`, 1086 × 1448, with alpha. Retains watercolor olive ribs and ochre scarf; adds expressive eyes, curled tip, map and gold shoes. At this revision the original `haila.png` was preserved; the 11 November optimization above removes it from app assets.
 - Visual brief: `Docs/mockups/haila-generation/illustration-brief.md`.
 - Before: `Docs/mockups/haila-generation/before-320.png`, 320 × 740.
 - After: `Docs/mockups/haila-generation/after-320.png`, 320 × 740, and `after-390.png`, 390 × 844. Captured from the actual `SessionGenerating` component with the same session name; a temporary visual entry was removed before validation/commit.

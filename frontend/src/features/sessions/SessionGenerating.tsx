@@ -36,11 +36,11 @@ export function SessionGenerating({ name }: { name: string }) {
       <View style={styles.scene}>
         <AppText numberOfLines={2} style={styles.session}>{name}</AppText>
         <Animated.View style={[styles.illustration, compact && styles.compactIllustration, { transform: [{ translateY: float }] }]}>
-          <Image source={require("../../../assets/images/sessions/haila-gathering.png")} contentFit="contain" style={styles.haila} accessibilityLabel="هيلة بوشاحها الذهبي تحمل خريطة المطاعم" />
+          <Image source={require("../../../assets/images/sessions/haila-gathering.webp")} contentFit="contain" style={styles.haila} accessibilityLabel="هيلة بوشاحها الذهبي تحمل خريطة المطاعم" />
         </Animated.View>
         <View accessibilityLiveRegion="polite" style={styles.copy}>
           <AppText accessibilityRole="header" style={styles.title}>هيلة تجمع أذواقكم</AppText>
-          <Image source={require("../../../assets/images/sessions/underline.png")} contentFit="fill" style={styles.underline} accessible={false} />
+          <Image source={require("../../../assets/images/sessions/underline.webp")} contentFit="fill" style={styles.underline} accessible={false} />
           <AppText style={styles.subtitle}>عشان نلقى المطاعم اللي تناسب جمعتكم.</AppText>
         </View>
       </View>

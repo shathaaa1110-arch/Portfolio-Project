@@ -10,7 +10,7 @@ function api(reply) {
   const calls = [];
   const voting = load("features/voting/api.ts", {
     "@/shared/api/client": { request: async (method, path, options) => { calls.push([method, path, options]); return reply; } },
-    "@/shared/api/errors": errors,
+    "@/shared/api/errors": errors, "@/shared/api/config": { ROUND_RETRY_ENABLED: false },
   });
   return { ...voting, calls };
 }
@@ -187,4 +187,29 @@ test("late vote restoration from a previous round cannot replace the current ans
   await screen.update({ round: 'r2' });
   await act(async () => oldRead.resolve({ outing_id: 'o1', status: 'result', round_id: 'r1', votes: [{ plan_item_id: 'i1', liked: true }], ...progress }));
   assert.deepEqual(plain(view.answers), {}); assert.equal(view.stage, 'open'); assert.equal(view.outingStatus, 'voting');
+});
+
+test('reload waits for the previous write before restoring answers and accepting a newer choice', async t => {
+  const oldSave = deferred(); let serverAnswer;
+  const h = await voting({
+    mine: () => ({ outing_id: 'o1', status: 'voting', votes: serverAnswer === undefined ? [] : [{ plan_item_id: 'i1', liked: serverAnswer }], answered_count: serverAnswer === undefined ? 0 : 1, ...progress }),
+    save: async (n, answer) => {
+      if (n === 1) await oldSave.promise;
+      serverAnswer = answer.liked;
+      return { ...answer, status: 'voting', voting_complete: false, ...progress };
+    },
+  });
+  t.after(() => h.screen.close());
+  await act(async () => h.view.answer('i1', true));
+  await act(async () => h.view.reload());
+  assert.equal(h.view.stage, 'loading');
+  assert.equal(h.view.answer('i1', false), false);
+  assert.equal(h.calls.load, 1); assert.equal(h.calls.save.length, 1);
+  await act(async () => oldSave.resolve());
+  assert.equal(h.calls.load, 2); assert.equal(h.view.stage, 'open');
+  assert.deepEqual(plain(h.view.answers), { i1: true });
+  await act(async () => h.view.answer('i1', false));
+  assert.equal(h.mostAtOnce(), 1);
+  assert.equal(serverAnswer, false); assert.deepEqual(plain(h.view.answers), { i1: false });
+  assert.equal(h.view.unsaved, 0);
 });
