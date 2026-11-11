@@ -40,7 +40,7 @@
 
 ### الموقع والاقتراحات
 
-`HomeLocationBar` يعرض `personalSuggestions/LocationPicker`: GPS عند طلبه، أو حي من GET `/districts`، أو الاستمرار دون موقع. يستخدم الحي معرف الباك النصي. البحث داخل قائمة الأحياء محلي؛ لا تُختلق معرفات من أسماء.
+`HomeLocationBar` يعرض `personalSuggestions/LocationPicker`: GPS عند طلبه، أو حي من GET `/districts`، أو الاستمرار دون موقع. يستخدم الحي معرف الباك النصي. البحث داخل قائمة الأحياء محلي؛ لا تُختلق معرفات من أسماء. يحفظ `personalSuggestions/chosenLocation` آخر موقع اختاره الحساب في الذاكرة فقط، فالرئيسية التي تُفتح من جديد بعد حفظ التفضيلات تكمل بنفس الموقع دون سؤال (#155)، والحساب الآخر يبدأ بدون موقع.
 
 `HomeTodayPick` يجمع حالة التفضيلات والموقع مع `usePersonalRecommendations`. يرسل GPS أو `district_id` مع رمز الحساب إلى `/users/me/recommendations`. بعد الرد يظهر اقتراح اليوم مع سبب عربي، ويمكن عرض بقية النتائج. تغيير الحساب أو الموقع يعزل الردود السابقة، والحفظ أو تحديث الرئيسية يعيد الطلب.
 
@@ -286,6 +286,7 @@ Portfolio-Project/
         │   │       └── AllergyCard.tsx
         │   ├── personalSuggestions/
         │   │   ├── api.ts
+        │   │   ├── chosenLocation.ts
         │   │   ├── districts.ts
         │   │   ├── location.ts
         │   │   ├── LocationPicker.tsx
