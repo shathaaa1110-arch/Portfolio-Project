@@ -1451,6 +1451,7 @@ Response `200`
 | 15 | POST | `/outings/{outing_id}/start-preferences` | 10 |
 | 16 | POST | `/outings/{outing_id}/start-voting` | 10, 11 (generates the plan, D05) |
 | 17 | DELETE | `/outings/{outing_id}/participants/{participant_id}` | 24 |
+|17a | POST | `/outings/{outing_id}/leave` | 24 (BE-29) |
 
 #### Create a one-off session
 
@@ -1716,17 +1717,28 @@ or `INVALID_STATUS_TRANSITION` before the preferences stage.
 
 One round per outing for now; separate rounds for a retry come with DB-07 (#14) and BE-31 (#90).
 
-#### Remove a participant from an outing
+#### Leave an outing, or remove a participant (BE-29, #88)
 
 ```http
+POST   /outings/{outing_id}/leave
 DELETE /outings/{outing_id}/participants/{participant_id}
 ```
-Requires: Authorization, caller must be the organizer
+Requires: Authorization (Bearer or guest). `leave`: any participant except the organizer. `DELETE`: the organizer only, never themselves.
+
+Only in the `invite` and `preferences` stages. Both take the outing's row lock, the same lock plan generation takes, so a change racing with generation waits and is then refused; the saved plan's group never changes. The row is kept: leaving stores `attendance = declined` (the person may rejoin from the link while the outing is open), removal stores `removed` (migration `0010_participant_removed`; rejoining is refused). Either way the person drops out of the readiness count, the participant list and the 8-person count, and their old token gets `403` on every outing route.
 
 Response `200`
 ```json
-{ "message": "participant removed" }
+{ "outing_id": "uuid", "participant_id": "uuid", "attendance": "removed", "status": "preferences",
+  "ready_count": 2, "total_count": 2 }
 ```
+
+Errors:
+- `409 MEMBERSHIP_LOCKED`: the plan is already generated.
+- `409 ORGANIZER_CANNOT_LEAVE`: the organizer tried to leave or remove themselves.
+- `403 ORGANIZER_ONLY`: a participant tried to remove someone.
+- `404 PARTICIPANT_NOT_FOUND`: not in this outing, or already removed.
+- With the old token: `403 REMOVED_FROM_OUTING` or `403 LEFT_OUTING`. A removed account joining again also gets `403 REMOVED_FROM_OUTING`.
 
 ### 4.6 Preferences API
 

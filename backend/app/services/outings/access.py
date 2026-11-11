@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ApiError
 from app.services.auth.dependencies import bearer
 from app.services.auth.tokens import GUEST, TokenError, decode_any_token
-from app.services.outings.models import Outing, Participant
+from app.services.outings.models import GONE, REMOVED, Outing, Participant
 
 
 @dataclass(frozen=True)
@@ -46,10 +46,17 @@ def _not_a_participant() -> ApiError:
     return ApiError(403, "NOT_A_PARTICIPANT", "You are not part of this outing.")
 
 
+def _gone(me: Participant) -> ApiError:
+    if me.attendance == REMOVED:
+        return ApiError(403, "REMOVED_FROM_OUTING", "The organizer removed you from this outing.")
+    return ApiError(403, "LEFT_OUTING", "You left this outing. Join again from the invite link if it is still open.")
+
+
 def participant_of(db: Session, outing_id: uuid.UUID, caller: Caller,
                    lock: bool = False) -> tuple[Outing, Participant]:
     """The outing and the caller's own participant row in it, or 404 / 403.
 
+    Someone who left or was removed (BE-29) keeps the row but loses access to the outing.
     lock=True locks the outing's row until the commit, for anything that changes the outing.
     """
     query = select(Outing).where(Outing.id == outing_id)
@@ -65,6 +72,8 @@ def participant_of(db: Session, outing_id: uuid.UUID, caller: Caller,
         me = db.get(Participant, caller.guest_participant_id)
         if me is None or me.outing_id != outing.id or me.user_id is not None:
             raise _not_a_participant()
+        if me.attendance in GONE:
+            raise _gone(me)
         return outing, me
 
     me = db.execute(
@@ -72,6 +81,8 @@ def participant_of(db: Session, outing_id: uuid.UUID, caller: Caller,
     ).scalar_one_or_none()
     if me is None:
         raise _not_a_participant()
+    if me.attendance in GONE:
+        raise _gone(me)
     return outing, me
 
 

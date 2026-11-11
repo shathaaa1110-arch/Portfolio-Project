@@ -36,7 +36,7 @@ from app.services.auth.dependencies import current_user
 from app.services.auth.models import User
 from app.services.auth.tokens import create_guest_token
 from app.services.outings.codes import normalize_code
-from app.services.outings.models import CONFIRMED, INVITE, PREFERENCES, RESULT, Outing, Participant, now_utc
+from app.services.outings.models import CONFIRMED, GONE, INVITE, PREFERENCES, REMOVED, RESULT, Outing, Participant, now_utc
 
 MAX_PEOPLE = 8
 OPEN_STAGES = (INVITE, PREFERENCES)
@@ -107,7 +107,9 @@ def _find(db: Session, raw_code: str, lock: bool = False) -> Outing:
 
 
 def _count(db: Session, outing_id: uuid.UUID) -> int:
-    return db.scalar(select(func.count()).select_from(Participant).where(Participant.outing_id == outing_id))
+    """People still in the outing; someone who left or was removed frees their place (BE-29)."""
+    return db.scalar(select(func.count()).select_from(Participant)
+                     .where(Participant.outing_id == outing_id, Participant.attendance.not_in(GONE)))
 
 
 def _blocked(outing: Outing, count: int) -> str | None:
@@ -171,6 +173,8 @@ def join(code: str, user: User = Depends(current_user), db: Session = Depends(ge
             select(Participant).where(Participant.outing_id == outing.id, Participant.user_id == user.id)
         ).scalar_one_or_none()
 
+        if me is not None and me.attendance == REMOVED:
+            raise ApiError(403, "REMOVED_FROM_OUTING", "The organizer removed you from this outing.")
         if me is None:
             _check_can_join(db, outing)
             me = Participant(outing_id=outing.id, user_id=user.id, attendance=CONFIRMED, preferences_done=False)
@@ -180,6 +184,8 @@ def join(code: str, user: User = Depends(current_user), db: Session = Depends(ge
             if outing.group_id is not None:
                 db.execute(ADD_MEMBER, {"group_id": outing.group_id, "user_id": user.id, "joined_at": now_utc()})
         elif me.attendance != CONFIRMED and outing.status in OPEN_STAGES:
+            if me.attendance in GONE:
+                _check_can_join(db, outing)  # coming back after leaving takes a place again
             me.attendance = CONFIRMED  # joining from the link counts as confirming attendance
 
         db.commit()  # also releases the outing's lock
