@@ -25,7 +25,7 @@ from tests.test_session import make_token
 pytestmark = pytest.mark.integration
 SECRET = "test-secret"
 BASE = "/api/v1/outings"
-STATE_KEYS = {"outing_id", "name", "status", "starts_at", "district", "invite_code",
+STATE_KEYS = {"outing_id", "name", "status", "starts_at", "district", "invite_code", "invite_url",
               "tiebreak_ends_at", "me", "actions", "readiness", "participants"}
 
 
@@ -233,3 +233,15 @@ def test_a_stage_change_never_overwrites_a_newer_one(secret):
             conn.execute(sa.text("DELETE FROM participants WHERE outing_id = :o"), {"o": oid})
             conn.execute(sa.text("DELETE FROM outings WHERE id = :o"), {"o": oid})
             conn.execute(sa.text("DELETE FROM users WHERE id = :u"), {"u": organizer})
+
+
+@pytest.mark.parametrize("base, expected", [("https://thouq.example/join/", "https://thouq.example/join/{code}"),
+                                            ("", None)])
+def test_everyone_gets_the_invite_link_to_share(api, monkeypatch, base, expected):
+    """#160: the lobby shares the link, not only the code. Null while INVITE_BASE_URL is empty."""
+    monkeypatch.setenv("INVITE_BASE_URL", base)
+    get_settings.cache_clear()
+    client, conn = api
+    oid, code, organizer, member, guest = _session(client, conn)
+    links = {client.get(f"{BASE}/{oid}", headers=h).json()["invite_url"] for h in (organizer, member, guest)}
+    assert links == {expected.format(code=code) if expected else None}
