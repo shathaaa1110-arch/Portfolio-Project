@@ -7,7 +7,7 @@ const theme = load("shared/theme.ts");
 const FULL = "اكتملت الجلسة: ٨ من ٨. لا يوجد مكان متاح الآن.";
 const CLOSED = "بدأ توليد الاقتراحات وأُغلق الانضمام لهذه الجولة.";
 const INVALID = "رمز الدعوة غير صالح. راجعه مع المنظّم.";
-const JOINED = "تم انضمامك إلى «عشاء الخميس».";
+const LOBBY = { pathname: "/lobby", params: { id: "o1", code: "TEST" } };
 const open = {
   outing_id: "o1", name: "عشاء الخميس", organizer_name: "سارة", starts_at: "2026-11-05T19:00:00+03:00",
   district: "012", status: "invite", participants_count: 3, can_join: true, join_blocked_reason: null,
@@ -18,9 +18,9 @@ const apiError = (status, code) => new errors.ApiError(status, code, "");
 
 // The join screen with fake API, account and storage; calls are recorded for checks.
 function joinScreen({ preview = open, session = null, saved = null, link = {}, lookup, join, guest } = {}) {
-  const calls = { lookup: [], join: [], guest: [], saved: [], routes: [], cleared: 0 };
+  const calls = { lookup: [], join: [], guest: [], saved: [], cleared: 0, replace: [] };
   const Screen = load("features/sessions/JoinSessionScreen.tsx", {
-    "expo-router": { useLocalSearchParams: () => link, router: { replace: value => calls.routes.push(value) } },
+    "expo-router": { useLocalSearchParams: () => link, router: { replace: href => calls.replace.push(href) } },
     "react-native": native,
     "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
     "@/shared/api/errors": errors,
@@ -112,12 +112,12 @@ test("members and returning guests of the same outing are not blocked by the pre
   assert(texts(root).includes("تنضم باسم حسابك: فهد"));
   await press(root.findByType("AppButton"));
   assert.deepEqual(calls.join[0], ["TEST", "T"]);
-  assert(texts(root).includes(JOINED));
+  assert.deepEqual(plain(calls.replace), [LOBBY]);
 
   ({ Screen, calls } = joinScreen({ preview: full, saved: { outing_id: "o1", participant_id: "g1", guest_token: "token" } }));
   ({ root } = await render(Screen));
   await lookUp(root);
-  assert(texts(root).includes(JOINED));
+  assert.deepEqual(plain(calls.replace), [LOBBY]);
   assert.equal(calls.guest.length, 0);
 
   ({ Screen } = joinScreen({ preview: full, saved: { outing_id: "old", participant_id: "g1", guest_token: "token" } }));
@@ -142,9 +142,7 @@ test("a guest sees a clean card, needs a name, joins with the trimmed name and t
   assert.deepEqual(calls.guest[0], ["TEST", "فهد"]);
   assert.equal(calls.saved[0][0], "TEST");
   assert.equal(calls.saved[0][1].guest_token, "token");
-  assert(texts(root).includes(JOINED));
-  await press(root.findAllByType("AppButton").find(node => node.props.title === "افتح الجلسة"));
-  assert.deepEqual(plain(calls.routes[0]), { pathname: "/sessions/[id]", params: { id: "o1", code: "TEST" } });
+  assert.deepEqual(plain(calls.replace), [LOBBY]);
 });
 
 test("join failures: 409 goes back to the code, an ended sign-in continues as a guest, others keep the form", async () => {
@@ -204,9 +202,9 @@ test("mock mode answers like the server for each test code", async () => {
   await assert.rejects(call("GET", "/outings/by-code/ABCD"), { status: 404 });
 });
 
-test("the guest pass keeps three fields and ignores broken saved values", async () => {
+test("the guest pass is kept per outing with three fields, ignores broken saved values, and can be forgotten", async () => {
   const saved = new Map();
-  const localStorage = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) };
+  const localStorage = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) };
   const store = load("features/sessions/guestPass.ts", { "react-native": { Platform: { OS: "web" } }, "expo-secure-store": {} }, { globalThis: { localStorage } });
 
   assert.equal(await store.loadGuestPass("TEST"), null);

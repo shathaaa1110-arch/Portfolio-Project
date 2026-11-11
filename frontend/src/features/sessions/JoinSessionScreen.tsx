@@ -31,7 +31,6 @@ export function JoinSessionScreen() {
   const [account, setAccount] = useState<AuthSession | null>(null);
   const [guestName, setGuestName] = useState("");
   const [nameError, setNameError] = useState("");
-  const [joined, setJoined] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -53,16 +52,18 @@ export function JoinSessionScreen() {
     try {
       const found = await lookupInvite(code);
       const signedIn = await loadSession();
-      // A guest who joined this same outing before comes back instead of joining twice.
+      // A guest who joined this same outing before goes straight back to its waiting room.
       const savedPass = signedIn === null ? await loadGuestPass(code) : null;
-      const returning = savedPass !== null && savedPass.outing_id === found.outing_id;
-      // The server decides who can join; members and returning guests may already be inside.
-      if (signedIn === null && !returning && !found.can_join) {
+      if (savedPass !== null && savedPass.outing_id === found.outing_id) {
+        openLobby(found.outing_id, code);
+        return;
+      }
+      // The server decides who can join; a member may already be inside a full or closed session.
+      if (signedIn === null && !found.can_join) {
         setError(found.join_blocked_reason === "OUTING_FULL" ? FULL_MESSAGE : CLOSED_MESSAGE);
       } else {
         setAccount(signedIn);
         setPreview(found);
-        setJoined(returning);
       }
     } catch (e) {
       setError(lookupErrorMessage(e));
@@ -83,12 +84,13 @@ export function JoinSessionScreen() {
     setError("");
     try {
       if (account !== null) {
-        await joinOuting(code, account.token);
+        const joined = await joinOuting(code, account.token);
+        openLobby(joined.outing_id, code);
       } else {
         const pass = await joinOutingAsGuest(code, name);
         await saveGuestPass(code, pass);
+        openLobby(pass.outing_id, code);
       }
-      setJoined(true);
     } catch (e) {
       if (isSessionEnded(e)) {
         // The account sign-in ended, so continue as a guest instead.
@@ -122,7 +124,7 @@ export function JoinSessionScreen() {
         automaticallyAdjustKeyboardInsets
       >
         <SessionHeader title="دعوة إلى جلسة" />
-        <SessionMasthead title={joined ? "حلوة الجمْعة بوجودك." : "مكانك بيننا."} subtitle="انضم باسمك فقط، بدون حساب أو تحميل التطبيق." />
+        <SessionMasthead title="مكانك بيننا." subtitle="انضم باسمك فقط، بدون حساب أو تحميل التطبيق." />
         <SessionPaper>
         {preview === null ? (
           <>
@@ -144,13 +146,6 @@ export function JoinSessionScreen() {
               disabled={loading}
               onPress={handleLookup}
             />
-          </>
-        ) : joined ? (
-          <>
-            <AppText style={styles.success}>تم انضمامك إلى «{preview.name}».</AppText>
-            <AppButton title="افتح الجلسة" style={styles.button} onPress={() => router.replace({
-              pathname: "/sessions/[id]", params: { id: preview.outing_id, code },
-            })} />
           </>
         ) : (
           <>
@@ -191,10 +186,15 @@ export function JoinSessionScreen() {
           </>
         )}
         </SessionPaper>
-        <HailaTip>{joined ? "باقي تختار وش مشتهي اليوم، وتلقى أصحابك داخل الجلسة." : "معك دعوة؟ اكتب رمزها، ومكانك محفوظ بين أصحابك بعد الانضمام."}</HailaTip>
+        <HailaTip>معك دعوة؟ اكتب رمزها، ومكانك محفوظ بين أصحابك بعد الانضمام.</HailaTip>
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+// Joining is done, so the waiting room takes over; going back should not return to this form.
+function openLobby(outingId: string, code: string) {
+  router.replace({ pathname: "/lobby", params: { id: outingId, code } });
 }
 
 // Keep Latin capitals and digits only, so the code matches the server.
@@ -257,12 +257,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamilyBold,
     fontSize: theme.typography.sessionTitleSize,
     textAlign: "right",
-  },
-  success: {
-    fontFamily: theme.typography.fontFamilyBold,
-    fontSize: theme.typography.sectionTitleSize,
-    color: theme.colors.primary,
-    textAlign: "center", lineHeight: 38,
   },
   // Tall enough to tap easily, like the text link on the login screen.
   link: {

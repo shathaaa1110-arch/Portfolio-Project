@@ -49,7 +49,7 @@
     "test:preferences": "node --test scripts/preferences.test.cjs scripts/preferences-flow.test.cjs",
     "test:voting": "node --test scripts/voting.test.cjs scripts/session-voting.test.cjs",
     "test:discovery": "node --test scripts/home-recommendations.test.cjs scripts/discovery-flow.test.cjs",
-    "test:sessions": "node --test scripts/join-flow.test.cjs scripts/session-flow.test.cjs scripts/session-retry.test.cjs",
+    "test:sessions": "node --test scripts/join-flow.test.cjs scripts/lobby-flow.test.cjs scripts/session-flow.test.cjs scripts/session-retry.test.cjs",
     "check": "npm run typecheck && npm run check:architecture && npm run test:architecture && npm run test:restaurants-api && npm run test:preferences && npm run test:discovery && npm run test:sessions && npm run test:voting"
   },
   "private": true

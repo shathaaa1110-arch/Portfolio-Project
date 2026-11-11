@@ -6,3 +6,6 @@ export { JoinSessionScreen } from "./JoinSessionScreen";
 export { CreateSessionScreen } from "./CreateSessionScreen";
 export { SessionScreen } from "./SessionScreen";
 export { registerSessionFlowMocks } from "./flowMocks";
+
+// The waiting room after joining.
+export { LobbyScreen } from "./LobbyScreen";

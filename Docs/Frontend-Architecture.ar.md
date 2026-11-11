@@ -247,6 +247,7 @@ Portfolio-Project/
     │   ├── home-recommendations.test.cjs
     │   ├── discovery-flow.test.cjs
     │   ├── join-flow.test.cjs
+    │   ├── lobby-flow.test.cjs
     │   └── helpers/render-feature.cjs
     └── src/
         ├── app/
@@ -256,6 +257,7 @@ Portfolio-Project/
         │   ├── verify-phone.tsx
         │   ├── preferences.tsx
         │   ├── join.tsx
+        │   ├── lobby.tsx
         │   └── (tabs)/
         │       ├── _layout.tsx
         │       ├── index.tsx
@@ -322,7 +324,7 @@ Portfolio-Project/
         │   │   ├── SaveRestaurantButton.tsx
         │   │   └── index.ts (وبقية ملفات الميزة)
         │   ├── sessions/
-        │   │   ├── api/{create,join,outing}.ts
+        │   │   ├── api/{create,join,outing,state}.ts
         │   │   ├── CreateSessionScreen.tsx
         │   │   ├── SessionScreen.tsx
         │   │   ├── components/{SessionChrome,SessionEditors,SessionVisuals}.tsx
@@ -330,6 +332,8 @@ Portfolio-Project/
         │   │   ├── identity.ts
         │   │   ├── flowMocks.ts
         │   │   ├── JoinSessionScreen.tsx
+        │   │   ├── LobbyScreen.tsx
+        │   │   ├── useSessionState.ts
         │   │   ├── guestPass.ts
         │   │   ├── mocks.ts
         │   │   └── index.ts
@@ -371,7 +375,7 @@ Portfolio-Project/
 - `HomePage`: يجمع مقدمة الرئيسية والبحث والموقع والتوصيات والقائمة ويشترك في تحديثها.
 - `HomeTodayPick`: يركب حالات التفضيلات والموقع ونتائج التوصيات.
 - `personalSuggestions`: طلبات الأحياء والتوصيات، عزل الردود المتأخرة ومنتقي الموقع.
-- `sessions`: إنشاء الجلسة والدعوة والانضمام وتحديث حالة المشاركين وتفضيلات كل مشارك والجاهزية وعرض اقتراحات الخادم. رمز الضيف محفوظ لكل دعوة؛ حساب المنظم مطلوب للإنشاء فقط.
+- `sessions`: إنشاء الجلسة والدعوة والانضمام وتحديث حالة المشاركين وتفضيلات كل مشارك والجاهزية وعرض اقتراحات الخادم. رمز الضيف محفوظ لكل دعوة؛ حساب المنظم مطلوب للإنشاء فقط. بعد الانضمام تعرض غرفة الانتظار المشاركين وتحدّث حالة الجلسة كل ٤ ثوانٍ ما دامت الشاشة ظاهرة، مع زر بدء التفضيلات للمنظّم.
 - `restaurants/api.ts`: يطلب صفحة محددة من ٢٠ مطعمًا عبر أداة الاتصال المشتركة دون رمز دخول، ويتحقق من الرد. يطلب أول صفحة عند عدم تمرير offset.
 - `useRestaurants.ts`: يدير البحث المؤجل وصفحة النتائج وحالة الطلب، ويحمي من الردود المتأخرة ويوفر إعادة المحاولة.
 - `RestaurantList`: عرض نتائج الخادم والبطاقات وحالات القائمة دون فلترة محلية للبحث.
