@@ -23,7 +23,7 @@ rounds and their ids come with DB-07 (#14) and BE-31 (#90).
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -33,6 +33,7 @@ from app.core.database import get_db
 from app.core.errors import ApiError
 from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
 from app.services.outings.models import CONFIRMED, RESULT, VOTING, Outing
+from app.services.notifications import push
 from app.services.outings.stages import move
 
 logger = logging.getLogger(__name__)
@@ -97,12 +98,17 @@ def _progress(db: Session, outing: Outing) -> dict:
             "completed_count": row.completed_count}
 
 
-def _settle(db: Session, outing: Outing) -> None:
-    """End voting: mark the winner, if any, and move to the result. Call under the row lock."""
+def _settle(db: Session, outing: Outing) -> list[uuid.UUID]:
+    """End voting: mark the winner, if any, and move to the result. Call under the row lock.
+
+    Returns the result notifications queued in the same transaction (BE-25), to send after the commit.
+    """
     tally = db.execute(TALLY_SQL, {"outing": outing.id, "confirmed": CONFIRMED}).all()
     winner = tally[0] if tally and tally[0].likes > 0 else None
     db.execute(SET_WINNER, {"outing": outing.id, "item": winner.id if winner else None})
     move(outing, RESULT)
+    db.flush()
+    return push.record(db, outing.id, push.RESULT)
 
 
 def _result(db: Session, outing: Outing) -> dict:
@@ -135,8 +141,9 @@ def _result(db: Session, outing: Outing) -> dict:
 
 
 @router.post("/outings/{outing_id}/votes")
-def cast_vote(outing_id: uuid.UUID, body: VoteIn, caller: Caller = Depends(current_caller),
-              db: Session = Depends(get_db)) -> dict:
+def cast_vote(outing_id: uuid.UUID, body: VoteIn, background: BackgroundTasks,
+              caller: Caller = Depends(current_caller), db: Session = Depends(get_db)) -> dict:
+    notify = []
     try:
         outing, me = participant_of(db, outing_id, caller, lock=True)
         if outing.status != VOTING:
@@ -151,8 +158,9 @@ def cast_vote(outing_id: uuid.UUID, body: VoteIn, caller: Caller = Depends(curre
         progress = _progress(db, outing)
         complete = progress["members_count"] > 0 and progress["completed_count"] == progress["members_count"]
         if complete:  # D07: the last answer ends voting, in the same transaction
-            _settle(db, outing)
+            notify = _settle(db, outing)
         db.commit()
+        background.add_task(push.deliver, notify)
     except SQLAlchemyError:
         db.rollback()
         logger.exception("cast vote failed")
@@ -177,19 +185,20 @@ def my_votes(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
 
 
 @router.post("/outings/{outing_id}/end-voting")
-def end_voting(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
+def end_voting(outing_id: uuid.UUID, background: BackgroundTasks, caller: Caller = Depends(current_caller),
                db: Session = Depends(get_db)) -> dict:
+    notify = []
     try:
         outing, me = participant_of(db, outing_id, caller, lock=True)
         if not is_organizer(outing, me):
             raise ApiError(403, "ORGANIZER_ONLY", "Only the organizer can end voting.")
         if outing.status == VOTING:
-            _settle(db, outing)
-            db.flush()
+            notify = _settle(db, outing)
         elif outing.status != RESULT:  # asked again after the result: the same result
             raise ApiError(409, "VOTING_NOT_OPEN", "Voting is not open for this outing.")
         result = _result(db, outing)
         db.commit()
+        background.add_task(push.deliver, notify)
     except SQLAlchemyError:
         db.rollback()
         logger.exception("end voting failed")

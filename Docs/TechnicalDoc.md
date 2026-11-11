@@ -1302,6 +1302,16 @@ Response `200`
 { "message": "push token updated" }
 ```
 
+#### Voting and result notifications (BE-25, #80)
+
+No route of its own. One device token per account (the latest one saved above; logout clears it).
+
+- **When:** "voting started" when the organizer generates the plan (everyone except the organizer), and "result" when voting ends by the last vote or by the organizer (everyone). Recipients are confirmed participants with an account and a token; guests on the web see the change on the page.
+- **How:** a `notification_events` row per event and person is written in the same transaction as the stage change (migration `0011_notification_events`). Its unique key (outing, round, kind, account) means a repeated request records and sends nothing new. After the commit, a background task sends the pending rows through the Expo push service, with up to 3 attempts (waits 2 s and 5 s).
+- **Failures:** never undo a vote, a plan or a result. Each row keeps `status` (`pending`, `sent`, `failed`), `attempts` and `last_error`. `DeviceNotRegistered` clears that token from the account. If recording itself fails, the action still succeeds and the error is logged.
+- **Message:** Arabic title and body with the outing's name (and the winner for the result), plus `data: { "outing_id", "kind" }` so a tap opens the outing.
+- **Config:** `PUSH_MODE=mock` (default, logs only) or `expo` (sends).
+
 #### Log out
 
 ```http

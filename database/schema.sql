@@ -158,3 +158,20 @@ CREATE TABLE IF NOT EXISTS otp_codes (
 );
 
 CREATE INDEX IF NOT EXISTS ix_otp_codes_phone ON otp_codes (phone);
+
+-- Push notifications (BE-25: migration 0011_notification_events).
+CREATE TABLE IF NOT EXISTS notification_events (
+    id uuid PRIMARY KEY,
+    outing_id uuid NOT NULL REFERENCES outings(id),
+    round_key TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('voting_started', 'result')),
+    user_id uuid NOT NULL REFERENCES users(id),
+    push_token TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'failed')),
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at TIMESTAMPTZ,
+    CONSTRAINT notification_events_once UNIQUE (outing_id, round_key, kind, user_id)
+);
+CREATE INDEX IF NOT EXISTS ix_notification_events_pending ON notification_events (status) WHERE status = 'pending';

@@ -20,7 +20,7 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -30,6 +30,7 @@ from app.core.errors import ApiError
 from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
 from app.services.outings.models import CONFIRMED, PREFERENCES, VOTING, Outing
 from app.services.outings.stages import move, readiness
+from app.services.notifications import push
 from app.services.plan.candidates import load_candidates
 from app.services.plan.engine import Preferences, distance_km, recommend
 from app.services.plan.reasons import reason_text
@@ -121,7 +122,7 @@ def _plan(db: Session, outing: Outing) -> dict:
 
 
 @router.post("/outings/{outing_id}/start-voting")
-def start_voting(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
+def start_voting(outing_id: uuid.UUID, background: BackgroundTasks, caller: Caller = Depends(current_caller),
                  db: Session = Depends(get_db)) -> dict:
     try:
         outing, me = participant_of(db, outing_id, caller, lock=True)
@@ -151,8 +152,11 @@ def start_voting(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
             })
         move(outing, VOTING)  # also closes joining (BE-09) and answers (BE-13)
         db.flush()
+        # BE-25: queued with the plan; the organizer started it, so they are not told.
+        notify = push.record(db, outing.id, push.VOTING_STARTED, skip_user=outing.organizer_id)
         plan = _plan(db, outing)
         db.commit()  # the plan and the stage change are saved together, then the lock is released
+        background.add_task(push.deliver, notify)  # sent after the reply; a failure changes nothing here
     except SQLAlchemyError:
         db.rollback()
         logger.exception("start voting failed")
