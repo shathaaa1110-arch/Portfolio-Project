@@ -539,10 +539,12 @@ One row per occasion, whether a one-off session or one of a group's outings.
 | organizer_id | uuid | yes | Foreign key to `users`: the person who runs this outing |
 | name | text | yes | Given by the organizer, for example "Thursday dinner" |
 | status | text | yes | `invite`, `preferences`, `voting`, `tiebreak`, or `result` (checked by the database). The first three and the last match the four stages shown in the app |
-| invite_code | text | yes | Four upper-case letters and digits (checked by the database). Unique among outings that are still open (partial unique index). Generated without `0 O 1 I L`, which are easy to confuse. Carried by the invite link |
+| invite_code | text | yes | Four upper-case letters and digits (checked by the database). Unique among outings that have not released their code (partial unique index on `code_released_at IS NULL`). Generated without `0 O 1 I L`, which are easy to confuse. Carried by the invite link |
 | starts_at | timestamptz | yes | Date and time set by the organizer. The meal (breakfast, lunch, afternoon, dinner, late night) is worked out from it and matched against the restaurants' `meal_fit` columns |
 | district | text | yes | Meeting area chosen by the organizer: an `id` from `districts`. Distances are measured from that district's centre |
 | tiebreak_ends_at | timestamptz | no | Set when a tie-break starts: the moment the 30 seconds end |
+| current_round_id | uuid | yes | The one active round (DB-07, migration `0012`). Foreign key to `outing_rounds` together with `id`, so it is always this outing's own round; deferred to the commit. A trigger gives every new outing round 1 |
+| code_released_at | timestamptz | no | When the invite code was freed for a new outing. A finished outing keeps its code until a day after `starts_at`, so a retry (BE-31) reopens the same link; only a `result` outing can release it (checked by the database) |
 | created_at | timestamptz | yes | |
 
 Outing status:
@@ -553,7 +555,23 @@ Outing status:
 | `preferences` | Each participant enters preferences and marks them ready | Join, confirm attendance, edit preferences, mark ready; the organizer can start voting early |
 | `voting` | The plan exists and voting is open | Like or pass on each suggestion, change an answer; the organizer can end voting early |
 | `tiebreak` | The top places are tied and a final vote is running | Each participant picks one of the tied places until `tiebreak_ends_at` |
-| `result` | Voting is over and the winner is known | Everyone sees the result |
+| `result` | Voting is over and the winner is known | Everyone sees the result; the organizer can start a new round, which moves back to `preferences` (BE-31) |
+
+#### `outing_rounds`
+
+One row per round of an outing (DB-07 #14, migration `0012`). A retry starts the next round; earlier rounds keep their plan, votes and winner, so they can still be reviewed.
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| id | uuid | yes | Primary key. Sent by the app as `round_id` |
+| outing_id | uuid | yes | Foreign key to `outings`. Unique together with `number`, and together with `id` (for the composite keys below) |
+| number | integer | yes | 1, 2, 3, … within the outing |
+| outcome | text | no | `no_matches` when no restaurant matched everyone; otherwise empty |
+| created_at | timestamptz | yes | |
+
+#### `round_members`
+
+Who was in a round when its suggestions were generated. The round's progress and result are counted on these people, so later joins never change an earlier round. Primary key (`round_id`, `participant_id`).
 
 #### `participants`
 
@@ -651,12 +669,13 @@ Public browsing remains unauthenticated.
 
 #### `plan_items`
 
-One row per restaurant suggested for an outing.
+One row per restaurant suggested in a round of an outing. Created by migration `0012` on a clean database; on Neon the hand-made table was extended.
 
 | Column | Type | Required | Notes |
 |---|---|---|---|
 | id | uuid | yes | Primary key |
 | outing_id | uuid | yes | Foreign key to `outings` |
+| round_id | uuid | yes | The round. Foreign key (`outing_id`, `round_id`) to `outing_rounds`, so it is always a round of the same outing |
 | restaurant_id | integer | yes | Foreign key to `restaurants` |
 | rank | integer | yes | Order given by the recommendation engine |
 | match_score | integer | yes | The engine's score for this place, 0 to 100. Shown on the card as the match percentage |
@@ -674,7 +693,9 @@ One row per participant per suggested restaurant: that participant's like or pas
 | plan_item_id | uuid | yes | Foreign key to `plan_items` |
 | liked | boolean | yes | True for a like, false for a pass |
 | is_tiebreak | boolean | yes | True for the final vote cast during a tie-break |
-| updated_at | timestamptz | yes | |
+| updated_at | timestamp | yes | UTC |
+
+A vote is for one plan item, so it belongs to that item's round.
 
 The winner is the plan item with the most likes. Consensus is the number of likes for the winner divided by the number of participants who voted. When the top items are tied, the tie-break votes decide; if they are tied too, or the time runs out with no majority, the tied item with the best `rank` wins.
 
@@ -686,10 +707,12 @@ Enforced by the database:
 |---|---|
 | One account per phone number | `users.phone` is unique |
 | A user is in a group once | Primary key on (`group_id`, `user_id`) in `group_members` |
-| An invite code leads to one outing | `outings.invite_code` is unique among outings that have not reached the result stage |
+| An invite code leads to one outing | `outings.invite_code` is unique among outings that have not released it (`code_released_at` is empty) |
+| An outing has exactly one active round, and it is its own | `outings.current_round_id` is one required column, with a foreign key on (`id`, `current_round_id`); a trigger creates round 1 |
+| Rounds of an outing are numbered once | Unique on (`outing_id`, `number`) in `outing_rounds` |
 | A member appears once in an outing | Unique on (`outing_id`, `user_id`) in `participants` |
 | An account saves a restaurant at most once | Primary key on (`user_id`, `restaurant_id`) in `saved_restaurants`; both foreign keys restrict parent deletion |
-| A restaurant appears once in a plan | Unique on (`outing_id`, `restaurant_id`) in `plan_items` |
+| A restaurant appears once in a round's plan, at one rank | Unique on (`round_id`, `restaurant_id`) and on (`round_id`, `rank`) in `plan_items`; (`outing_id`, `round_id`) must be a round of that outing |
 | One saved set per account, one set per participant | `preferences.user_id` and `preferences.participant_id` are each unique |
 | A set of preferences has exactly one owner | Check constraint: exactly one of `user_id` and `participant_id` is filled |
 | One answer per participant per suggested restaurant, and one more in a tie-break | Unique on (`participant_id`, `plan_item_id`, `is_tiebreak`) in `votes`. Changing an answer updates the row |
@@ -697,7 +720,8 @@ Enforced by the database:
 Enforced by the API, because they depend on the state of the outing:
 
 - An outing has at most 8 participants.
-- A vote is accepted only while the status is `voting`, and only for a plan item of the same outing.
+- A vote is accepted only while the status is `voting`, only from a member of the current round, and only for a plan item of that round.
+- Every request about a round names it with `round_id`; a missing or older one is refused (`409 STALE_ROUND`).
 - A tie-break vote is accepted only while the status is `tiebreak`, before `tiebreak_ends_at`, for one of the tied plan items, and once per participant.
 - Joining is accepted only while the status is `invite` or `preferences`.
 - A join locks the outing's row before it counts the participants, so two people joining at the same moment cannot pass the limit of 8. Starting voting and generating the plan lock the same row, so they never overlap a join. A new participant starts not ready.
@@ -1619,6 +1643,9 @@ Response `200`
   "district": "string",
   "invite_code": "string",
   "tiebreak_ends_at": "timestamptz | null",
+  "round_id": "uuid",
+  "round_number": 1,
+  "round_outcome": "null | no_matches",
   "me": { "participant_id": "uuid", "is_organizer": true },
   "actions": ["start_preferences"],
   "readiness": { "ready_count": 1, "total_count": 3 },
@@ -1711,10 +1738,11 @@ Asking again once voting is open returns the stored plan; nothing is generated t
 
 Response `200`: the plan, in the same shape as `GET /outings/{outing_id}/plan`, with `"status": "voting"`.
 
-Response `200`, no matching restaurant: nothing is saved, no limit is relaxed (D04), and the outing stays in `preferences`, so people can change their answers and the organizer can try again.
+Response `200`, no matching restaurant: no plan is saved and no limit is relaxed (D04). The round is marked `no_matches`, so everyone sees it in the outing state; answers, Ready and generation are then refused in this round (`409 ROUND_ENDED`) and the organizer starts a new round, in which people can change their answers.
 ```json
-{ "outing_id": "uuid", "status": "preferences", "allergy_warning": [], "plan_items": [],
-  "message": "No restaurant matches everyone's conditions. Change some answers and try again." }
+{ "outing_id": "uuid", "status": "preferences", "round_id": "uuid", "round_outcome": "no_matches",
+  "allergy_warning": [], "plan_items": [],
+  "message": "No restaurant matches everyone's conditions. Start a new round to change answers." }
 ```
 
 Response `403`: `ORGANIZER_ONLY`.
@@ -1725,7 +1753,43 @@ Response `409`
 ```
 or `INVALID_STATUS_TRANSITION` before the preferences stage.
 
-One round per outing for now; separate rounds for a retry come with DB-07 (#14) and BE-31 (#90).
+Generation also saves who is in the round (`round_members`); the round's progress and result are counted on them.
+
+#### Rounds and a retry in the same outing (BE-31, #90)
+
+```http
+POST /outings/{outing_id}/retry
+{ "round_id": "uuid" }
+```
+Requires: Authorization, caller must be the organizer
+
+Every outing has one current round (`round_id` and `round_number` in `GET /outings/{outing_id}`). The organizer can start the next one after a result, or after a round with `round_outcome: "no_matches"`, until a day after `starts_at`; the state then lists `retry_round` in the organizer's `actions`.
+
+A retry keeps the outing, its invite code and link, its participants and their saved answers and limits. It starts round n + 1, moves the outing back to `preferences` (joining and leaving reopen), and clears everyone's readiness, so nothing is generated before everyone confirms again. Earlier rounds keep their plan, votes and winner. The new round's voting and result are announced again (BE-25 uses the round number in its key).
+
+It runs under the outing's row lock: two retries at once create one round. Sending the same `round_id` again returns the round it created while that round is current, without changing anything; a request naming any older round gets `409 STALE_ROUND`.
+
+Response `200`
+```json
+{ "outing_id": "uuid", "status": "preferences", "round_id": "uuid", "round_number": 2 }
+```
+
+Errors: `403 ORGANIZER_ONLY`; `409 STALE_ROUND` (missing or older `round_id`); `409 ROUND_RETRY_NOT_ALLOWED` (voting or answers still open, or the outing day has ended); `503 ROUND_RETRY_UNAVAILABLE`.
+
+**Every request about a round names it.** The app sends the current `round_id` from the outing state:
+
+| Request | Where `round_id` goes | Response adds |
+|---|---|---|
+| `GET /outings/{id}/preferences`, `/plan`, `/votes`, `/result` | query `?round_id=` | `round_id` |
+| `PUT /outings/{id}/preferences` | in the body, next to the answers | `round_id` |
+| `POST /outings/{id}/preferences/ready`, `/start-voting`, `/end-voting`, `/retry` | body `{ "round_id": "uuid" }` | `round_id` |
+| `POST /outings/{id}/votes` | in the body, next to `plan_item_id` and `liked` | `round_id` |
+
+A missing or older `round_id` is refused before anything changes:
+```json
+{ "error": { "code": "STALE_ROUND", "message": "This outing has moved to a new round. Reload it and continue there." } }
+```
+so a delayed vote, save or Ready from an earlier round never lands in a newer one. The app reloads the outing state and continues in the current round. Membership and organizer checks still come first (`403`). The frontend contract is `Docs/Session-Retry-Contract.md` (FE-27 #91).
 
 #### Leave an outing, or remove a participant (BE-29, #88)
 
@@ -2049,7 +2113,7 @@ DELETE /users/me/saved-restaurants/{restaurant_id}
 | 28 | ~~POST `/outings/{outing_id}/tiebreak-vote`~~ | not built: ties are settled automatically (D09) | 14 |
 | 29 | GET | `/outings/{outing_id}/result` | 15 |
 
-One round per outing for now: the current round is the outing's single stored plan. Round ids come with DB-07 (#14) and BE-31 (#90).
+Everything here is about the current round: each request sends its `round_id`, and a missing or older one gets `409 STALE_ROUND` (BE-31, see section 4.5). Progress and support count the round's members (`round_members`).
 
 #### Cast or change a vote
 

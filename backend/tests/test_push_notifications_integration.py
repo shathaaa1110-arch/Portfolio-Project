@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from tests.test_plan_generation_integration import BASE, _ready_session, api, fresh_limits, secret  # noqa: F401
 from tests.test_voting_integration import VOTES, _answer_all, _vote
 
+from tests.round_helpers import R, W  # noqa: F401
+
 pytestmark = pytest.mark.integration
 
 
@@ -54,7 +56,7 @@ def _events(conn, oid, kind=None):
 
 
 def _start(client, oid, organizer):
-    r = client.post(f"{BASE}/{oid}/start-voting", headers=organizer)
+    r = client.post(f"{BASE}/{oid}/start-voting", headers=organizer, json=R(client, oid, organizer))
     assert r.status_code == 200
     return [i["plan_item_id"] for i in r.json()["plan_items"]]
 
@@ -81,8 +83,8 @@ def test_recording_the_same_event_twice_keeps_one_row_per_person(outing):
     client, conn, oid, organizer, *_ = outing
     _start(client, oid, organizer)
     db = Session(bind=conn, join_transaction_mode="create_savepoint")
-    assert push.record(db, oid, push.VOTING_STARTED) != []           # the organizer was skipped before
-    assert push.record(db, oid, push.VOTING_STARTED) == []           # the unique key stops a repeat
+    assert push.record(db, oid, push.VOTING_STARTED, 1) != []           # the organizer was skipped before
+    assert push.record(db, oid, push.VOTING_STARTED, 1) == []           # the unique key stops a repeat
     assert len(_events(conn, oid, "voting_started")) == 2
 
 
@@ -97,17 +99,17 @@ def test_the_result_reaches_everyone_once_with_the_winner(outing):
     assert last["voting_complete"] is True
     results = _events(conn, oid, "result")
     assert [(n, s) for _, n, s, _, _ in results] == [("عاصم حامد", "sent"), ("فهد", "sent")]
-    winner = client.get(f"{BASE}/{oid}/result", headers=guest).json()["winner"]["name_ar"]
+    winner = client.get(f"{BASE}/{oid}/result", headers=guest, params=R(client, oid, guest)).json()["winner"]["name_ar"]
     assert all(winner in m["body"] for m in sender.calls[-1])
     # Ending again (the organizer's button) neither records nor sends a second time.
-    client.post(f"{BASE}/{oid}/end-voting", headers=organizer)
+    client.post(f"{BASE}/{oid}/end-voting", headers=organizer, json=R(client, oid, organizer))
     assert len(_events(conn, oid, "result")) == 2 and len(sender.calls) == 2
 
 
 def test_ending_early_without_likes_says_there_is_no_winner(outing):
     client, conn, oid, organizer, *_, sender = outing
     _start(client, oid, organizer)
-    assert client.post(f"{BASE}/{oid}/end-voting", headers=organizer).status_code == 200
+    assert client.post(f"{BASE}/{oid}/end-voting", headers=organizer, json=R(client, oid, organizer)).status_code == 200
     assert all("ما فيه فائز" in m["body"] for m in sender.calls[-1])
 
 
@@ -120,7 +122,7 @@ def test_a_provider_that_stays_down_changes_nothing_in_voting(outing):
     assert client.get(f"{BASE}/{oid}", headers=organizer).json()["status"] == "voting"
     for headers in (organizer, member, guest):
         _answer_all(client, oid, headers, items, {items[0]})
-    assert client.get(f"{BASE}/{oid}/result", headers=guest).json()["winner"]["likes"] == 3
+    assert client.get(f"{BASE}/{oid}/result", headers=guest, params=R(client, oid, guest)).json()["winner"]["likes"] == 3
     rows = _events(conn, oid)
     assert rows and all(s == "failed" and a == 3 and "HTTP 503" in e for _, _, s, a, e in rows)
 
@@ -154,7 +156,7 @@ def test_only_people_with_a_device_token_get_an_event(outing):
     client, conn, oid, organizer, *_ = outing
     _start(client, oid, organizer)
     conn.execute(sa.text("UPDATE users SET push_token = NULL WHERE name = 'عاصم حامد'"))
-    client.post(f"{BASE}/{oid}/end-voting", headers=organizer)
+    client.post(f"{BASE}/{oid}/end-voting", headers=organizer, json=R(client, oid, organizer))
     assert [n for _, n, *_ in _events(conn, oid, "result")] == ["فهد"]
 
 
@@ -180,3 +182,21 @@ def test_the_expo_adapter_turns_bad_replies_into_one_error(monkeypatch, reply):
     monkeypatch.setattr(httpx, "post", lambda *a, **k: reply)
     with pytest.raises(push.PushSendError):
         push.ExpoSender().send([{"to": "ExponentPushToken[a]", "title": "t", "body": "b"}])
+
+
+def test_a_new_round_is_announced_again(outing):
+    """BE-31: the round number is part of the key, so round two's voting is a new notification."""
+    client, conn, oid, organizer, member, guest, sender = outing
+    first = R(client, oid, organizer)["round_id"]
+    _start(client, oid, organizer)
+    client.post(f"{BASE}/{oid}/end-voting", headers=organizer, json=R(client, oid, organizer))
+    assert client.post(f"{BASE}/{oid}/retry", headers=organizer, json={"round_id": first}).status_code == 200
+    for headers in (organizer, member, guest):
+        client.post(f"{BASE}/{oid}/preferences/ready", headers=headers, json=R(client, oid, headers))
+    _start(client, oid, organizer)
+    keys = conn.execute(sa.text("SELECT round_key FROM notification_events WHERE outing_id = :o "
+                                "AND kind = 'voting_started' ORDER BY round_key"), {"o": oid}).scalars().all()
+    assert keys == ["1", "2"]
+    result = conn.execute(sa.text("SELECT count(*) FROM notification_events WHERE outing_id = :o AND kind = 'result'"),
+                          {"o": oid}).scalar_one()
+    assert result == 2  # round one's result, to both people with the app

@@ -8,7 +8,7 @@ Anything that adds people to an outing or changes its stage locks the outing's r
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Text, Uuid
+from sqlalchemy import Boolean, DateTime, FetchedValue, ForeignKey, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -39,6 +39,10 @@ class Outing(Base):
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     district: Mapped[str] = mapped_column(Text, nullable=False)  # a districts.id
     tiebreak_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The one active round (0012). A database trigger gives a new outing round 1; a retry moves it on.
+    current_round_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, server_default=FetchedValue())
+    # Set when the invite code is freed for a new outing, a day after this one starts (0012).
+    code_released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=now_utc)
 
 

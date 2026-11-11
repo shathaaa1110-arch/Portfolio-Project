@@ -14,6 +14,8 @@ from tests.test_outing_state_integration import _session
 from tests.test_outings_join_integration import _add_outing, _add_user, _bearer
 from tests.test_plan_generation_integration import BASE, _ready_session, api, fresh_limits, secret  # noqa: F401
 
+from tests.round_helpers import R, W  # noqa: F401
+
 pytestmark = pytest.mark.integration
 
 
@@ -73,9 +75,9 @@ def test_the_organizer_removes_a_guest_and_the_old_token_stops_working(api):
     assert r.status_code == 200 and r.json()["attendance"] == "removed" and r.json()["total_count"] == 2
     # Done when: a removed guest cannot read private state or submit answers with the old token.
     for call in (lambda: client.get(f"{BASE}/{oid}", headers=guest),
-                 lambda: client.get(f"{BASE}/{oid}/preferences", headers=guest),
-                 lambda: client.put(f"{BASE}/{oid}/preferences", headers=guest, json={"budget_max": 50}),
-                 lambda: client.post(f"{BASE}/{oid}/preferences/ready", headers=guest)):
+                 lambda: client.get(f"{BASE}/{oid}/preferences", headers=guest, params=R(client, oid, guest)),
+                 lambda: client.put(f"{BASE}/{oid}/preferences", headers=guest, json=W(client, oid, guest, {"budget_max": 50})),
+                 lambda: client.post(f"{BASE}/{oid}/preferences/ready", headers=guest, json=R(client, oid, guest))):
         r = call()
         assert r.status_code == 403 and _code(r) == "REMOVED_FROM_OUTING"
     assert "نورة" not in _ids(client, oid, organizer)
@@ -93,9 +95,9 @@ def test_removing_the_last_person_not_ready_lets_the_organizer_generate(api):
     client, conn = api
     oid, _, organizer, member, guest = _ready_session(client, conn)
     conn.execute(sa.text("UPDATE participants SET preferences_done = false WHERE guest_name = 'نورة'"))
-    assert client.post(f"{BASE}/{oid}/start-voting", headers=organizer).status_code == 409
+    assert client.post(f"{BASE}/{oid}/start-voting", headers=organizer, json=R(client, oid, organizer)).status_code == 409
     _remove(client, oid, organizer, _ids(client, oid, organizer)["نورة"])
-    assert client.post(f"{BASE}/{oid}/start-voting", headers=organizer).status_code == 200
+    assert client.post(f"{BASE}/{oid}/start-voting", headers=organizer, json=R(client, oid, organizer)).status_code == 200
 
 
 def test_a_place_freed_by_leaving_can_be_taken(api):
@@ -138,7 +140,7 @@ def test_a_participant_of_another_outing_cannot_be_removed(api):
 def test_the_group_is_locked_once_the_plan_is_generated(api):
     client, conn = api
     oid, _, organizer, member, guest = _ready_session(client, conn)
-    assert client.post(f"{BASE}/{oid}/start-voting", headers=organizer).status_code == 200
+    assert client.post(f"{BASE}/{oid}/start-voting", headers=organizer, json=R(client, oid, organizer)).status_code == 200
     r = client.post(f"{BASE}/{oid}/leave", headers=member)
     assert r.status_code == 409 and _code(r) == "MEMBERSHIP_LOCKED"
     r = _remove(client, oid, organizer, _ids(client, oid, organizer)["نورة"])

@@ -9,18 +9,21 @@ Rules (release decisions D04, D05, D06):
   - readiness and membership are checked under the outing's row lock, the same lock a join,
     a save or a stage change takes, so a person who joins at that moment is never left out;
   - the plan and the move to voting are saved in one transaction; voting closes joining;
-  - no matching restaurant means no voting: nothing is saved and the outing stays in
-    preferences, so people can change their answers and the organizer can try again;
+  - no matching restaurant means no voting (D04): no limit is relaxed, the round is marked
+    no_matches so everyone sees it, and the organizer starts a new round (BE-31) in which people
+    can change their answers;
   - asking again once voting is open returns the stored plan; nothing is generated twice.
 
-One round per outing for now. Separate rounds for a retry come with DB-07 (#14) and BE-31 (#90).
+The plan belongs to the outing's current round (DB-07, BE-31). Both requests name it with round_id;
+an older or missing id gets 409 STALE_ROUND. Generation also saves who is in the round, so its result
+is counted on the same people.
 """
 import logging
 import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -29,6 +32,8 @@ from app.core.database import get_db
 from app.core.errors import ApiError
 from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
 from app.services.outings.models import CONFIRMED, PREFERENCES, VOTING, Outing
+from app.services.outings.rounds import (NO_MATCHES, Round, RoundIn, current_round, mark_no_matches, round_ended,
+                                         sent_round, snapshot_members)
 from app.services.outings.stages import move, readiness
 from app.services.notifications import push
 from app.services.plan.candidates import load_candidates
@@ -51,11 +56,11 @@ PLAN_SQL = text("""
     SELECT pi.id, pi.rank, pi.match_score, pi.reason, r.id AS restaurant_id, r.name_ar, r.name_en, r.cuisine,
            r.district, r.price_tier, r.rating, r.spend_low, r.spend_high, r.maps_url, r.latitude, r.longitude
     FROM plan_items pi JOIN restaurants r ON r.id = pi.restaurant_id
-    WHERE pi.outing_id = :outing_id ORDER BY pi.rank
+    WHERE pi.round_id = :round_id ORDER BY pi.rank
 """)
 INSERT_ITEM = text("""
-    INSERT INTO plan_items (id, outing_id, restaurant_id, rank, match_score, reason, is_winner)
-    VALUES (:id, :outing_id, :restaurant_id, :rank, :match_score, :reason, false)
+    INSERT INTO plan_items (id, outing_id, round_id, restaurant_id, rank, match_score, reason, is_winner)
+    VALUES (:id, :outing_id, :round_id, :restaurant_id, :rank, :match_score, :reason, false)
 """)
 ALLERGIES_SQL = text("""
     SELECT DISTINCT trim(a) AS allergy
@@ -94,10 +99,10 @@ def _generate(db: Session, outing: Outing) -> list:
     return recommend(restaurants, people, when, lat, lon, limit=PLAN_SIZE)
 
 
-def _plan(db: Session, outing: Outing) -> dict:
+def _plan(db: Session, outing: Outing, rnd: Round) -> dict:
     lat, lon = _centre(db, outing)
     items = []
-    for r in db.execute(PLAN_SQL, {"outing_id": outing.id}).all():
+    for r in db.execute(PLAN_SQL, {"round_id": rnd.id}).all():
         items.append({
             "plan_item_id": str(r.id),
             "rank": r.rank,
@@ -118,19 +123,23 @@ def _plan(db: Session, outing: Outing) -> dict:
             },
         })
     allergies = [row.allergy for row in db.execute(ALLERGIES_SQL, {"outing_id": outing.id, "confirmed": CONFIRMED})]
-    return {"outing_id": str(outing.id), "status": outing.status, "allergy_warning": allergies, "plan_items": items}
+    return {"outing_id": str(outing.id), "status": outing.status, "round_id": str(rnd.id),
+            "allergy_warning": allergies, "plan_items": items}
 
 
 @router.post("/outings/{outing_id}/start-voting")
-def start_voting(outing_id: uuid.UUID, background: BackgroundTasks, caller: Caller = Depends(current_caller),
-                 db: Session = Depends(get_db)) -> dict:
+def start_voting(outing_id: uuid.UUID, background: BackgroundTasks, body: RoundIn | None = Body(None),
+                 caller: Caller = Depends(current_caller), db: Session = Depends(get_db)) -> dict:
     try:
         outing, me = participant_of(db, outing_id, caller, lock=True)
         if not is_organizer(outing, me):
             raise ApiError(403, "ORGANIZER_ONLY", "Only the organizer can generate the suggestions.")
+        rnd = current_round(db, outing, sent_round(body))
+        if rnd.ended:
+            raise round_ended()
         if outing.status != PREFERENCES:
-            if db.execute(PLAN_SQL, {"outing_id": outing.id}).first() is not None:
-                return _plan(db, outing)  # asked again: the stored plan, nothing generated twice
+            if db.execute(PLAN_SQL, {"round_id": rnd.id}).first() is not None:
+                return _plan(db, outing, rnd)  # asked again: the stored plan, nothing generated twice
             raise ApiError(409, "INVALID_STATUS_TRANSITION",
                            f"The outing cannot move from the {outing.status} stage to the voting stage.")
 
@@ -141,20 +150,25 @@ def start_voting(outing_id: uuid.UUID, background: BackgroundTasks, caller: Call
 
         picks = _generate(db, outing)
         if not picks:
-            # D04: no relaxed limits and no empty voting. Nothing is saved; the outing stays open.
-            return {"outing_id": str(outing.id), "status": outing.status, "allergy_warning": [], "plan_items": [],
-                    "message": "No restaurant matches everyone's conditions. Change some answers and try again."}
+            # D04: no relaxed limits and no empty voting. The round ends as no_matches for everyone to see;
+            # the organizer starts a new round, where people can change their answers (BE-31).
+            mark_no_matches(db, rnd)
+            db.commit()
+            return {"outing_id": str(outing.id), "status": outing.status, "round_id": str(rnd.id),
+                    "round_outcome": NO_MATCHES, "allergy_warning": [], "plan_items": [],
+                    "message": "No restaurant matches everyone's conditions. Start a new round to change answers."}
 
+        snapshot_members(db, outing, rnd)  # the result of this round is counted on these people
         for p in picks:
             db.execute(INSERT_ITEM, {
-                "id": uuid.uuid4(), "outing_id": outing.id, "restaurant_id": p.restaurant.id, "rank": p.rank,
-                "match_score": p.match_score, "reason": reason_text(p.reasons, p.distance_km),
+                "id": uuid.uuid4(), "outing_id": outing.id, "round_id": rnd.id, "restaurant_id": p.restaurant.id,
+                "rank": p.rank, "match_score": p.match_score, "reason": reason_text(p.reasons, p.distance_km),
             })
         move(outing, VOTING)  # also closes joining (BE-09) and answers (BE-13)
         db.flush()
         # BE-25: queued with the plan; the organizer started it, so they are not told.
-        notify = push.record(db, outing.id, push.VOTING_STARTED, skip_user=outing.organizer_id)
-        plan = _plan(db, outing)
+        notify = push.record(db, outing.id, push.VOTING_STARTED, rnd.number, skip_user=outing.organizer_id)
+        plan = _plan(db, outing, rnd)
         db.commit()  # the plan and the stage change are saved together, then the lock is released
         background.add_task(push.deliver, notify)  # sent after the reply; a failure changes nothing here
     except SQLAlchemyError:
@@ -165,11 +179,11 @@ def start_voting(outing_id: uuid.UUID, background: BackgroundTasks, caller: Call
 
 
 @router.get("/outings/{outing_id}/plan")
-def read_plan(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
-              db: Session = Depends(get_db)) -> dict:
+def read_plan(outing_id: uuid.UUID, round_id: uuid.UUID | None = Query(None),
+              caller: Caller = Depends(current_caller), db: Session = Depends(get_db)) -> dict:
     try:
         outing, _ = participant_of(db, outing_id, caller)
-        plan = _plan(db, outing)
+        plan = _plan(db, outing, current_round(db, outing, round_id))
     except SQLAlchemyError:
         logger.exception("read plan failed")
         raise _unavailable()

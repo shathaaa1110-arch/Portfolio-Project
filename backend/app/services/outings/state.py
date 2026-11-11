@@ -19,6 +19,7 @@ from app.core.errors import ApiError
 from app.services.auth.models import User
 from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
 from app.services.outings.models import GONE, PREFERENCES, Outing, Participant
+from app.services.outings.rounds import read_current, retry_open
 from app.services.outings.stages import move, organizer_actions, readiness
 
 logger = logging.getLogger(__name__)
@@ -60,11 +61,18 @@ def outing_state(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
         outing, me = participant_of(db, outing_id, caller)
         people = _participants(db, outing)
         ready, total = readiness(db, outing.id)
+        rnd = read_current(db, outing)
     except SQLAlchemyError:
         logger.exception("outing state failed")
         raise _unavailable()
 
     organizer = is_organizer(outing, me)
+    actions = []
+    if organizer:
+        # A round that found nothing has ended: the only way on is a new round (BE-31).
+        actions = [] if rnd.ended else organizer_actions(outing.status, total > 0 and ready == total)
+        if retry_open(outing, rnd):
+            actions.append("retry_round")
     return {
         "outing_id": str(outing.id),
         "name": outing.name,
@@ -73,8 +81,12 @@ def outing_state(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
         "district": outing.district,
         "invite_code": outing.invite_code,
         "tiebreak_ends_at": outing.tiebreak_ends_at,
+        # Every request about this round sends round_id back; an older one gets 409 STALE_ROUND.
+        "round_id": str(rnd.id),
+        "round_number": rnd.number,
+        "round_outcome": rnd.outcome,  # null, or "no_matches" when nothing matched everyone
         "me": {"participant_id": str(me.id), "is_organizer": organizer},
-        "actions": organizer_actions(outing.status, total > 0 and ready == total) if organizer else [],
+        "actions": actions,
         "readiness": {"ready_count": ready, "total_count": total},
         "participants": people,
     }
