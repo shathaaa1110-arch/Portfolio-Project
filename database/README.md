@@ -1,10 +1,11 @@
-# Thouq database setup (DB-02 / DB-03 / DB-14)
+# Thouq database setup (DB-02 / DB-03 / DB-08 / DB-13 / DB-14 / DB-15)
 
 This workflow uses installed PostgreSQL 18, Python 3.12, SQLAlchemy/Psycopg,
 and Alembic 1.20.0. It provides separate local development and disposable test
 databases. DB-02 establishes migration tracking; DB-03 creates `users` with a
-single UUID primary key and a unique, required text `phone_number`. DB-14 adds account preferences. The remaining tables in `schema.sql` are drafts
-for later tasks, not applied migrations.
+single UUID primary key and a unique, required text `phone_number`. DB-14 adds account preferences; 0005 adds outings and districts. DB-15 adds saved
+restaurants and creates the existing restaurant schema when absent. Other tables
+in `schema.sql` remain drafts; Alembic is the migration source of truth.
 The account diagram and column definitions are in
 [TechnicalDoc.md](../Docs/TechnicalDoc.md#users).
 
@@ -110,9 +111,9 @@ alembic -c database/alembic.ini upgrade head
 alembic -c database/alembic.ini current
 ```
 
-Expected revision: `0003_account_preferences (head)`. The migrations create
-`alembic_version`, `users`, and account `preferences`. `upgrade head` can be rerun without recreating
-the database. Migration files live in `database/migrations/versions/`.
+Expected revision: `0009_otp_codes (head)`. The migrations create
+`alembic_version`, accounts/preferences, outing/district tables, restaurants, and
+`saved_restaurants`, plus `otp_codes` for local login verification. `upgrade head` can be rerun without recreating the database. Migration files live in `database/migrations/versions/`.
 
 DB-03 starts from DB-02's empty baseline; it does not convert a database manually
 populated from the draft SQL. Its downgrade drops `users` and its account data,
@@ -142,7 +143,7 @@ python database/reset_test_db.py
 Expected output:
 
 ```text
-Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0003_account_preferences
+Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0009_otp_codes
 ```
 
 This command always selects test mode, verifies the URL and local role attributes,
@@ -177,6 +178,15 @@ ENVIRONMENT=test python -m pytest -m integration
 `python -m pytest` runs both groups and therefore needs the migrated test database.
 The integration health test requires a real `database: ok` result; the ordinary
 health unit tests mock both reachable and unreachable results.
+
+Shared test helpers live in `backend/tests/conftest.py` (QA-01, #56).
+`db_connection` runs each integration test in one transaction that is rolled back
+afterwards. `db_session` and `api_client` keep commits and rollbacks from the code
+under test inside a savepoint, so nothing is left behind. CI runs the integration
+suite twice on the same database to prove it. `synthetic_restaurants` loads
+`backend/tests/data/synthetic_restaurants.json`: fake names, `example.com` links
+and gaps in every optional column. It follows `database/schema.sql` until the
+restaurants migration exists.
 
 To inspect a real test API, from `backend/`:
 
@@ -221,7 +231,10 @@ flowchart LR
 
 Record runtime evidence in `database/VALIDATION.md`.
 
-The restaurant dataset is not committed because its terms do not allow republishing.
+The private restaurant dataset is not committed because its terms do not allow republishing.
+The separately authored DB-13 synthetic sample below may be committed.
+
+Keep your local copy in `database/private/`, which Git ignores.
 
 
 ## DB-14 account preferences
@@ -280,3 +293,139 @@ validation and endpoints remain #63. Public browsing remains unauthenticated.
 
 [Arabic learning guide](../Docs/Database-Learning.ar.md) ·
 [DB-14 issue](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/125)
+
+
+## DB-15 saved restaurants
+
+Migration `0006_saved_restaurants` follows `0005_outings_and_districts`. The storage
+contract is `saved_restaurants(user_id UUID, restaurant_id INTEGER)`, with both
+columns required and the pair as its primary key. The foreign keys reference
+`users(id)` and `restaurants(id)`. An account can save multiple restaurants; multiple
+accounts can save the same restaurant, but the same pair cannot occur twice.
+The primary-key index supports account lookups; a separate restaurant index supports
+reference checks from restaurants.
+
+Both foreign keys use **ON DELETE RESTRICT**. Explicitly delete saved links before
+deleting an account or restaurant; no saved links are cascaded away. Removing a
+saved link does not delete either parent. Other tables' foreign keys still apply.
+
+Existing account and restaurant rows and schemas are preserved. If restaurants is
+absent, the migration creates its established schema without importing any dataset,
+plus the search column/indexes skipped by 0004 on a fresh database. Existing parent
+IDs must be UUID/integer primary keys respectively. An incompatible parent or an
+unexpected existing saved-restaurants table stops the migration; inspect and resolve
+the mismatch before retrying. Failed DDL rolls back, with no automatic data repair.
+Downgrade is refused to protect saved data; use a reviewed forward migration.
+
+Use the normal `upgrade head` and disposable test reset commands above. Do not apply
+`schema.sql` as an alternative migration path. No remote database upgrade is included
+in this task. The database owner applies the migration through the normal deployment
+workflow. Offline SQL generation remains unsupported by the migration chain.
+
+### Handoff to #126
+
+The SQL relation is the interface; endpoints and authentication belong to
+[#126](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/126).
+Always derive `user_id` from the authenticated account. A plain duplicate insert
+fails with unique violation `23505`; an idempotent save can use:
+
+```sql
+INSERT INTO saved_restaurants (user_id, restaurant_id)
+VALUES (:user_id, :restaurant_id)
+ON CONFLICT (user_id, restaurant_id) DO NOTHING;
+```
+
+Read with `WHERE user_id = :user_id` and join `restaurants.id = restaurant_id`.
+Unsave with both keys in the delete predicate. Use bound parameters and a transaction.
+Invalid references (`23503`), restricted parent deletes (`23001` on PostgreSQL 18),
+and null keys (`23502`) are rejected by PostgreSQL.
+No saved-restaurant routes or authentication changes are supplied here; public
+browsing remains unauthenticated.
+
+Verification: `backend/tests/test_saved_restaurant_schema_integration.py`, the
+normal database migration/health integration tests, and the existing backend suite.
+Actual run evidence belongs in [VALIDATION.md](VALIDATION.md).
+
+## DB-13 general Home sample (#100)
+
+Migration `0008_general_restaurants` follows `0007_saved_at`. It adds nullable
+`image_url TEXT` and makes coordinates, spend bounds, price tier and map URL
+nullable. Required `id INTEGER`, `name_ar TEXT`, `cuisine TEXT` and `district TEXT`
+are unchanged. Existing rows, search indexes and saved references are preserved.
+Downgrade is refused to avoid losing photos or forcing invented optional values.
+Apply the migration before deploying the API that selects `image_url`.
+
+The committed `seed/general_restaurants.json` contains eight original fictional
+records, visibly labelled `تجريبي` / `Demo`. They are not copies of the private
+Riyadh dataset and do not represent real businesses. Districts and cuisines are
+illustrative. IDs 2000000101–2000000108 are reserved for this sample. All unknown
+fields are explicit JSON/SQL null, including actual photos, coordinates, map links,
+prices, ratings, hours and recommendation scores. No suitability is claimed.
+
+With the backend environment activated, use the same configured database selection
+as Alembic. For the local disposable test database:
+
+```bash
+ENVIRONMENT=test alembic -c database/alembic.ini upgrade head
+ENVIRONMENT=test python database/seed_general_restaurants.py
+ENVIRONMENT=test python database/seed_general_restaurants.py --apply
+ENVIRONMENT=test python database/seed_general_restaurants.py --apply
+```
+
+`TEST_DATABASE_URL` must be configured as above. Without `ENVIRONMENT=test`, the
+configured application database is selected; inspect the target before applying.
+The first seed command runs the complete transaction and rolls back. `--apply`
+commits: first run reports 8 inserted; repeat reports 0 inserted / 8 unchanged.
+A conflicting ID aborts the whole import without overwriting any row. Imports
+briefly lock restaurant writes to serialize collision checks; run on a development
+or test database. No seed runs automatically during migrations or API startup.
+No hosted import is included in this change.
+
+Home uses the public `GET /api/v1/restaurants` endpoint, independent of preferences.
+The API returns `image_url: null` when absent; the UI uses a cuisine illustration
+and labels it as illustrative in details. HTTPS photo URLs can be supplied by a
+later permitted dataset; broken/invalid URLs fall back to the same illustration.
+The synthetic sample deliberately contains no external photos. Existing list
+ordering remains unchanged; null scores leave demo ordering stable by ID.
+
+For #133 read-only acceptance, use the live endpoint and inspect:
+
+```sql
+SELECT id, name_ar, name_en, district, cuisine, image_url,
+       maps_url, price_tier, rating
+FROM restaurants WHERE id BETWEEN 2000000101 AND 2000000108 ORDER BY id;
+SELECT count(*) AS rows, count(DISTINCT id) AS unique_ids
+FROM restaurants WHERE id BETWEEN 2000000101 AND 2000000108;
+```
+
+Expected sample counts: 8 / 8. Implementation tests and evidence are in
+[VALIDATION.md](VALIDATION.md); final device/build/recording acceptance remains
+[#133](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/133).
+
+
+## DB-08 login-code state (#15)
+
+Migration `0009_otp_codes` follows `0008_general_restaurants`. Authentica sends
+SMS; the API generates and verifies six-digit codes locally. Storage contains
+only the HMAC, normalized phone, five-minute expiry, attempt count, used time,
+and creation time. The API retains the existing five-attempt limit and 60-second
+resend cooldown. Codes precede accounts, so there is no user foreign key.
+
+A fresh database gets `otp_codes` and its phone index. An existing draft table
+is inspected for compatible types, nullability, primary key and default zero
+attempts, without extra foreign/unique keys. Compatible rows are preserved and
+a missing phone index is added. Incompatible tables abort migration for owner
+reconciliation; no rows are silently rewritten or deleted. Offline SQL generation
+is unsupported because adoption inspects the database. Downgrade is refused to
+preserve login state; use a forward migration.
+
+Apply `alembic -c database/alembic.ini upgrade head` before deploying the auth
+change. Deploy all auth workers together (drain old workers first), since the
+per-phone transaction lock must be used by every request, resend and verify
+worker. Each lock lasts through commit/rollback, including SMS delivery for
+issuance. Used/expired codes return no new token; issuing a replacement expires
+the prior code, and SMS failure rolls back that replacement.
+
+See [the schema and ERD](../Docs/TechnicalDoc.md#otp_codes),
+[validation evidence](VALIDATION.md#db-08--login-code-storage-15-10-november-2026),
+and [DB-08 #15](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/15#issue-5894351265).

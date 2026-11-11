@@ -47,9 +47,9 @@ Each decision below links to the current repository issue numbers. / يرتبط 
 
 **مؤجل:** المجموعات المحفوظة وحضورها و«اختر لي» الشخصي وإشعارات متصفح الضيف والمطاعم المحفوظة وتحويل الضيف لحساب وملخص الذوق والمزاج ودليل السائح. وجود جداول أو صور قديمة لا يدخل الميزة في النسخة.
 
-Reservations, payments, restaurant-side integration and AI personalization remain outside this release. Android is not a delivery target. A working installable iPhone build is required; public App Store publication is not an acceptance condition.
+Reservations, payments, restaurant-side integration and advanced personalization remain outside this release. Android is not a delivery target. A working installable iPhone build is required; public App Store publication is not an acceptance condition.
 
-الحجوزات والمدفوعات وتكامل جهة المطعم والتخصيص بالذكاء الاصطناعي خارج النطاق. أندرويد ليس منصة تسليم. المطلوب نسخة آيفون قابلة للتثبيت؛ النشر العام في المتجر ليس شرط اكتمال.
+الحجوزات والمدفوعات وتكامل جهة المطعم والتخصيص المتقدم خارج النطاق. أندرويد ليس منصة تسليم. المطلوب نسخة آيفون قابلة للتثبيت؛ النشر العام في المتجر ليس شرط اكتمال.
 
 ## 4. Journey and privacy / الرحلة والخصوصية
 

@@ -3,6 +3,7 @@
 See Docs/TechnicalDoc.md, section 4.3. Sign-up and log-in are the same flow:
 the account is created in /auth/verify only when the phone has none yet.
 """
+import hashlib
 import math
 from datetime import timedelta
 
@@ -59,10 +60,26 @@ def _latest_code(db: Session, phone: str) -> OtpCode | None:
     return db.scalars(stmt).first()
 
 
-def _issue_code(db: Session, phone: str) -> dict:
+def _lock_phone(db: Session, phone: str) -> None:
+    """Serialize OTP state transitions, including phones with no rows yet.
+
+    PostgreSQL releases the lock on commit/rollback. SQLite is used only by
+    sequential unit tests; it cannot provide this production guarantee.
+    """
+    if db.get_bind().dialect.name == "postgresql":
+        key = int.from_bytes(
+            hashlib.sha256(f"otp:{phone}".encode()).digest()[:8], "big", signed=True
+        )
+        db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": key})
+
+
+def _issue_code(db: Session, phone: str, *, require_pending: bool = False) -> dict:
     """Rate-limit, replace any earlier code, store the new hash, and send the SMS."""
+    _lock_phone(db, phone)
     now = utcnow()
     latest = _latest_code(db, phone)
+    if require_pending and latest is None:
+        raise ApiError(404, "NO_PENDING_CODE", "Request a code first.")
     if latest is not None:
         waited = (now - latest.created_at).total_seconds()
         if waited < RESEND_WAIT_SECONDS:
@@ -116,9 +133,7 @@ def request_code(body: PhoneIn, db: Session = Depends(get_db)) -> dict:
 def resend_code(body: PhoneIn, db: Session = Depends(get_db)) -> dict:
     """Send a new code to a phone that already requested one. The previous code stops working."""
     phone = _phone_or_422(body.phone)
-    if _latest_code(db, phone) is None:
-        raise ApiError(404, "NO_PENDING_CODE", "Request a code first.")
-    result = _issue_code(db, phone)
+    result = _issue_code(db, phone, require_pending=True)
     result["message"] = "new code sent"
     return result
 
@@ -134,16 +149,11 @@ def _has_saved_preferences(db: Session, user: User) -> bool:
 def verify(body: VerifyIn, db: Session = Depends(get_db)) -> dict:
     """Check the code; create the account on first login; return a token."""
     phone = _phone_or_422(body.phone)
+    _lock_phone(db, phone)
     now = utcnow()
 
-    stmt = (
-        select(OtpCode)
-        .where(OtpCode.phone == phone, OtpCode.used_at.is_(None))
-        .order_by(OtpCode.created_at.desc())
-        .limit(1)
-    )
-    otp = db.scalars(stmt).first()
-    if otp is None:
+    otp = _latest_code(db, phone)
+    if otp is None or otp.used_at is not None:
         raise ApiError(401, "INVALID_CODE", "This code is incorrect.")
 
     if otp.attempts >= MAX_ATTEMPTS:

@@ -1,6 +1,6 @@
 # معمارية الفرونت ورحلة البيانات
 
-بدأ الدليل مع التقسيم في ١٨ أكتوبر ٢٠٢٦. آخر تحديث: ٤ نوفمبر ٢٠٢٦.
+بدأ الدليل مع التقسيم في ١٨ أكتوبر ٢٠٢٦. آخر تحديث: ١١ نوفمبر ٢٠٢٦.
 يوصف هنا التنفيذ المحلي؛ نشر خدمات التفضيلات والتوصيات والبحث واختبارها حيًا ما زال مطلوبًا.
 التصاميم المرجعية داخل `Docs/mockups/`، والتطبيق داخل `frontend/`.
 
@@ -21,7 +21,7 @@
 ## الرئيسية والقائمة
 
 - يفتح التطبيق على الرئيسية دون تسجيل دخول، مع تبويبات الرئيسية والمحفوظة وحسابي.
-- الرئيسية تجمع التحية والموقع، «ذوق يدلك»، البحث، اقتراح اليوم والقائمة. تخطيط الطلعات موسوم «قريبًا».
+- الرئيسية تجمع التحية والموقع، «ذوق يدلك»، البحث، اقتراح اليوم والقائمة. زر إنشاء الجلسة يفتح النموذج ثم الدعوة والتفضيلات والاقتراحات حسب الباك.
 - المحفوظة تستخدم `savedRestaurants` وزر الحفظ المشترك. صفحة الحساب `AccountScreen` تقرأ بيانات الحساب من الخادم وتعرض التفضيلات والمحفوظة والخروج، مع إبقاء الخروج متاحًا عند فشل القراءة.
 - صور البطاقات توضيحية حسب التصنيف وليست صورًا موثقة للمطعم نفسه.
 
@@ -36,13 +36,15 @@
 4. الخادم مسؤول عن الفلترة قبل التقسيم وعن `total` الصحيح.
 5. يتجاهل hook الردود المتأخرة ولا يعرض نتائج بحث سابق تحت النص الجديد.
 
-البحث الشامل مجهز لكنه معطل عبر `EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false` حتى نشر #46. في هذه الحالة يخفي `HomePage` خانة البحث بالكامل. زر «ألقى مطعم» يزيد `scrollToResultsRequest` في `RestaurantList`؛ تقيس القائمة ارتفاع مقدمتها ثم تنتقل إلى البطاقات. لا يُفتح بحث غير مدعوم، ولا تُفلتر أول ٢٠ نتيجة محليًا. بعد تفعيل الدعم تعود الخانة والبحث الشامل، ويظل الزر ينقل إلى القائمة.
+البحث الشامل بالاسم أو المطبخ مفعّل بعد التحقق من API في ١٠ نوفمبر، ويمكن تعطيله لخادم أقدم عبر `EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false`. زر «ألقى مطعم» ينقل إلى صفوف القائمة. الحالة `selectedAction` في `HomePage` تنقل الأخضر بين التصفح وإنشاء الطلعة. لا توجد فلترة محلية لأول ٢٠ مطعمًا، ولا معامل حي مستقل في الباك الحالي.
 
 ### الموقع والاقتراحات
 
-`HomeLocationBar` يعرض `personalSuggestions/LocationPicker`: GPS عند طلبه، أو حي من GET `/districts`، أو الاستمرار دون موقع. يستخدم الحي معرف الباك النصي. البحث داخل قائمة الأحياء محلي؛ لا تُختلق معرفات من أسماء.
+`HomeLocationBar` يعرض `personalSuggestions/LocationPicker`: GPS عند طلبه، أو حي من GET `/districts`، أو الاستمرار دون موقع. يستخدم الحي معرف الباك النصي. البحث داخل قائمة الأحياء محلي؛ لا تُختلق معرفات من أسماء. يحفظ `personalSuggestions/chosenLocation` آخر موقع اختاره الحساب في الذاكرة فقط، فالرئيسية التي تُفتح من جديد بعد حفظ التفضيلات تكمل بنفس الموقع دون سؤال (#155)، والحساب الآخر يبدأ بدون موقع.
 
-`HomeTodayPick` يجمع حالة التفضيلات والموقع مع `usePersonalRecommendations`. يرسل GPS أو `district_id` مع رمز الحساب إلى `/users/me/recommendations`. بعد الرد يظهر اقتراح اليوم مع سبب عربي، ويمكن عرض بقية النتائج. تغيير الحساب أو الموقع يعزل الردود السابقة، والحفظ أو تحديث الرئيسية يعيد الطلب.
+`HomePage` يجمع حالة التفضيلات مع `usePersonalRecommendations` في طلب واحد، ويمرر أول نتيجة إلى `HomeTodayPick` والبقية إلى `RestaurantList` تحت «مطاعم أخرى على ذوقك». قسم المطاعم العامة منفصل وواضح؛ البحث يخفي الاقتراحات الشخصية. تغيير الحساب أو الموقع يعزل الردود السابقة. يبقى سبب الاقتراح والمسافة في تفاصيل كل بطاقة. `personalSuggestions/mocks.ts` بيانات معاينة موسومة، وليست خوارزمية بديلة.
+
+`chosenLocation.ts` يحتفظ باختيار الموقع للحساب نفسه أثناء تشغيل التطبيق. بعد حفظ التفضيلات تعود الشاشة بـ`dismissTo` إلى الرئيسية الموجودة، ثم تعيد قراءة التفضيلات والتوصيات دون طلب GPS. لا يتغير عقد الشبكة ولا قاعدة البيانات.
 
 لا تتحول القائمة العامة إلى توصية شخصية عند تعطل الخدمة. عدم وجود موقع يفتح إجراء تحديده؛ وعدم وجود تفضيلات يفتح النموذج.
 
@@ -55,6 +57,28 @@
 5. الرجوع العلوي أو سحب النافذة في iOS يغلقها دون طلب جديد أو تغيير ترتيب القائمة.
 
 سبب الاختيار يأتي من التوصية بعد التفضيلات فقط. `presentation.ts` لا يحول `price_tier` إلى مبلغ ولا يخترع بيانات مفقودة.
+
+## إنشاء الجلسة والرحلة المشتركة — ١٠ نوفمبر ٢٠٢٦
+
+`CreateSessionScreen` يعرض النموذج المعتمد، و`SessionEditors` يحرر الاسم والموعد والحي. `SessionScreen` يدير الدعوة والتحديث والجاهزية ونسخة التفضيلات والاقتراحات. الواجهة تعيد استخدام `PreferencesForm` والصحن عبر المدخل العام؛ لا تغير تفضيلات الحساب عند تعديل ذوق الجلسة.
+
+الحي مطلوب في عقد الباك الحالي، والمسافة من مركزه؛ لا midpoint آلي ولا GPS في رحلة الجلسة. `actions` و`readiness` تحددان الأزرار، والنتائج لا تبدأ حتى يطلبها المنظم بعد جاهزية الجميع. `SessionGenerating` يعرض انتظار هيلة أثناء الطلب الفعلي. `SessionVoting` يربط بطاقات المطاعم بطلبات `voting` العامة، ويعرض مراجعة الأصوات ونتيجة الخادم. لا تختار الواجهة الفائز محليًا. [الشرح المبسط لفهد وشذى، الملفات، العقد والمخطط](Session-Flow.ar.md).
+
+الترويسة والورقة والرسمة مشتركة بين الإنشاء والدعوة والانضمام والحالة. `SessionVisuals` يضم مراحل الرحلة الأربع. `SessionLayout` يجمع الملخصات والزر السفلي الثابت. `features/voting` يملك أغلفة الأصوات والنتيجة وطابور حفظها؛ تستدعيه الجلسات عبر `index.ts` مع اعتماد معلن في `architecture.json`. مسار الدخول يسمح بالعودة إلى `/sessions/new` فقط؛ المستخدم الجديد يكمل التفضيلات أولًا. لا تغيير في SQL أو ERD.
+
+تحديث شكل هيلة: `SessionGenerating.tsx` يرتب اسم الجلسة ثم الشخصية والعنوان، وعوامل الاقتراح الثلاثة وحالة الانتظار. يستخدم `useWindowDimensions` لتصغير مساحة الرسمة في الشاشات القصيرة أو عند تكبير الخط؛ يبقى المحتوى قابلًا للتمرير. الملف `assets/images/sessions/haila-gathering.webp` هو الشخصية المدمجة بخلفية شفافة، ويستخدمه أيضًا `HailaTip` في `SessionVisuals.tsx`. الحركات الزخرفية تتوقف مع إعداد تقليل الحركة. هذه طبقة عرض فقط: لا مسار API جديد ولا اعتماد ميزة جديد، ولا تغيير على مخطط البيانات أو تسلسل طلب الاقتراحات. دليل الشكل في `Docs/mockups/haila-generation/`.
+
+## إعادة الجولة داخل الطلعة — #91
+
+`features/sessions/components/SessionRetry.tsx` يعرض التأكيد فقط. `SessionScreen.tsx` يملك صلاحية المنظم والقفل أثناء الطلب وتحديث الحالة. `api/round.ts` يملك العقد المبدئي والتحقق من معرف الجولة؛ `api/outing.ts` يضيف المعرف لطلبات التفضيلات والجاهزية والخطة فقط عند تفعيل دعم الجولات وتوفره. لا يرسل المكون البصري طلبات بنفسه.
+
+`shared/api/config.ts` يملك `ROUND_RETRY_ENABLED` المشترك. عندما يكون مغلقًا، تخفي `SessionScreen` قسم الإعادة بالكامل وتتجاهل أغلفة الشبكة هوية الجولة المبكرة؛ تبقى أجسام طلبات الباك الحالية كما هي. `features/voting/api.ts` و`result.ts` يضيفان هوية الجولة ويتحققان منها فقط عند تفعيل الراية. `useVoting.ts` يعزل طابور الحفظ والاستعادة حسب الجولة، و`SessionVoting` يعاد تركيبه عند تغيرها. تغيير الجولة يغلق نموذج التفضيلات القديم ويمسح الخطة والنتيجة من العرض؛ الرد المتأخر لا يعيدها. التفضيلات المحفوظة تأتي من حالة الجولة الجديدة، والجاهزية تحتاج تأكيدًا جديدًا.
+
+لا اعتماد جديد بين الميزات: `sessions → voting` يبقى عبر المدخل العام، وملفات `app` لم تتغير. `flowMocks.ts` يحاكي نفس الدعوة والمشاركين وتصفير الجاهزية والأصوات في الذاكرة. API الجولات الحقيقي وملكية الجداول وأرشفة النتائج في قاعدة البيانات تنتظر #90؛ لم تُنفذ تغييرات SQL/ERD. [العقد المبدئي](Session-Retry-Contract.md) مفصول عن API الحالي، وراية التفعيل الحقيقية مغلقة افتراضيًا. نجح `npm run check` مع ١٠٦ اختبارات، ومنها تبديل الجولة وإعادة التحميل أثناء طلب حفظ قديم. تنتظر استعادة الأصوات في `useVoting` اكتمال الحفظ الجاري قبل قراءة الخادم وفتح التصويت مجددًا.
+
+تحتفظ `SessionScreen` بالخطة حسب معرف الطلعة والجولة والتوكن ما دامت الشاشة مفتوحة. تنتهي القراءة الدورية عند النتيجة إذا لم تدعم الجلسة الإعادة؛ مع دعمها تُقرأ الحالة فقط لاكتشاف الجولة التالية. مسار #159 الحالي هو `/sessions/[id]`، وهو نقطة توحيد شاشة الجاهزية من #157 بالتنسيق مع فهد؛ الاتفاق معه لم يتم ضمن هذا التغيير.
+
+أصول `assets/images/sessions/` أربعة ملفات WebP بحجم إجمالي 211,898 بايت، مع الحفاظ على نسب الرسوم وشفافية هيلة. حُذفت الصورة غير المستخدمة `haila.png`. بقي `useRestaurantImage` في بطاقة المطعم مع بديل التصنيف، وأُبقيت بيانات السعر والسبب بعد حل تعارضات `deployment`. لا تغيير على حدود الميزات أو `architecture.json` أو SQL/ERD من هذه الإصلاحات.
 
 ## اتجاه العناصر ولوحة المفاتيح
 
@@ -184,6 +208,10 @@ iPhone 17 Pro بنظام iOS 26.4، وظهر الفرق بين الوزنين.
 
 ```text
 Portfolio-Project/
+├── database/
+│   ├── migrations/versions/0008_general_restaurants.py
+│   ├── seed_general_restaurants.py
+│   └── seed/general_restaurants.json
 ├── architecture.json
 ├── package.json
 ├── Docs/
@@ -284,6 +312,7 @@ Portfolio-Project/
         │   │       └── AllergyCard.tsx
         │   ├── personalSuggestions/
         │   │   ├── api.ts
+        │   │   ├── chosenLocation.ts
         │   │   ├── districts.ts
         │   │   ├── location.ts
         │   │   ├── LocationPicker.tsx
@@ -295,13 +324,16 @@ Portfolio-Project/
         │   │   ├── SaveRestaurantButton.tsx
         │   │   └── index.ts (وبقية ملفات الميزة)
         │   ├── sessions/
-        │   │   ├── api/join.ts
-        │   │   ├── api/state.ts
-        │   │   ├── components/
+        │   │   ├── api/{create,join,outing,state}.ts
+        │   │   ├── CreateSessionScreen.tsx
+        │   │   ├── SessionScreen.tsx
+        │   │   ├── components/{SessionChrome,SessionEditors,SessionVisuals}.tsx
+        │   │   ├── model.ts
+        │   │   ├── identity.ts
+        │   │   ├── flowMocks.ts
         │   │   ├── JoinSessionScreen.tsx
         │   │   ├── LobbyScreen.tsx
         │   │   ├── useSessionState.ts
-        │   │   ├── access.ts
         │   │   ├── guestPass.ts
         │   │   ├── mocks.ts
         │   │   └── index.ts
@@ -343,7 +375,7 @@ Portfolio-Project/
 - `HomePage`: يجمع مقدمة الرئيسية والبحث والموقع والتوصيات والقائمة ويشترك في تحديثها.
 - `HomeTodayPick`: يركب حالات التفضيلات والموقع ونتائج التوصيات.
 - `personalSuggestions`: طلبات الأحياء والتوصيات، عزل الردود المتأخرة ومنتقي الموقع.
-- `sessions`: الانضمام برمز وغرفة الانتظار: معاينة الدعوة، وانضمام العضو بحسابه والضيف باسمه فقط، وحفظ رمز الضيف لكل جلسة حتى لا ينضم مرتين، وتحديث حالة الجلسة كل ٤ ثوانٍ ما دامت الشاشة ظاهرة، وزر بدء التفضيلات للمنظّم.
+- `sessions`: إنشاء الجلسة والدعوة والانضمام وتحديث حالة المشاركين وتفضيلات كل مشارك والجاهزية وعرض اقتراحات الخادم. رمز الضيف محفوظ لكل دعوة؛ حساب المنظم مطلوب للإنشاء فقط. بعد الانضمام تعرض غرفة الانتظار المشاركين وتحدّث حالة الجلسة كل ٤ ثوانٍ ما دامت الشاشة ظاهرة، مع زر بدء التفضيلات للمنظّم.
 - `restaurants/api.ts`: يطلب صفحة محددة من ٢٠ مطعمًا عبر أداة الاتصال المشتركة دون رمز دخول، ويتحقق من الرد. يطلب أول صفحة عند عدم تمرير offset.
 - `useRestaurants.ts`: يدير البحث المؤجل وصفحة النتائج وحالة الطلب، ويحمي من الردود المتأخرة ويوفر إعادة المحاولة.
 - `RestaurantList`: عرض نتائج الخادم والبطاقات وحالات القائمة دون فلترة محلية للبحث.
@@ -405,7 +437,7 @@ export { SignUpScreen as default } from "@/features/auth";
 | `application/*` والجذر والتبويبات | شذى | تجميع المزايا والتنقل؛ استثناء محدد: `GuestInvitationPage.tsx` لفهد في #67 |
 | إعداد Expo والحزم وملف القفل وفحص المعمارية | شذى | تنسق تغييرات فهد المطلوبة في الملفات المشتركة |
 | `features/sessions/*` | مقسم بالملف | شذى: `CreateSessionScreen.tsx` و`api/create.ts`. فهد: الانضمام والانتظار والحالة والإجراءات وبقية API و`index.ts` |
-| `features/suggestions/*` و`features/results/*` | شذى | الاقتراحات والإعادة والنتيجة في المهام اللاحقة |
+| `features/sessions/SessionGenerating.tsx` و`SessionVoting.tsx` | شذى | انتظار الاقتراحات والبطاقات والتصويت والنتيجة؛ إعادة الجولة #91 تنتظر عقد الباك |
 | `features/voting/*` و`features/notifications/*` | فهد | التصويت والإشعارات بحسب سبرنتاتها |
 | `features/personalSuggestions/*` | شذى | واجهة الترشيح الشخصي #49؛ خوارزمية الباك عند عاصم |
 | `features/groups/*` — مؤجل | مقسم بالملف | شذى: القائمة والتفاصيل و`api/groups.ts` و`index.ts`. فهد: `components/AttendanceCard.tsx` و`api/attendance.ts` و`useAttendance.ts` |
@@ -421,9 +453,7 @@ export { SignUpScreen as default } from "@/features/auth";
 
 ## الأعمال المتبقية للربط والميزات القادمة
 
-المصدر الحالي هو [تسليم ٢ نوفمبر](Frontend-Delivery-2026-11-02.ar.md): خدمات التفضيلات والتوصيات والأحياء والبحث تنتظر النشر والتحقق. الواجهة المحلية مجهزة لهذه الطلبات، والتصفح العام يبقى مستقلًا.
-
-#58 يحتاج إعداد نسخة تطوير الآيفون المشتركة وتثبيتها على الأجهزة المطلوبة؛ نجاح السيميوليتر أو Expo Go لا يغطيه. التخطيط والطلعات والمجموعات والتصويت مهام لاحقة وليست ضمن هذا التسليم. لا تُغلق الإيشيوز بناءً على Mock.
+المصدر الحالي هو [تسليم سبرنت ٢ و٣](Sprint-2-3-Frontend.ar.md)، مع تفاصيل الرحلة في [دليل الجلسة](Session-Flow.ar.md). التسليم المحلي يضم الإنشاء والتفضيلات والتصويت والنتيجة؛ إعادة الجولة #91 تنتظر #90، وفلترة الحي وجلب تفاصيل مطعم مستقل ينتظران عقد الباك. لا تُغلق المهام بناءً على Mock. بناء الآيفون #58 منفصل ولم يُحدّث الجهاز في هذا التغيير.
 
 ## كيف تتصل الشاشة بالباك؟
 
@@ -466,7 +496,7 @@ flowchart LR
 
 الأسهم التالية تعني «يستورد من».
 الميزات الموجودة هي `auth` و`restaurants` و`preferences` و`savedRestaurants` و`personalSuggestions` و`sessions`.
-يعتمد `preferences` على `auth`، و`savedRestaurants` على `restaurants` و`auth`، و`personalSuggestions` على `restaurants`، و`sessions` على `auth`. الاعتماديات معلنة في `architecture.json` وتستخدم المداخل العامة.
+يعتمد `preferences` على `auth`، و`savedRestaurants` على `restaurants` و`auth`، و`personalSuggestions` على `restaurants`، و`sessions` على `auth` و`preferences` و`personalSuggestions` و`restaurants`. الاعتماديات معلنة في `architecture.json` وتستخدم المداخل العامة.
 يبقى النموذج نفسه قابلًا لإعادة الاستخدام دون طلبات حساب؛ غلاف الحساب هو الذي يستدعي أدوات الجلسة.
 
 ```mermaid
@@ -520,9 +550,9 @@ npx expo start
 | [#22 — إنشاء جلسة مباشرة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/22) | شذى | `frontend/src/features/sessions/`، `frontend/src/app/`، `frontend/src/application/` |
 | [#24 — الانتظار والتحديثات المباشرة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/24) | فهد | `frontend/src/features/sessions/`، `frontend/src/app/` |
 | [#25 — تفضيلات الحساب](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/25) | شذى | `frontend/src/features/preferences/`، `frontend/src/app/` |
-| [#32 — الاقتراحات وبطاقة المطعم](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/32) | شذى | `frontend/src/features/restaurants/`، `frontend/src/features/suggestions/`، `frontend/src/app/` |
+| [#32 — الاقتراحات وبطاقة المطعم](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/32) | شذى | `frontend/src/features/restaurants/`، `frontend/src/features/sessions/`، `frontend/src/app/` |
 | [#33 — التصويت والمراجعة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/33) | فهد | `frontend/src/features/voting/`، `frontend/src/app/` |
-| [#34 — النتيجة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/34) | شذى | `frontend/src/features/results/`، `frontend/src/app/` |
+| [#34 — النتيجة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/34) | شذى | `frontend/src/features/sessions/SessionVoting.tsx`، `frontend/src/app/` |
 | [#44 — المجموعات المحفوظة — مؤجل](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/44) | شذى | `frontend/src/features/groups/`، `frontend/src/app/` |
 | [#45 — الإشعارات والروابط](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/45) | فهد | `frontend/src/features/notifications/` |
 | [#47 — البحث والفلترة العامة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/47) | شذى | `frontend/src/features/restaurants/`، `frontend/src/app/` |
@@ -537,7 +567,7 @@ npx expo start
 | [#79 — الحضور والإزالة — مؤجل](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/79) | فهد | `frontend/src/features/groups/` |
 | [#81 — تفاصيل المطعم](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/81) | شذى | `frontend/src/features/restaurants/`، `frontend/src/app/` |
 | [#89 — مغادرة الجلسة وإزالة مشارك](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/89) | فهد | `frontend/src/features/sessions/` |
-| [#91 — لا نتائج وإعادة المحاولة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/91) | شذى | `frontend/src/features/suggestions/`، `frontend/src/app/` |
+| [#91 — لا نتائج وإعادة المحاولة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/91) | شذى | `frontend/src/features/sessions/`، `frontend/src/app/` |
 | [#97 — الرئيسية والشريط السفلي](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/97) | شذى | `frontend/src/application/`، `frontend/src/app/` |
 | [#102 — قائمة المطاعم العامة](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/102) | شذى | `frontend/src/features/restaurants/`، `frontend/src/application/` |
 
@@ -547,7 +577,7 @@ npx expo start
 
 من متطلبات التدفقات القادمة إتاحة التخطيط المباشر والدعوات
 دون اشتراط إنشاء مجموعة محفوظة، مع الحفاظ على قيود المشاركين.
-وجود بطاقة الجلسة الحالية لا يعني تنفيذ هذه التدفقات.
+الإنشاء والدعوات والتفضيلات والتصويت والنتيجة منفذة حسب دليل الجلسة؛ المجموعات الدائمة والإشعارات ليست ضمن هذا التغيير.
 
 
 ## التحقق من الرئيسية — ٢١ أكتوبر ٢٠٢٦
@@ -583,3 +613,13 @@ npx expo start
 ### تحديث الرئيسية في الريبو — ٢ نوفمبر ٢٠٢٦
 
 التحية والموقع والتوصيات والقائمة موثقة في بداية هذا الملف. حالة `district` متاحة إلى جانب GPS و`none`، والتفاصيل نافذة مستقلة من أسفل؛ لم يعد التوسع داخل صف القائمة هو السلوك المعتمد. فحص ٣ نوفمبر يشمل ٤٩ اختبارًا؛ ودليل تجربة الويب والسيميوليتر السابقة كما في [قائمة التسليم](Frontend-Delivery-2026-11-02.ar.md). نجاح التوصيات الحية ما زال ينتظر الباك.
+
+
+## DB-13 — بيانات الرئيسية والصورة الاختيارية
+
+المسار المنفذ: ملف العينة الاصطناعية ← أمر الإدخال ← PostgreSQL ←
+`GET /restaurants` ← `RestaurantList` ← البطاقة والتفاصيل. لا يعتمد هذا المسار
+على التفضيلات أو محرك الترشيح. الملف `features/restaurants/useRestaurantImage.ts`
+يختار رابط HTTPS أو صورة التصنيف عند غياب الرابط أو فشل تحميله؛ وصف الصورة
+التعبيرية يظهر فقط عند استخدام البديل. `image_url` اختياري في نوع الفرونت
+للتوافق مع ردود الخادم الأقدم. قائمة المحفوظات تستخدم الملخص نفسه.

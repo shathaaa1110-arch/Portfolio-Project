@@ -4,10 +4,11 @@
     "features": {
       "auth": [],
       "restaurants": [],
+      "voting": [],
       "preferences": ["auth"],
       "savedRestaurants": ["restaurants", "auth"],
       "personalSuggestions": ["restaurants"],
-      "sessions": ["auth"]
+      "sessions": ["auth", "preferences", "personalSuggestions", "restaurants", "voting"]
     }
   }
 }

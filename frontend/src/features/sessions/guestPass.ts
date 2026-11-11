@@ -17,33 +17,46 @@ const storage = {
   remove: (key: string) =>
     Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.removeItem(key)) : SecureStore.deleteItemAsync(key),
 };
+// Keep a newly joined guest usable even when private browsing blocks persistent storage.
+const memory = new Map<string, GuestPass>();
+const removed = new Set<string>();
 
-// One saved pass per outing; a guest token works for its own outing only.
-function keyFor(outingId: string): string {
-  return `thouq.guest.${outingId}`;
+export async function removeGuestPass(code: string): Promise<void> {
+  memory.delete(code);
+  removed.add(code);
+  try { await storage.remove(keyFor(code)); } catch { /* A new join can still work in memory. */ }
+}
+
+// One saved pass per invite code, so the same guest is not added twice.
+function keyFor(code: string): string {
+  return `thouq.guest.${code}`;
 }
 
 // Joining already worked, so a storage failure must not undo it.
-export async function saveGuestPass(pass: GuestPass): Promise<void> {
+export async function saveGuestPass(code: string, pass: GuestPass): Promise<void> {
   const saved: GuestPass = {
     outing_id: pass.outing_id,
     participant_id: pass.participant_id,
     guest_token: pass.guest_token,
   };
+  memory.set(code, saved);
+  removed.delete(code);
   try {
-    await storage.set(keyFor(pass.outing_id), JSON.stringify(saved));
+    await storage.set(keyFor(code), JSON.stringify(saved));
   } catch {
     // The guest stays joined; they just cannot come back after a refresh.
   }
 }
 
-// Returns the saved pass for this outing, or null when there is none or it cannot be read.
-export async function loadGuestPass(outingId: string): Promise<GuestPass | null> {
+// Returns the saved pass for this code, or null when there is none or it cannot be read.
+export async function loadGuestPass(code: string): Promise<GuestPass | null> {
+  if (removed.has(code)) return null;
+  if (memory.has(code)) return memory.get(code)!;
   try {
-    const saved = await storage.get(keyFor(outingId));
+    const saved = await storage.get(keyFor(code));
     const pass = saved ? JSON.parse(saved) : null;
     if (
-      pass?.outing_id === outingId &&
+      typeof pass?.outing_id === "string" &&
       typeof pass?.participant_id === "string" &&
       typeof pass?.guest_token === "string"
     ) {
@@ -53,13 +66,4 @@ export async function loadGuestPass(outingId: string): Promise<GuestPass | null>
     // A broken saved value counts as no pass.
   }
   return null;
-}
-
-// The server refused this pass, so it can never work again; dropping it lets the guest join anew.
-export async function forgetGuestPass(outingId: string): Promise<void> {
-  try {
-    await storage.remove(keyFor(outingId));
-  } catch {
-    // At worst the old pass stays, and the guest sees the same no-access message again.
-  }
 }

@@ -1,15 +1,15 @@
-import { router, useLocalSearchParams, type Href } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppButton, AppText } from "@/shared/components";
 import { layoutDirection } from "@/shared/layout";
 import { theme } from "@/shared/theme";
-import { outingToken } from "./access";
 import { startPreferences } from "./api/state";
 import { InviteCard } from "./components/InviteCard";
 import { ParticipantRow } from "./components/ParticipantRow";
 import { StageIndicator } from "./components/StageIndicator";
+import { outingToken } from "./identity";
 import { useSessionState } from "./useSessionState";
 
 // Shown on screen only; the server enforces the limit.
@@ -20,7 +20,7 @@ const NO_ACCESS = ["NO_ACCESS", "INVALID_TOKEN", "TOKEN_EXPIRED", "NOT_A_PARTICI
 // The waiting room: who joined, the invite code, and what happens next.
 export function LobbyScreen() {
   // A link like /lobby?id=… opens one outing.
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, code } = useLocalSearchParams<{ id?: string; code?: string }>();
   // Web pages are built ahead without the link's id, so show the room only once the page runs.
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
@@ -29,7 +29,7 @@ export function LobbyScreen() {
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         {!ready ? null : typeof id === "string" && id !== "" ? (
-          <Lobby outingId={id} />
+          <Lobby outingId={id} code={code ?? ""} />
         ) : (
           <Problem text="ما وصلنا رقم الجلسة." action="الانضمام برمز" onPress={() => router.replace("/join")} />
         )}
@@ -38,8 +38,8 @@ export function LobbyScreen() {
   );
 }
 
-function Lobby({ outingId }: { outingId: string }) {
-  const { state, error, refresh } = useSessionState(outingId);
+function Lobby({ outingId, code }: { outingId: string; code: string }) {
+  const { state, error, refresh } = useSessionState(outingId, code);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState("");
 
@@ -50,18 +50,15 @@ function Lobby({ outingId }: { outingId: string }) {
   // because this runs again only when needsPreferences itself changes.
   useEffect(() => {
     if (needsPreferences) {
-      openPreferences(outingId);
+      openPreferences(outingId, code);
     }
-  }, [needsPreferences, outingId]);
+  }, [needsPreferences, outingId, code]);
 
   async function handleStart() {
     setStarting(true);
     setStartError("");
     try {
-      const token = await outingToken(outingId);
-      if (token === null) {
-        throw new Error("No pass for this outing.");
-      }
+      const token = await outingToken(outingId, code);
       await startPreferences(outingId, token);
       refresh();
     } catch {
@@ -129,7 +126,7 @@ function Lobby({ outingId }: { outingId: string }) {
         <AppText style={styles.note}>ننتظر المنظّم يبدأ مرحلة التفضيلات.</AppText>
       )}
       {state.status === "preferences" && (
-        <AppButton title="تفضيلاتي لهذه الجلسة" style={styles.button} onPress={() => openPreferences(outingId)} />
+        <AppButton title="تفضيلاتي لهذه الجلسة" style={styles.button} onPress={() => openPreferences(outingId, code)} />
       )}
     </>
   );
@@ -145,9 +142,9 @@ function Problem({ text, action, onPress }: { text: string; action: string; onPr
   );
 }
 
-// FE-11 builds this screen. Typed routes only learn its path once its file exists, hence the cast.
-function openPreferences(outingId: string) {
-  router.push(`/session-preferences?id=${encodeURIComponent(outingId)}` as unknown as Href);
+// The outing screen holds each person's preferences for this outing; the code finds a guest's pass.
+function openPreferences(outingId: string, code: string) {
+  router.push({ pathname: "/sessions/[id]", params: { id: outingId, code } });
 }
 
 // The meeting day and time in Arabic; empty when the date cannot be read.

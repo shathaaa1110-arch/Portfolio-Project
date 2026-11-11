@@ -124,7 +124,7 @@ Saudi Arabia has roughly 70,000 restaurants, around 18,000 of them in Riyadh. Th
 ### Won't Have (this release) — explicitly out of scope
 
 - Reservations and restaurant-side integration
-- AI-based personalization
+- Advanced personalization
 - Publishing to the app stores
 
 ---
@@ -147,7 +147,7 @@ Saudi Arabia has roughly 70,000 restaurants, around 18,000 of them in Riyadh. Th
 
 | Risk | Likelihood | Impact | Mitigation | Owner |
 | --- | --- | --- | --- | --- |
-| Scope creep — reservations, AI, extra features pulled forward | High | High | The Won't Have list is fixed for this release; new ideas go to the roadmap, never into the current sprint | Shatha |
+| Scope creep — reservations, advanced personalization, extra features pulled forward | High | High | The Won't Have list is fixed for this release; new ideas go to the roadmap, never into the current sprint | Shatha |
 | Tasks take longer than estimated | High | Medium | Break work into items of two days or less, review progress weekly, and decide in advance what gets dropped first | Shatha |
 | Other coursework deadlines compete for time | High | Medium | Map known deadlines in advance and lighten the sprint in those weeks | Shatha |
 | User testing gets squeezed at the end | Medium | High | Recruit the five test groups during development, and run one early test at the end of sprint 1 | Hassan |
@@ -171,7 +171,7 @@ Saudi Arabia has roughly 70,000 restaurants, around 18,000 of them in Riyadh. Th
 ### Top three to watch from week one
 
 1. **Restaurant data** — without it there is no product.
-2. **Scope creep** — reservations and AI are the most tempting distractions.
+2. **Scope creep** — reservations and advanced personalization are the most tempting distractions.
 3. **Task slippage** — four development weeks cannot absorb accumulated delay.
 
 ---

@@ -17,7 +17,9 @@ from app.services.auth.models import User  # Register the referenced account tab
 # Outing stages, in order (TechnicalDoc section 2, "Outing status").
 INVITE, PREFERENCES, VOTING, TIEBREAK, RESULT = "invite", "preferences", "voting", "tiebreak", "result"
 # Participant attendance.
-PENDING, CONFIRMED, DECLINED = "pending", "confirmed", "declined"
+PENDING, CONFIRMED, DECLINED, REMOVED = "pending", "confirmed", "declined", "removed"
+# No longer in the outing: left by themselves (declined) or removed by the organizer (BE-29).
+GONE = (DECLINED, REMOVED)
 
 
 def now_utc() -> datetime:

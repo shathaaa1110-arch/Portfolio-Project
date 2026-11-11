@@ -9,13 +9,14 @@ from app.services.plan.engine import EXCLUDED_FLAGS, EXCLUDED_VENUES, Restaurant
 FLAG_SEPARATOR = "|"  # restaurants.flags is text (database/load_place_details.py)
 KM_PER_DEGREE = 111.0
 
-# Only rows the engine could ever accept: known hours and spend, inside the budget, and inside the
+# Only rows the engine could ever accept: known hours, spend and location, inside the budget, and inside the
 # distance box when one is given. The engine still checks every rule; this only keeps the load small.
 CANDIDATES_SQL = text("""
     SELECT id, cuisine, latitude, longitude, spend_low, spend_high, quality_score, brand_id,
            venue_type, flags, opening_hours
     FROM restaurants
     WHERE opening_hours->>'days_open' = '7' AND spend_low IS NOT NULL AND spend_high IS NOT NULL
+      AND latitude IS NOT NULL AND longitude IS NOT NULL  -- optional since 0008; distance needs both
       AND (venue_type IS NULL OR NOT (venue_type = ANY(:venues)))
       AND (CAST(:budget_max AS INTEGER) IS NULL OR spend_low <= :budget_max)
       AND (CAST(:budget_min AS INTEGER) IS NULL OR spend_high >= :budget_min)

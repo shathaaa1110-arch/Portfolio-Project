@@ -174,7 +174,7 @@ def test_all_ready_counts_confirmed_people_only(api):
     assert last["all_ready"] is True and last["ready_count"] == last["total_count"] == 2
     state = client.get(f"{BASE}/{oid}", headers=organizer).json()
     assert state["readiness"] == {"ready_count": 2, "total_count": 2}
-    assert [p["preferences_done"] for p in state["participants"]] == [True, True, False]
+    assert [p["preferences_done"] for p in state["participants"]] == [True, True]  # declined is not listed (BE-29)
 
 
 # ---------- a save and a stage change at the same moment (real transactions) ----------

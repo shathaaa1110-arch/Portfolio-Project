@@ -119,14 +119,22 @@ function polling({ token = "T", reply } = {}) {
     "expo-router": { useFocusEffect },
     "react-native": { AppState: app },
     "@/shared/api/errors": errors,
-    "./access": { outingToken: async () => token },
-    "./guestPass": { forgetGuestPass: async outingId => { calls.forgot.push(outingId); } },
+    "./identity": {
+      outingToken: async () => {
+        if (token === null) throw new errors.ApiError(401, "INVALID_TOKEN", "");
+        return token;
+      },
+    },
+    "./guestPass": {
+      loadGuestPass: async () => ({ outing_id: "o1", participant_id: "g1", guest_token: token }),
+      removeGuestPass: async code => { calls.forgot.push(code); },
+    },
     "./api/state": {
       loadOutingState: async () => { calls.load++; return reply ? reply(calls.load) : { name: `poll ${calls.load}` }; },
     },
   }, { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout });
   const view = {};
-  function Screen() { Object.assign(view, hook.useSessionState("o1")); return null; }
+  function Screen() { Object.assign(view, hook.useSessionState("o1", "TEST")); return null; }
   // Opening the screen plans the first request at once; advance(0) lets it run.
   const open = async () => { const screen = await render(Screen); await clock.advance(0); return screen; };
   const blur = () => act(async () => focus.set(false));
@@ -188,15 +196,15 @@ test("passing failures keep the last state; final ones stop until refresh and fo
   assert.deepEqual(calls.forgot, []);
   await clock.advance(4000); assert.equal(view.error, null); assert.equal(view.state.name, "poll 3");
   await clock.advance(4000); assert.equal(view.error.code, "NOT_A_PARTICIPANT"); assert.equal(clock.pending(), 0);
-  assert.deepEqual(calls.forgot, ["o1"]);
+  assert.deepEqual(calls.forgot, ["TEST"]);
   await clock.advance(20000); assert.equal(calls.load, 4);
   await act(async () => view.refresh()); await clock.advance(0); assert.equal(calls.load, 5);
 });
 
-test("without a pass for the outing it reports NO_ACCESS and asks nothing", async () => {
+test("without a pass for the outing it reports INVALID_TOKEN and asks nothing", async () => {
   const { clock, calls, view, open } = polling({ token: null });
   await open();
-  assert.equal(view.error.code, "NO_ACCESS"); assert.equal(calls.load, 0); assert.equal(clock.pending(), 0);
+  assert.equal(view.error.code, "INVALID_TOKEN"); assert.equal(calls.load, 0); assert.equal(clock.pending(), 0);
 });
 
 // The waiting room's components, with the app's real theme and fake native views.
@@ -258,7 +266,7 @@ test("refresh asks right away, and asks again right after a request that was alr
 });
 
 // The waiting room screen with fake polling, router and server; set `room` and update to show a new poll.
-function lobbyScreen({ params = { id: "o1" }, start } = {}) {
+function lobbyScreen({ params = { id: "o1", code: "TEST" }, start } = {}) {
   const room = { state: null, error: null };
   const calls = { push: [], replace: [], start: [], refresh: 0 };
   const Screen = load("features/sessions/LobbyScreen.tsx", {
@@ -270,7 +278,7 @@ function lobbyScreen({ params = { id: "o1" }, start } = {}) {
     "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
     "@/shared/components": shared,
     "@/shared/theme": theme,
-    "./access": { outingToken: async () => "T" },
+    "./identity": { outingToken: async () => "T" },
     "./api/state": { startPreferences: async (...args) => { calls.start.push(args); return start ? start() : { status: "preferences" }; } },
     "./components/InviteCard": { InviteCard: component("InviteCard", { Share: { share: async () => {} } }) },
     "./components/ParticipantRow": { ParticipantRow: component("ParticipantRow") },
@@ -291,6 +299,7 @@ const roomState = (status, organizer, meDone = false) => ({
   ],
 });
 const button = (root, title) => root.findAllByType("AppButton").find(node => node.props.title === title);
+const SESSION = { pathname: "/sessions/[id]", params: { id: "o1", code: "TEST" } };
 
 test("the organizer sees the room and starts preferences, and the next poll is asked at once", async () => {
   const lobby = lobbyScreen();
@@ -321,7 +330,7 @@ test("when preferences start, each person goes to their form once, and not when 
   await screen.update({});
   lobby.room.state = roomState("preferences", false);
   await screen.update({});
-  assert.deepEqual(lobby.calls.push, ["/session-preferences?id=o1"]);
+  assert.deepEqual(plain(lobby.calls.push), [SESSION]);
   assert(texts(screen.root).includes("٠ جاهزون"));
   await act(async () => button(screen.root, "تفضيلاتي لهذه الجلسة").props.onPress());
   assert.equal(lobby.calls.push.length, 2);
@@ -336,7 +345,7 @@ test("when preferences start, each person goes to their form once, and not when 
   late.room.state = roomState("preferences", false);
   const opened = await render(late.Screen);
   await opened.update({});
-  assert.deepEqual(late.calls.push, ["/session-preferences?id=o1"]);
+  assert.deepEqual(plain(late.calls.push), [SESSION]);
 });
 
 test("no access sends you to join; a missing id and an ended outing each read clearly", async () => {

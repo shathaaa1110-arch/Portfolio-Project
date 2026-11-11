@@ -2,9 +2,9 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { ApiError } from "@/shared/api/errors";
-import { outingToken } from "./access";
 import { loadOutingState, type OutingState } from "./api/state";
-import { forgetGuestPass } from "./guestPass";
+import { loadGuestPass, removeGuestPass } from "./guestPass";
+import { outingToken } from "./identity";
 
 // How often the waiting room asks for news while it is on screen.
 export const POLL_MS = 4000;
@@ -14,7 +14,7 @@ const FINAL_ERRORS = ["NO_ACCESS", "INVALID_TOKEN", "TOKEN_EXPIRED", "NOT_A_PART
 
 // Keeps one outing's state fresh while its screen is focused and the app is in front.
 // There is never more than one timer or one request at a time, however often the screen opens.
-export function useSessionState(outingId: string) {
+export function useSessionState(outingId: string, code: string) {
   const [state, setState] = useState<OutingState | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const pollNow = useRef(() => {});
@@ -43,10 +43,7 @@ export function useSessionState(outingId: string) {
         busy = true;
         let final = false;
         try {
-          token = token ?? (await outingToken(outingId));
-          if (token === null) {
-            throw new ApiError(401, "NO_ACCESS", "This device has no pass for this outing.");
-          }
+          token = token ?? (await outingToken(outingId, code));
           const next = await loadOutingState(outingId, token);
           if (focused) {
             setState(next);
@@ -56,10 +53,12 @@ export function useSessionState(outingId: string) {
           const failure = e instanceof ApiError ? e : new ApiError(0, "UNKNOWN_ERROR", String(e));
           final = FINAL_ERRORS.includes(failure.code);
           if (final) {
+            // Otherwise the join screen keeps sending the guest back here with the same refused pass.
+            if (token !== null && (await loadGuestPass(code))?.guest_token === token) {
+              await removeGuestPass(code);
+            }
             // Read the token again if someone asks to retry later.
             token = null;
-            // Otherwise the join screen keeps sending the guest back here with the same refused pass.
-            await forgetGuestPass(outingId);
           }
           if (focused) {
             // A passing failure keeps the last good state on screen.
@@ -99,7 +98,7 @@ export function useSessionState(outingId: string) {
         appState.remove();
         pollNow.current = () => {};
       };
-    }, [outingId]),
+    }, [outingId, code]),
   );
 
   // Ask right away, for example after the organizer starts the next stage.

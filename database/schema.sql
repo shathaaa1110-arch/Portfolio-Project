@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS preferences (
     )
 );
 
--- restaurants table
+-- restaurants table (created if absent by DB-15; search artifacts are migration-managed)
 CREATE TABLE IF NOT EXISTS restaurants (
     id INTEGER PRIMARY KEY,
     name_ar TEXT NOT NULL,
@@ -87,11 +87,11 @@ CREATE TABLE IF NOT EXISTS restaurants (
     brand_id INTEGER,
     cuisine TEXT NOT NULL,
     district TEXT NOT NULL,
-    latitude NUMERIC NOT NULL,
-    longitude NUMERIC NOT NULL,
-    spend_low INTEGER NOT NULL,
-    spend_high INTEGER NOT NULL,
-    price_tier SMALLINT NOT NULL,
+    latitude NUMERIC,
+    longitude NUMERIC,
+    spend_low INTEGER,
+    spend_high INTEGER,
+    price_tier SMALLINT,
     rating NUMERIC,
     rating_count INTEGER,
     quality_score NUMERIC,
@@ -100,8 +100,23 @@ CREATE TABLE IF NOT EXISTS restaurants (
     meal_fit_late_night SMALLINT,
     opening_hours JSONB,
     summary TEXT,
-    maps_url TEXT NOT NULL
+    maps_url TEXT,
+    image_url TEXT  -- DB-13: missing actual photo is NULL. Home uses a cuisine illustration
 );
+
+-- Saved restaurants (DB-15: migration 0006_saved_restaurants).
+-- Remove saved links explicitly before deleting either parent; no cascades.
+CREATE TABLE IF NOT EXISTS saved_restaurants (
+    user_id UUID NOT NULL,
+    restaurant_id INTEGER NOT NULL,
+    saved_at TIMESTAMPTZ NOT NULL DEFAULT now(),  -- 0007_saved_at (BE-33)
+    CONSTRAINT saved_restaurants_pkey PRIMARY KEY (user_id, restaurant_id),
+    CONSTRAINT saved_restaurants_user_id_fkey FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT saved_restaurants_restaurant_id_fkey FOREIGN KEY (restaurant_id)
+        REFERENCES restaurants(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS ix_saved_restaurants_restaurant_id ON saved_restaurants (restaurant_id);
 
 -- plan_items table
 CREATE TABLE IF NOT EXISTS plan_items (
@@ -130,7 +145,8 @@ CREATE TABLE IF NOT EXISTS votes (
     FOREIGN KEY (plan_item_id) REFERENCES plan_items(id)
 );
 
--- otp_codes table
+-- otp_codes table — DB-08, migration 0009_otp_codes; Authentica delivers only.
+-- The API verifies locally and serializes each phone’s code transactions.
 CREATE TABLE IF NOT EXISTS otp_codes (
     id UUID PRIMARY KEY,
     phone TEXT NOT NULL,
@@ -142,3 +158,20 @@ CREATE TABLE IF NOT EXISTS otp_codes (
 );
 
 CREATE INDEX IF NOT EXISTS ix_otp_codes_phone ON otp_codes (phone);
+
+-- Push notifications (BE-25: migration 0011_notification_events).
+CREATE TABLE IF NOT EXISTS notification_events (
+    id uuid PRIMARY KEY,
+    outing_id uuid NOT NULL REFERENCES outings(id),
+    round_key TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('voting_started', 'result')),
+    user_id uuid NOT NULL REFERENCES users(id),
+    push_token TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'failed')),
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at TIMESTAMPTZ,
+    CONSTRAINT notification_events_once UNIQUE (outing_id, round_key, kind, user_id)
+);
+CREATE INDEX IF NOT EXISTS ix_notification_events_pending ON notification_events (status) WHERE status = 'pending';

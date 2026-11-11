@@ -189,3 +189,175 @@ schema and no `alembic_version`. Its runtime role lacks SELECT on users/preferen
 so existing production/development row contents could not be inspected. No adoption
 or upgrade was applied there. The owner must run the documented preflight/adoption
 with a backup and sufficient permissions before deployment.
+
+## QA-01 — shared test helpers and synthetic data (2 November 2026)
+
+Evidence for [#56](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/56).
+
+- `backend/tests/conftest.py` adds `db_connection`, `db_session`, `api_client`
+  and `synthetic_restaurants`.
+- `backend/tests/test_db_helpers_integration.py` checks that committed rows are gone
+  in the next test, that a failed request's rollback keeps earlier test rows, and
+  that the API reads rows from the test transaction.
+- `backend/tests/test_synthetic_restaurants.py` checks that the sample matches the
+  table columns, has unique IDs, is clearly synthetic and has gaps on purpose.
+- CI runs the integration suite twice on the same database; the second run fails
+  if the first one left data behind.
+- `.gitignore` excludes `database/private/` for the real dataset.
+
+## DB-15 — saved-restaurant storage (4 November 2026)
+
+Local implementation evidence for [#130](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/130).
+Endpoints/authentication remain #126; no remote database or issue was changed.
+
+- The normal disposable reset applied the complete migration chain to a clean
+  database, ending at **0006_saved_restaurants**. Restaurants and their search
+  support are created when absent, followed by the saved relation.
+- DB-15 PostgreSQL acceptance: **18 passed**.
+- Full backend suite: **286 passed**, with one existing Starlette/AnyIO deprecation
+  warning. This includes repeated `upgrade head`, database identity/revision and
+  real health checks, plus existing unauthenticated restaurant browsing tests.
+- `git diff --check`: passed.
+- Constraint checks cover duplicate pairs, distinct pairs across accounts and
+  restaurants, null/nonexistent references, both restricted parent deletions,
+  explicit unsaving, and preservation of unrelated links and parents.
+- Migration checks cover populated parent tables with row comparisons, missing
+  restaurant creation with generated search text/indexes, incompatible/missing
+  prerequisites, an unexpected existing saved table, transactional rollback after
+  simulated DDL failure, and downgrade refusal without data loss.
+- A committed save is read through a new connection and isolated from another
+  account's query. Its test records are explicitly cleaned up afterward. Other
+  migration cases use isolated schemas and roll back all fixture changes.
+
+Commands executed from the repository root with the approved test URL supplied
+only to the test processes:
+
+```bash
+backend/.venv/bin/python database/reset_test_db.py
+backend/.venv/bin/python -m pytest -q backend/tests/test_saved_restaurant_schema_integration.py
+backend/.venv/bin/python -m pytest -q backend/tests
+```
+
+`TEST_DATABASE_URL` was not configured locally. Verification used the existing
+local PostgreSQL administrator connection to temporarily set a generated password
+for the restricted disposable `thouq_test` role. The prior credential was kept only
+in process memory and restored in a `finally` block, with restoration verified.
+No secret or `.env` file was written. The reset still used the repository's target,
+role-attribute and ownership checks; neither tests nor migrations ran as superuser.
+No development database was reset or migrated. Normal future runs should configure
+`TEST_DATABASE_URL` using the database setup guide.
+
+## DB-13 — general Home sample (#100), 10 November 2026
+
+Implementation evidence from the working tree based on commit `4dc75a7`. Environment: Python
+3.12.16, PostgreSQL 18.6, Alembic 1.20.0, Node 26.13.0. API was a real local
+Uvicorn process at `http://127.0.0.1:8013/api/v1`, `ENVIRONMENT=test`, using
+`thouq_test` as both database and role on `127.0.0.1:5432`. Credentials are omitted.
+No development/hosted database or role credentials were changed.
+
+| Check | Observed result |
+| --- | --- |
+| Apply pending migrations to the existing test database | Revision advanced from 0006 to `0008_general_restaurants` |
+| Full migration chain on a fresh isolated PostgreSQL schema | Passed; sample inserts after all eight revisions; schema rolled back |
+| Sample dry run | 8 would insert; transaction rolled back |
+| First committed sample import | 8 inserted, 0 unchanged |
+| Repeated committed sample import | 0 inserted, 8 unchanged |
+| Read-only sample count | 8 rows / 8 distinct IDs |
+| Backend non-integration suite | 129 passed, 246 deselected at time of run |
+| Focused PostgreSQL suites (DB-13, search, Saved API, Saved schema) | 51 passed after adding the fresh-chain case |
+| Final serializer compatibility run (personal recommendations, DB-13, public list/search, Saved API) | 49 passed; includes overlapping regression cases |
+| Frontend `npm run check` | Passed: TypeScript, architecture, restaurant API/image fallback, preferences, discovery and sessions |
+| Live HTTP `GET /health` | 200; `database: ok`, `environment: test` |
+| Live HTTP `GET /restaurants` without a token | 200; total 8, eight labelled demo rows, explicit nullable image field |
+| Live HTTP `GET /restaurants?search=Palm` without a token | 200; total 1 |
+| Working-tree whitespace check | `git diff --check` passed |
+
+The PostgreSQL checks cover preserved existing rows and saved links, required and
+optional column types, search indexes, idempotence, ID collisions, rollback after
+failed inserts, explicit missing values and non-null image serialization. Frontend
+checks cover absent, malformed, non-HTTPS and failed images, plus recovery when
+URLs change. The final serializer check also preserves callers that do not select
+photos, including personal recommendations; no recommendation logic changed. Existing dependency deprecation warnings remain (Starlette/AnyIO and
+React test renderer). An initial fixture failure caused by a semicolon in a schema
+comment was fixed; all focused checks subsequently passed.
+
+To reproduce, configure the approved test URL using the database README, activate
+the backend environment, and run from the repository root:
+
+```bash
+ENVIRONMENT=test alembic -c database/alembic.ini upgrade head
+ENVIRONMENT=test python database/seed_general_restaurants.py
+ENVIRONMENT=test python database/seed_general_restaurants.py --apply
+ENVIRONMENT=test python database/seed_general_restaurants.py --apply
+python -m pytest backend/tests -m 'not integration' -q
+python -m pytest backend/tests/test_general_restaurants_integration.py backend/tests/test_restaurant_search_integration.py backend/tests/test_saved_restaurants_api_integration.py backend/tests/test_saved_restaurant_schema_integration.py -q
+npm --prefix frontend run check
+ENVIRONMENT=test uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8013
+```
+
+In another terminal, request the three HTTP paths above. The temporary verification
+API was stopped after checks; eight demo rows remain in the disposable test database.
+The implementation tests do not duplicate or close the final read-only acceptance
+work in [#133](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/133).
+**Pending:** PR/commit link, application device/build identification, short recording,
+and linked #133 acceptance evidence. No device E2E completion is claimed.
+
+## DB-08 — login-code storage (#15), 10 November 2026
+
+Implementation evidence from the working tree based on `f436bda`, using Python
+3.12.16 and the local PostgreSQL test database.
+
+- [Migration 0009](migrations/versions/0009_otp_codes.py) creates local OTP storage,
+  or validates and preserves a compatible draft table while adding a missing phone
+  index. Incompatible definitions abort without rewriting rows. Downgrade is refused.
+- [Auth transactions](../backend/app/services/auth/router.py) serialize request,
+  resend and verification by normalized phone using transaction advisory locks.
+  Used/expired codes return no token; attempts and consumption persist atomically.
+- [PostgreSQL acceptance tests](../backend/tests/test_otp_storage_integration.py)
+  cover fresh storage, repeated upgrade, draft adoption, incompatible tables,
+  stored hashes/defaults/attempts/used time, expiry and its boundary, replacement,
+  SMS-failure rollback, concurrent verification for new/existing accounts,
+  concurrent attempts, concurrent issuance, and resend versus verification.
+  Separate connections also prove locks block the same phone, permit another
+  phone, and release at transaction end. Isolated schemas are removed afterward.
+- [Auth API tests](../backend/tests/test_auth_api.py) make replacement deterministic,
+  assert rejected codes return no token, check expiry after lock acquisition, and
+  prove failed replacement leaves the previous code usable.
+
+Observed results:
+
+| Check | Result |
+| --- | --- |
+| Backend unit suite (`-m 'not integration'`) | **131 passed** |
+| DB-08 PostgreSQL tests plus database/account integration checks | **28 passed** |
+| Upgrade existing disposable test database from 0008 to 0009 | Passed |
+| Repeated migration/head check | Passed; head is `0009_otp_codes` |
+| Test schema cleanup | Zero `db08_` schemas remain |
+| `git diff --check` | Passed |
+
+Both test runs reported the existing Starlette/AnyIO deprecation warning.
+All SMS delivery was mocked; no live SMS or device acceptance is claimed.
+The runtime API contract is unchanged. The ERD now includes `OTP_CODES` without
+an account foreign key, matching codes issued before sign-up.
+
+Reproduce with the approved local test URL configured per [README.md](README.md):
+
+```bash
+ENVIRONMENT=test backend/.venv/bin/python -m alembic -c database/alembic.ini upgrade head
+backend/.venv/bin/python -m pytest -q backend/tests -m 'not integration'
+backend/.venv/bin/python -m pytest -q backend/tests/test_otp_storage_integration.py backend/tests/test_database_integration.py backend/tests/test_account_schema_integration.py
+```
+
+`TEST_DATABASE_URL` was absent in this session. As in the earlier DB-15 validation,
+verification temporarily set a generated credential on the disposable `thouq_test`
+role using the existing local administrator connection. It restored the original
+credential in `finally` and verified restoration. Tests and migrations used the
+restricted test role, not the administrator. No secret or `.env` file was written;
+no development database was reset or migrated. The test database was upgraded
+in place, without a reset.
+
+Deploy migration 0009 before the auth update and drain old auth workers before
+starting the updated workers: all writers must participate in the same lock.
+Local code and TechnicalDoc establish Authentica delivery with API-owned verification.
+
+[DB-08 issue](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/15#issue-5894351265).

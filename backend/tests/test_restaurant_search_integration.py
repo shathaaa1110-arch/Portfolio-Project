@@ -25,7 +25,7 @@ TABLE = """
 CREATE TABLE restaurants (
     id INTEGER PRIMARY KEY, name_ar TEXT NOT NULL, name_en TEXT, cuisine TEXT NOT NULL,
     district TEXT NOT NULL, price_tier SMALLINT NOT NULL, rating NUMERIC, quality_score NUMERIC,
-    maps_url TEXT NOT NULL)
+    maps_url TEXT NOT NULL, image_url TEXT)
 """
 
 
@@ -174,10 +174,14 @@ def test_the_api_search_uses_the_indexes(api):
     conn.execute(sa.text("ANALYZE restaurants"))
     for term in ["شاورما", "مطعم 1234"]:
         params = {"pattern": search.like_pattern(term), "codes": search.codes_for(term)}
-        sql = "EXPLAIN SELECT id FROM restaurants" + router.SEARCH_WHERE
+        sql = "EXPLAIN SELECT id FROM restaurants WHERE " + router.SEARCH_FILTER
         plan = "\n".join(r[0] for r in conn.execute(sa.text(sql), params))
         assert "Seq Scan" not in plan, plan
         assert "ix_restaurants_search_text" in plan and "ix_restaurants_cuisine_codes" in plan
+    # The cuisine filter (BE-27) uses the same expression index.
+    sql = "EXPLAIN SELECT id FROM restaurants WHERE " + router.CUISINE_FILTER
+    plan = "\n".join(r[0] for r in conn.execute(sa.text(sql), {"cuisine_codes": ["shawarma", "levantine"]}))
+    assert "Seq Scan" not in plan and "ix_restaurants_cuisine_codes" in plan, plan
 
 
 def test_router_and_migration_use_the_same_cuisine_expression():
