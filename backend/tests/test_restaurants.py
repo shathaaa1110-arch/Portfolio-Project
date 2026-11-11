@@ -13,7 +13,7 @@ CREATE TABLE restaurants (
     cuisine TEXT NOT NULL, district TEXT NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL,
     spend_low INTEGER NOT NULL, spend_high INTEGER NOT NULL, price_tier SMALLINT NOT NULL,
     rating NUMERIC, rating_count INTEGER, quality_score NUMERIC, group_fit INTEGER,
-    summary TEXT, maps_url TEXT NOT NULL
+    summary TEXT, maps_url TEXT NOT NULL, image_url TEXT
 )
 """
 
@@ -71,7 +71,7 @@ def test_no_login_needed_and_fields_are_general(ctx):
     item = r.json()["restaurants"][0]
     assert item == {
         "id": 1, "name_ar": "مطعم", "name_en": "Place", "cuisines": ["italian", "pizza"],
-        "district": "Olaya", "price_tier": 2, "rating": 4.5, "maps_url": "https://maps",
+        "district": "Olaya", "price_tier": 2, "rating": 4.5, "maps_url": "https://maps", "image_url": None,
     }
 
 

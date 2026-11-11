@@ -87,11 +87,11 @@ CREATE TABLE IF NOT EXISTS restaurants (
     brand_id INTEGER,
     cuisine TEXT NOT NULL,
     district TEXT NOT NULL,
-    latitude NUMERIC NOT NULL,
-    longitude NUMERIC NOT NULL,
-    spend_low INTEGER NOT NULL,
-    spend_high INTEGER NOT NULL,
-    price_tier SMALLINT NOT NULL,
+    latitude NUMERIC,
+    longitude NUMERIC,
+    spend_low INTEGER,
+    spend_high INTEGER,
+    price_tier SMALLINT,
     rating NUMERIC,
     rating_count INTEGER,
     quality_score NUMERIC,
@@ -100,7 +100,8 @@ CREATE TABLE IF NOT EXISTS restaurants (
     meal_fit_late_night SMALLINT,
     opening_hours JSONB,
     summary TEXT,
-    maps_url TEXT NOT NULL
+    maps_url TEXT,
+    image_url TEXT  -- DB-13: missing actual photo is NULL. Home uses a cuisine illustration
 );
 
 -- Saved restaurants (DB-15: migration 0006_saved_restaurants).
@@ -144,7 +145,8 @@ CREATE TABLE IF NOT EXISTS votes (
     FOREIGN KEY (plan_item_id) REFERENCES plan_items(id)
 );
 
--- otp_codes table
+-- otp_codes table — DB-08, migration 0009_otp_codes; Authentica delivers only.
+-- The API verifies locally and serializes each phone’s code transactions.
 CREATE TABLE IF NOT EXISTS otp_codes (
     id UUID PRIMARY KEY,
     phone TEXT NOT NULL,

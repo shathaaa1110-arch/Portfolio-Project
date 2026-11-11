@@ -26,7 +26,7 @@ router = APIRouter(prefix="/users/me/saved-restaurants", tags=["saved restaurant
 
 MAX_ID = 2_147_483_647  # restaurants.id is INTEGER; larger ids cannot exist
 LIST_SQL = text("""
-    SELECT r.id, r.name_ar, r.name_en, r.cuisine, r.district, r.price_tier, r.rating, r.maps_url
+    SELECT r.id, r.name_ar, r.name_en, r.cuisine, r.district, r.price_tier, r.rating, r.maps_url, r.image_url
     FROM saved_restaurants s JOIN restaurants r ON r.id = s.restaurant_id
     WHERE s.user_id = :user
     ORDER BY s.saved_at DESC, r.id
