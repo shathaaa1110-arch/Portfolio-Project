@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { AppText } from "@/shared/components";
+import { layoutDirection } from "@/shared/layout";
 import { theme } from "@/shared/theme";
 import type { OutingStatus } from "../api/join";
 
@@ -28,7 +29,7 @@ export function StageIndicator({ status }: { status: OutingStatus }) {
 
 const styles = StyleSheet.create({
   // Arabic order: the first step sits on the right.
-  row: { flexDirection: "row", direction: "rtl", gap: theme.spacing.labelGap },
+  row: { flexDirection: "row", ...layoutDirection("rtl"), gap: theme.spacing.labelGap },
   step: { flex: 1, gap: theme.spacing.labelGap },
   bar: { height: 4, borderRadius: 2, backgroundColor: theme.colors.border },
   barDone: { backgroundColor: theme.colors.primary },

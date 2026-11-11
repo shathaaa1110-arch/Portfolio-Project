@@ -14,6 +14,8 @@ const storage = {
     Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.getItem(key) ?? null) : SecureStore.getItemAsync(key),
   set: (key: string, value: string) =>
     Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.setItem(key, value)) : SecureStore.setItemAsync(key, value),
+  remove: (key: string) =>
+    Platform.OS === "web" ? Promise.resolve(globalThis.localStorage?.removeItem(key)) : SecureStore.deleteItemAsync(key),
 };
 
 // One saved pass per outing; a guest token works for its own outing only.
@@ -51,4 +53,13 @@ export async function loadGuestPass(outingId: string): Promise<GuestPass | null>
     // A broken saved value counts as no pass.
   }
   return null;
+}
+
+// The server refused this pass, so it can never work again; dropping it lets the guest join anew.
+export async function forgetGuestPass(outingId: string): Promise<void> {
+  try {
+    await storage.remove(keyFor(outingId));
+  } catch {
+    // At worst the old pass stays, and the guest sees the same no-access message again.
+  }
 }

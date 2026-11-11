@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppButton, AppText } from "@/shared/components";
+import { layoutDirection } from "@/shared/layout";
 import { theme } from "@/shared/theme";
 import { outingToken } from "./access";
 import { startPreferences } from "./api/state";
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
   title: { textAlign: "auto" },
   subtitle: { color: theme.colors.placeholder, marginTop: -theme.spacing.actionGap },
   // Arabic order: the title sits on the right and the ready count on the left.
-  listHeading: { flexDirection: "row", direction: "rtl", alignItems: "baseline", justifyContent: "space-between" },
+  listHeading: { flexDirection: "row", ...layoutDirection("rtl"), alignItems: "baseline", justifyContent: "space-between" },
   sectionTitle: { fontFamily: theme.typography.fontFamilyBold, fontSize: theme.typography.sectionTitleSize },
   muted: { color: theme.colors.placeholder },
   note: { color: theme.colors.placeholder, textAlign: "center" },
