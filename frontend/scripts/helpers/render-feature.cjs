@@ -19,7 +19,7 @@ function load(relativePath, imports = {}, globals = {}) {
     require(name) {
       if (name === "react") return React;
       if (name === "react/jsx-runtime") return require("react/jsx-runtime");
-      if (name.endsWith(".png")) return 1;
+      if (/\.(png|webp)$/.test(name)) return 1;
       if (name === "@/shared/layout") return load("shared/layout.ts", { "react-native": { Platform: { OS: "ios" } } });
       if (!(name in imports)) throw new Error("Unexpected test import: " + name);
       return imports[name];

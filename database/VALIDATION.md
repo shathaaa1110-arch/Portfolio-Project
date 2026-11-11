@@ -190,6 +190,20 @@ so existing production/development row contents could not be inspected. No adopt
 or upgrade was applied there. The owner must run the documented preflight/adoption
 with a backup and sufficient permissions before deployment.
 
+## QA-01 — shared test helpers and synthetic data (2 November 2026)
+
+Evidence for [#56](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/56).
+
+- `backend/tests/conftest.py` adds `db_connection`, `db_session`, `api_client`
+  and `synthetic_restaurants`.
+- `backend/tests/test_db_helpers_integration.py` checks that committed rows are gone
+  in the next test, that a failed request's rollback keeps earlier test rows, and
+  that the API reads rows from the test transaction.
+- `backend/tests/test_synthetic_restaurants.py` checks that the sample matches the
+  table columns, has unique IDs, is clearly synthetic and has gaps on purpose.
+- CI runs the integration suite twice on the same database; the second run fails
+  if the first one left data behind.
+- `.gitignore` excludes `database/private/` for the real dataset.
 
 ## DB-15 — saved-restaurant storage (4 November 2026)
 

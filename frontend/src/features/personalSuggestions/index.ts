@@ -6,7 +6,10 @@ export type {
 export { getPersonalRecommendations } from "./api";
 export { usePersonalRecommendations } from "./usePersonalRecommendations";
 export { LocationPicker } from "./LocationPicker";
+export { getDistricts, filterDistricts, type District } from "./districts";
 export {
   requestRecommendationLocation,
   type LocationResult,
 } from "./location";
+export { recallLocation, rememberLocation, type ChosenLocation } from "./chosenLocation";
+export { registerPersonalSuggestionsMocks } from "./mocks";

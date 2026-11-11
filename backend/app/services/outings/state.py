@@ -18,6 +18,7 @@ from app.core.database import get_db
 from app.core.errors import ApiError
 from app.services.auth.models import User
 from app.services.outings.access import Caller, current_caller, is_organizer, participant_of
+from app.services.outings.codes import invite_url
 from app.services.outings.models import GONE, PREFERENCES, Outing, Participant
 from app.services.outings.rounds import read_current, retry_open
 from app.services.outings.stages import move, organizer_actions, readiness
@@ -80,6 +81,7 @@ def outing_state(outing_id: uuid.UUID, caller: Caller = Depends(current_caller),
         "starts_at": outing.starts_at,
         "district": outing.district,
         "invite_code": outing.invite_code,
+        "invite_url": invite_url(outing.invite_code),  # so the lobby can share the link, not only the code
         "tiebreak_ends_at": outing.tiebreak_ends_at,
         # Every request about this round sends round_id back; an older one gets 409 STALE_ROUND.
         "round_id": str(rnd.id),

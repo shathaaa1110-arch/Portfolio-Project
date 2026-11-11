@@ -107,6 +107,18 @@ def test_the_organizer_generates_one_stored_plan_and_voting_opens(api):
     assert client.get(f"{BASE}/{oid}/plan", headers=guest, params=R(client, oid, guest)).json() == plan
 
 
+def test_a_place_without_coordinates_is_never_suggested(api):
+    client, conn = api
+    # Since 0008 coordinates may be missing; such a place cannot be measured, so it is left out.
+    conn.execute(sa.text(
+        "INSERT INTO restaurants (id, name_ar, cuisine, spend_low, spend_high, quality_score, opening_hours) "
+        "VALUES (11, 'بلا موقع', 'saudi', 20, 60, 5.0, CAST(:h AS jsonb))"), {"h": json.dumps(ALWAYS)})
+    oid, _, organizer, _, _ = _ready_session(client, conn)
+    r = client.post(f"{BASE}/{oid}/start-voting", headers=organizer, json=R(client, oid, organizer))
+    assert r.status_code == 200
+    assert 11 not in [i["restaurant"]["id"] for i in r.json()["plan_items"]]
+
+
 def test_asking_again_returns_the_stored_plan(api):
     client, conn = api
     oid, _, organizer, _, _ = _ready_session(client, conn)

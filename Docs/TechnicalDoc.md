@@ -7,6 +7,54 @@ Portfolio Project · Stage 3
 | Project | Thouq (ذوق), a group dining planner |
 | Team | Shatha Alanzi, Asim Alhubaishi, Hassan Alhuzali, Fahad Almidaj |
 
+## Frontend scope and current API verification — 10 November 2026
+
+The implemented Sprint 2–3 frontend map and acceptance gaps are tracked in
+[Sprint-2-3-Frontend.ar.md](Sprint-2-3-Frontend.ar.md). Home now shares one personal
+recommendation response between the featured choice and regular list rows under
+“مطاعم أخرى على ذوقك”. The selected Home action changes its green state.
+Account preferences return to the existing Home; an account-scoped in-memory
+location cache preserves the choice without re-requesting GPS.
+
+Public GET checks confirmed server-side `search` with filtered totals; it is now
+on by default in the frontend. This does not add district filtering or a separate
+restaurant-detail endpoint. Missing hours/prices are not synthesized. The current
+single-round outing API does not implement #90 retry. The #91 frontend now supports
+confirmation, same-session reset and stale-round protection in explicit local mock
+mode. Real activation awaits the [provisional round contract](Session-Retry-Contract.md)
+and #90; it is hidden and disabled by default. The same shared flag gates every
+round-scoped request, including vote bodies, even if early server metadata includes
+a round ID. Vote reload waits for the pending save before restoring answers.
+Single-round result screens stop polling; round-enabled screens poll state and
+reuse the current plan until the round changes or the screen refocuses. No SQL, ERD or backend algorithm changes are
+part of this frontend work.
+
+## Implemented session frontend — 10 November 2026
+
+The implemented flow is create → invitation/join → private outing preferences and
+explicit readiness → Haila generation screen → one restaurant at a time, Like or
+Pass → review saved choices → the server's final result. The generation screen
+lasts for the actual request and state refresh, supports reduced motion, and exits
+on failure or an empty plan without relaxing participants' limits.
+
+The frontend integrates the voting requests and ordered save/retry hook from #161.
+The backend voting routes from #158 are merged in deployment. Votes save immediately;
+the last required answer settles the round automatically. An organizer can end early
+through a confirmation, only after local pending votes are saved. Missing answers do
+not count as Pass. The server resolves ties by recommendation rank and item ID; no
+client timer or tie-break screen is implemented. GET result supplies the winner or
+no-winner reason. The UI never calculates a winner itself.
+
+The existing engine uses the selected district center, not a participant midpoint.
+Allergies remain a warning and seating requirements are stored, not used as a filter.
+No SQL/ERD changes: existing votes, plan_items.is_winner and outing status are reused.
+Public feature imports are declared in architecture.json (sessions → voting).
+
+The cream/green identity and shared Arabic type remain. Large repeated hero panels
+are replaced by compact summaries, participant details in a sheet, and fixed actions.
+See [the Arabic flow, API mapping, source files and validation limits](Session-Flow.ar.md).
+Broader product diagrams include future scope; they do not imply every story is built.
+
 ## Contents
 
 0. [User stories and mockups](#0-user-stories-and-mockups)
@@ -1642,6 +1690,7 @@ Response `200`
   "starts_at": "timestamptz",
   "district": "string",
   "invite_code": "string",
+  "invite_url": "string | null",
   "tiebreak_ends_at": "timestamptz | null",
   "round_id": "uuid",
   "round_number": 1,
@@ -1661,8 +1710,9 @@ Response `200`
 }
 ```
 - `me` is the caller's own participant, so the app can mark its row.
+- `invite_url` is the same shareable link that creation returns (`INVITE_BASE_URL` followed by the code), so the waiting room can share it; `null` while that setting is empty.
 - `readiness` counts the confirmed participants who are ready, and all confirmed participants.
-- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage, and `start_voting` in the `preferences` stage once everyone confirmed is ready. It is empty for everyone else, and in stages whose organizer actions are not built yet.
+- `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage, and `start_voting` in the `preferences` stage once everyone confirmed is ready. In `voting`, it includes `end_voting`. It is empty for other participants and after the result.
 - `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.
 - A guest token is accepted for its own outing only, and stops working once the guest is removed.
 
@@ -1992,10 +2042,11 @@ Response `409`: `PLAN_NOT_READY` before the plan is generated. Response `403`: `
 
 ```http
 GET /restaurants/{restaurant_id}
+GET /restaurants/{restaurant_id}?outing_id=uuid
 ```
-Requires: Authorization
+Requires: nothing, like browsing. With `outing_id`: Authorization (a login or that outing's guest token) of someone still in the outing (BE-27, #46).
 
-Optional query parameter `outing_id` adds this outing's `reason` for the restaurant, when it was part of that outing's plan.
+Returns every stored field. Nothing is guessed: unknown hours, rating, spend, location or photo come back as `null`. `opening_hours` is `null` when neither the times nor `open_24h` are known; `days_open` below 7 means the days are not known. `reason` is `null` without `outing_id`, and also when this place was not one of that outing's suggestions.
 
 Response `200`
 ```json
@@ -2003,25 +2054,35 @@ Response `200`
   "id": 101,
   "name_ar": "string",
   "name_en": "string",
-  "cuisines": ["italian"],
-  "district": "string",
+  "cuisines": ["italian", "pizza"],
+  "district": "العليا",
+  "district_id": "00100001141",
   "price_tier": 3,
   "rating": 4.6,
-  "opening_hours": {},
+  "rating_count": 120,
+  "spend_low": 40,
+  "spend_high": 90,
+  "opening_hours": { "open_24h": false, "opens": "16:00", "closes": "01:30", "days_open": 7 },
   "summary": "string",
+  "latitude": 24.69,
+  "longitude": 46.68,
   "maps_url": "string",
+  "image_url": null,
   "reason": "string | null"
 }
 ```
+
+Errors: `404 RESTAURANT_NOT_FOUND`; `422 VALIDATION_ERROR` for an id outside 1–2147483647 or a bad `outing_id`. Only with `outing_id`: `401 INVALID_TOKEN`/`TOKEN_EXPIRED`, `404 OUTING_NOT_FOUND`, `403 NOT_A_PARTICIPANT`, `403 REMOVED_FROM_OUTING`, `403 LEFT_OUTING`. `503 RESTAURANTS_UNAVAILABLE`.
 
 #### Browse restaurants
 
 ```http
 GET /restaurants?limit=20&offset=0
+GET /restaurants?search=شاورما&cuisine=grill,levant&district_id=00100001141
 ```
 Requires: nothing. Public browsing works without an account, outing, or group, and returns no account or session data.
 
-A plain query against `restaurants`; it does not call the recommendation engine. Results are ordered by `quality_score`, then `rating`, best first. `limit` is 1–50 (default 20); `offset` starts at 0. `search` filters names or cuisine labels before paging; separate cuisine/district filters are not implemented. ID breaks ordering ties. DB-13 adds no ranking logic.
+A plain query against `restaurants`; it does not call the recommendation engine. Results are ordered by `quality_score`, then `rating`, best first. `limit` is 1–50 (default 20); `offset` starts at 0. Filters, all optional and combined with AND before paging (BE-27, #46): `search` matches names or cuisine labels; `cuisine` takes comma-separated category keys from the 18 used by preferences (`plan/cuisines.py`), expanded to their dataset codes (an unknown key is `422` with `fields: ["query.cuisine"]`); `district_id` takes an id from `GET /districts` (`422 UNKNOWN_DISTRICT` otherwise). Empty values are ignored. ID breaks ordering ties. DB-13 adds no ranking logic.
 
 Response `200`
 ```json
@@ -2849,8 +2910,8 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `PUT /outings/{id}/preferences` | Updated (200) | Locked after voting (409) |
 | `POST /outings/{id}/preferences/ready` | Marked ready (200) | Already ready (409) |
 | `GET /outings/{id}/plan` | Plan returned (200) | No plan yet (404) |
-| `GET /restaurants/{id}` | Details returned (200) | Not found (404) |
-| `GET /restaurants` | List returned (200), empty list (200) | Bad `limit` (422), database unavailable (503) |
+| `GET /restaurants/{id}` | Details returned (200), with the outing's reason for a member (200) | Not found (404), outing reason for a non-member (403) |
+| `GET /restaurants` | List returned (200), filtered list (200), empty list (200) | Bad `limit`, unknown cuisine key or district (422), database unavailable (503) |
 | `GET /users/me/recommendations` | Suggestions returned (200), empty list (200) | No auth or guest pass (401), distance limit without a location (422), unknown district (404) |
 | `POST /outings/{id}/votes` | Vote recorded or changed (200); the last answer ends voting | Wrong stage (409), another outing's suggestion (404), not a participant (403) |
 | `GET /outings/{id}/votes` | Own answers and counts (200) | Not a participant (403) |

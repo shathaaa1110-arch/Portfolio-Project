@@ -137,6 +137,16 @@ def test_nothing_is_saved(api):
     assert conn.execute(sa.text("SELECT count(*) FROM preferences")).scalar_one() == before
 
 
+def test_a_place_without_coordinates_is_left_out(api):
+    client, conn, _ = api
+    # Since 0008 coordinates may be missing; such a place cannot be measured, so it is never suggested.
+    conn.execute(sa.text(
+        "INSERT INTO restaurants (id, name_ar, cuisine, spend_low, spend_high, quality_score, opening_hours) "
+        "VALUES (11, 'بلا موقع', 'italian', 20, 60, 5.0, CAST(:h AS jsonb))"), {"h": json.dumps(ALWAYS)})
+    r = client.get(URL, params={"district_id": DISTRICT}, headers=_user(client, conn))
+    assert r.status_code == 200 and 11 not in _ids(r)
+
+
 # ---------- location errors ----------
 
 def test_a_distance_limit_without_a_location_asks_for_one(api):
