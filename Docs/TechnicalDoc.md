@@ -1608,6 +1608,7 @@ Response `200`
   "starts_at": "timestamptz",
   "district": "string",
   "invite_code": "string",
+  "invite_url": "string | null",
   "tiebreak_ends_at": "timestamptz | null",
   "me": { "participant_id": "uuid", "is_organizer": true },
   "actions": ["start_preferences"],
@@ -1624,6 +1625,7 @@ Response `200`
 }
 ```
 - `me` is the caller's own participant, so the app can mark its row.
+- `invite_url` is the same shareable link that creation returns (`INVITE_BASE_URL` followed by the code), so the waiting room can share it; `null` while that setting is empty.
 - `readiness` counts the confirmed participants who are ready, and all confirmed participants.
 - `actions` lists what the caller can do now as organizer: `start_preferences` in the `invite` stage, and `start_voting` in the `preferences` stage once everyone confirmed is ready. It is empty for everyone else, and in stages whose organizer actions are not built yet.
 - `participants` lists the organizer first, then the others by name, so the list keeps its order between polls. A participant summary carries only the name, attendance, readiness and whether the person is the organizer; never account ids, phone numbers or preferences.

@@ -13,12 +13,11 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.services.auth.dependencies import current_user
 from app.services.auth.models import User
-from app.services.outings.codes import new_code
+from app.services.outings.codes import invite_url, new_code
 from app.services.outings.join import COPY_PREFERENCES
 from app.services.outings.models import CONFIRMED, INVITE, Outing, Participant, now_utc
 
@@ -59,11 +58,6 @@ def _check_start(starts_at: datetime) -> None:
         raise ApiError(422, "INVALID_START_TIME", "The start time must be within the next 60 days.")
 
 
-def _invite_url(code: str) -> str | None:
-    base = get_settings().invite_base_url.strip().rstrip("/")
-    return f"{base}/{code}" if base else None
-
-
 @router.post("/outings/session", status_code=201)
 def create_session(body: SessionIn, user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     """Create a one-off session and its organizer in one transaction."""
@@ -102,6 +96,6 @@ def create_session(body: SessionIn, user: User = Depends(current_user), db: Sess
     return {
         "outing_id": str(outing.id),
         "invite_code": outing.invite_code,
-        "invite_url": _invite_url(outing.invite_code),
+        "invite_url": invite_url(outing.invite_code),
         "status": outing.status,
     }
