@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 # Secret used to sign login tokens and hash verification codes. Never commit it.
     secret_key: str = ""
 
+# App notifications (BE-25): "mock" logs them, "expo" sends them through the Expo push service.
+    push_mode: str = "mock"
+
 # Start of the shareable invite link; the code is added at the end, e.g. https://example.com/join
 # Empty means the API returns invite_url: null and the app shares the code only.
     invite_base_url: str = ""
