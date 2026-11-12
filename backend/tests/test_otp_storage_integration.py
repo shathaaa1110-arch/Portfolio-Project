@@ -135,6 +135,7 @@ def ctx(isolated_engine, monkeypatch):
         migrate(conn, '0002_account_keys_and_phone')
         migrate(conn, '0003_account_preferences')
         migrate(conn)
+        migrate(conn, '0013_user_token_version')  # the users table as the app maps it (logout ends tokens)
     sessions = sessionmaker(bind=isolated_engine, autoflush=False, expire_on_commit=False)
 
     def override_db():

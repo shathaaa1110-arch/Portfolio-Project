@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
 from app.services.auth.dependencies import bearer
+from app.services.auth.models import User
 from app.services.auth.tokens import GUEST, TokenError, decode_any_token
 from app.services.outings.models import GONE, REMOVED, Outing, Participant
 
@@ -23,6 +24,7 @@ from app.services.outings.models import GONE, REMOVED, Outing, Participant
 @dataclass(frozen=True)
 class Caller:
     user_id: uuid.UUID | None = None  # a registered user
+    token_version: int = 0  # the login token's "ver"; must still match the account (logout)
     guest_participant_id: uuid.UUID | None = None  # or a guest, for one outing only
     guest_outing_id: uuid.UUID | None = None
 
@@ -32,14 +34,14 @@ def current_caller(creds: HTTPAuthorizationCredentials | None = Depends(bearer))
     if creds is None or creds.scheme.lower() != "bearer" or not creds.credentials:
         raise ApiError(401, "INVALID_TOKEN", "Please log in again.")
     try:
-        kind, subject, outing_id = decode_any_token(creds.credentials)
+        kind, subject, outing_id, version = decode_any_token(creds.credentials)
     except TokenError as exc:
         if exc.expired:
             raise ApiError(401, "TOKEN_EXPIRED", "Your session has expired. Please log in again.")
         raise ApiError(401, "INVALID_TOKEN", "Please log in again.")
     if kind == GUEST:
         return Caller(guest_participant_id=subject, guest_outing_id=outing_id)
-    return Caller(user_id=subject)
+    return Caller(user_id=subject, token_version=version)
 
 
 def _not_a_participant() -> ApiError:
@@ -59,6 +61,11 @@ def participant_of(db: Session, outing_id: uuid.UUID, caller: Caller,
     Someone who left or was removed (BE-29) keeps the row but loses access to the outing.
     lock=True locks the outing's row until the commit, for anything that changes the outing.
     """
+    if caller.user_id is not None:
+        current = db.execute(select(User.token_version).where(User.id == caller.user_id)).scalar_one_or_none()
+        if current is None or current != caller.token_version:  # account deleted, or logged out since
+            raise ApiError(401, "INVALID_TOKEN", "Please log in again.")
+
     query = select(Outing).where(Outing.id == outing_id)
     if lock:
         query = query.with_for_update()
