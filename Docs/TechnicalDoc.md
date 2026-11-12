@@ -527,6 +527,7 @@ other tables in this diagram remain draft designs, not tables created by DB-03.
 | name | text | yes | |
 | phone_number | text | yes | Unique. Used to log in; not part of the primary key |
 | push_token | text | no | Device token for push notifications |
+| token_version | integer | yes | Default 0, never negative. Raised by logout; a login token is accepted only while its `ver` equals it (migration `0013`) |
 | created_at | timestamp | yes | Without time zone, matching the existing SQL schema |
 
 #### `otp_codes`
@@ -1391,7 +1392,7 @@ POST /auth/logout
 ```
 Requires: Authorization (registered user)
 
-Clears the push token saved for this user, so the device stops receiving notifications. After a `204`, the app deletes the token from the device and opens the sign-up screen. Tokens are not stored on the server, so a copied token stays valid until it expires; this is a known MVP limitation.
+Ends **every** login token of this account, on every device, and clears its push token so no device receives notifications. Each login token carries the account's `token_version` (`ver`); logout raises the version, and every request compares the two (`current_user`, and `participant_of` for the outing endpoints), so a copied or stolen token stops working at once with `401 INVALID_TOKEN`. After a `204`, the app deletes the token from the device and opens the sign-up screen; the next login issues a token with the new version. Guest tokens are separate: they end a day after the outing starts, or when the organizer removes the guest (BE-29). Tokens issued before migration `0013` have no `ver` and count as version 0, so the deploy logs nobody out.
 
 Response `204` — logged out (no body)
 
@@ -2891,7 +2892,7 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `POST /auth/verify` | Token returned (200), new account created | Wrong code (401), expired code (401), name required (422), too many attempts (429) |
 | `POST /auth/resend-code` | New code sent (200) | No pending code (404), rate limited (429), SMS failed (503) |
 | `POST /auth/push-token` | Token stored (200) | No auth (401) |
-| `POST /auth/logout` | Push token cleared (204) | No auth (401) |
+| `POST /auth/logout` | Push token cleared and every earlier token refused (204) | No auth, or a token from before a logout (401) |
 | `POST /groups` | Group and first outing created (201) | No auth (401) |
 | `GET /groups` | List returned (200) | No auth (401) |
 | `GET /groups/{id}` | Details returned (200) | Not a member (403), not found (404) |

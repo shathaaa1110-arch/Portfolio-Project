@@ -23,6 +23,8 @@ class User(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     phone_number: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     push_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Raised by logout; a login token is valid only while its "ver" equals this (migration 0013).
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(nullable=False, default=utcnow)
 
 
