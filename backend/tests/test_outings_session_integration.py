@@ -161,15 +161,22 @@ def test_without_invite_base_url_the_link_is_null(api, monkeypatch):
 
 # ---------- database rules from 0005 ----------
 
-def test_a_code_belongs_to_one_open_outing_and_is_free_after_result(api):
+def test_a_code_belongs_to_its_outing_until_it_is_released(api):
+    """0012: a finished outing keeps its code (a retry reuses the link) until the code is released."""
     _, user, conn = api
     uid, _ = user()
     insert = sa.text("INSERT INTO outings (id, organizer_id, name, status, invite_code, starts_at, district, created_at) "
                      "VALUES (:id, :u, 'x', :status, 'ABCD', now(), :d, now())")
-    conn.execute(insert, {"id": uuid.uuid4(), "u": uid, "status": "result", "d": OLAYA})
-    conn.execute(insert, {"id": uuid.uuid4(), "u": uid, "status": "invite", "d": OLAYA})   # reuse after result
+    finished = uuid.uuid4()
+    conn.execute(insert, {"id": finished, "u": uid, "status": "result", "d": OLAYA})
+    with pytest.raises(sa.exc.IntegrityError), conn.begin_nested():
+        conn.execute(insert, {"id": uuid.uuid4(), "u": uid, "status": "invite", "d": OLAYA})
+    conn.execute(sa.text("UPDATE outings SET code_released_at = now() WHERE id = :id"), {"id": finished})
+    conn.execute(insert, {"id": uuid.uuid4(), "u": uid, "status": "invite", "d": OLAYA})   # reuse once released
     with pytest.raises(sa.exc.IntegrityError), conn.begin_nested():
         conn.execute(insert, {"id": uuid.uuid4(), "u": uid, "status": "voting", "d": OLAYA})
+    with pytest.raises(sa.exc.IntegrityError), conn.begin_nested():   # only a finished outing gives its code up
+        conn.execute(sa.text("UPDATE outings SET code_released_at = now() WHERE status = 'invite'"))
 
 
 @pytest.mark.parametrize("column, value", [("status", "done"), ("invite_code", "abcd"), ("invite_code", "ABCDE")])

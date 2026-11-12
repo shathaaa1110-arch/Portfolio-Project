@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS outings (
     starts_at TIMESTAMP NOT NULL,
     district TEXT NOT NULL,
     tiebreak_ends_at TIMESTAMP,
+    current_round_id uuid NOT NULL,  -- DB-07 (0012): the one active round; a trigger creates round 1
+    code_released_at TIMESTAMPTZ,    -- DB-07 (0012): set when a finished outing frees its invite code
     created_at TIMESTAMP NOT NULL,
     FOREIGN KEY (group_id) REFERENCES groups(id),
     FOREIGN KEY (organizer_id) REFERENCES users(id)
@@ -56,6 +58,27 @@ CREATE TABLE IF NOT EXISTS participants (
     FOREIGN KEY (outing_id) REFERENCES outings(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+-- Rounds of an outing (DB-07 #14, BE-31 #90: migration 0012_outing_rounds).
+CREATE TABLE IF NOT EXISTS outing_rounds (
+    id uuid PRIMARY KEY,
+    outing_id uuid NOT NULL REFERENCES outings(id) ON DELETE CASCADE,
+    number INTEGER NOT NULL CHECK (number >= 1),
+    outcome TEXT CHECK (outcome IN ('no_matches')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT outing_rounds_number_unique UNIQUE (outing_id, number),
+    CONSTRAINT outing_rounds_outing_id_id_unique UNIQUE (outing_id, id)
+);
+ALTER TABLE outings ADD CONSTRAINT outings_current_round_fkey FOREIGN KEY (id, current_round_id)
+    REFERENCES outing_rounds (outing_id, id) DEFERRABLE INITIALLY DEFERRED;
+-- Who was in a round when its suggestions were generated; its result is counted on them.
+CREATE TABLE IF NOT EXISTS round_members (
+    round_id uuid NOT NULL REFERENCES outing_rounds(id),
+    participant_id uuid NOT NULL REFERENCES participants(id),
+    PRIMARY KEY (round_id, participant_id)
+);
+-- An invite code belongs to one outing until that outing releases it (a day after it starts).
+CREATE UNIQUE INDEX IF NOT EXISTS ux_outings_invite_code ON outings (invite_code) WHERE code_released_at IS NULL;
 
 -- Account preferences (DB-14: migration 0003_account_preferences).
 -- Clean installs do not depend on participants. Existing shared tables retain
@@ -118,21 +141,24 @@ CREATE TABLE IF NOT EXISTS saved_restaurants (
 );
 CREATE INDEX IF NOT EXISTS ix_saved_restaurants_restaurant_id ON saved_restaurants (restaurant_id);
 
--- plan_items table
+-- plan_items table (in migrations since 0012: one plan per round)
 CREATE TABLE IF NOT EXISTS plan_items (
     id uuid PRIMARY KEY,
     outing_id uuid NOT NULL,
+    round_id uuid NOT NULL,
     restaurant_id INTEGER NOT NULL,
     rank INTEGER NOT NULL,
     match_score INTEGER NOT NULL,
     reason TEXT NOT NULL,
     is_winner BOOLEAN NOT NULL,
-    CONSTRAINT plan_items_outing_restaurant_unique UNIQUE (outing_id, restaurant_id),
+    CONSTRAINT plan_items_round_restaurant_unique UNIQUE (round_id, restaurant_id),
+    CONSTRAINT plan_items_round_rank_unique UNIQUE (round_id, rank),
+    CONSTRAINT plan_items_round_fkey FOREIGN KEY (outing_id, round_id) REFERENCES outing_rounds (outing_id, id),
     FOREIGN KEY (outing_id) REFERENCES outings(id),
     FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
 );
 
--- votes table
+-- votes table (in migrations since 0012; a vote belongs to its plan item's round)
 CREATE TABLE IF NOT EXISTS votes (
     id uuid PRIMARY KEY,
     participant_id uuid NOT NULL,

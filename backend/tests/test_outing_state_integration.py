@@ -26,7 +26,8 @@ pytestmark = pytest.mark.integration
 SECRET = "test-secret"
 BASE = "/api/v1/outings"
 STATE_KEYS = {"outing_id", "name", "status", "starts_at", "district", "invite_code", "invite_url",
-              "tiebreak_ends_at", "me", "actions", "readiness", "participants"}
+              "tiebreak_ends_at", "round_id", "round_number", "round_outcome", "me", "actions", "readiness",
+              "participants"}
 
 
 @pytest.fixture

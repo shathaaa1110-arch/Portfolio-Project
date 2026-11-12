@@ -52,7 +52,11 @@ DETAILS_SQL = text("""
     FROM restaurants r LEFT JOIN districts d ON d.name_ar = r.district
     WHERE r.id = :id
 """)
-REASON_SQL = text("SELECT reason FROM plan_items WHERE outing_id = :outing AND restaurant_id = :id")
+# The reason from the outing's current round (BE-31): an earlier round may have suggested the same place.
+REASON_SQL = text("""
+    SELECT p.reason FROM plan_items p JOIN outings o ON o.current_round_id = p.round_id
+    WHERE o.id = :outing AND p.restaurant_id = :id
+""")
 
 
 def _list_sql(filters: list[str]) -> tuple:
@@ -144,7 +148,7 @@ def restaurant_details(
     """Everything stored about one place. Unknown hours or rating come back as null, never guessed.
 
     reason is null unless outing_id is given; then the caller must be in that outing (login or
-    guest token), and reason is the outing's reason when this place was one of its suggestions.
+    guest token), and reason is the outing's reason when this place is one of its current round's suggestions.
     """
     caller = current_caller(creds) if outing_id is not None else None  # 401 before touching the database
     try:

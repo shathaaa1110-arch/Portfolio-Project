@@ -3,7 +3,8 @@
 Two steps, so a push failure can never lose a vote or a result:
   1. record(): inside the transaction that starts voting or settles the result, write one
      notification_events row per account that should hear about it. The unique key
-     (outing, round, kind, account) makes a repeated request add nothing.
+     (outing, round, kind, account) makes a repeated request add nothing; a new round (BE-31)
+     is a new key, so its voting and result are announced again.
   2. deliver(): after that commit, as a background task, send the pending rows through one provider
      (Expo push), with a bounded number of attempts. Every failure is stored on the row and logged;
      nothing is raised back to the request.
@@ -28,7 +29,6 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal
 
 VOTING_STARTED, RESULT = "voting_started", "result"
-ROUND_KEY = "1"  # one round per outing until DB-07 (#14) and BE-31 (#90)
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 TIMEOUT_SECONDS = 10
 WAIT_BEFORE_ATTEMPT = (0, 2, 5)  # seconds; three attempts at most
@@ -52,8 +52,9 @@ RECORD_SQL = text("""
 """)
 PENDING_SQL = text("""
     SELECT e.id, e.kind, e.user_id, e.push_token, e.outing_id, o.name AS outing_name,
-           (SELECT r.name_ar FROM plan_items pi JOIN restaurants r ON r.id = pi.restaurant_id
-            WHERE pi.outing_id = e.outing_id AND pi.is_winner LIMIT 1) AS winner
+           (SELECT r.name_ar FROM outing_rounds rd JOIN plan_items pi ON pi.round_id = rd.id
+                JOIN restaurants r ON r.id = pi.restaurant_id
+            WHERE rd.outing_id = e.outing_id AND rd.number::text = e.round_key AND pi.is_winner) AS winner
     FROM notification_events e JOIN outings o ON o.id = e.outing_id
     WHERE e.id IN :ids AND e.status = 'pending'
     ORDER BY e.created_at, e.id
@@ -110,14 +111,15 @@ def get_sender():
     return LogSender()
 
 
-def record(db: Session, outing_id: uuid.UUID, kind: str, skip_user: uuid.UUID | None = None) -> list[uuid.UUID]:
+def record(db: Session, outing_id: uuid.UUID, kind: str, round_number: int,
+           skip_user: uuid.UUID | None = None) -> list[uuid.UUID]:
     """Queue this event for everyone eligible, inside the caller's transaction.
 
     A savepoint keeps the caller's work safe: if recording fails, voting or the result still saves.
     """
     try:
         with db.begin_nested():
-            rows = db.execute(RECORD_SQL, {"outing": outing_id, "kind": kind, "round_key": ROUND_KEY,
+            rows = db.execute(RECORD_SQL, {"outing": outing_id, "kind": kind, "round_key": str(round_number),
                                            "skip_user": skip_user}).scalars().all()
         return list(rows)
     except SQLAlchemyError:

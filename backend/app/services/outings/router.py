@@ -26,7 +26,14 @@ MAX_NAME_CHARS = 60
 PAST_GRACE = timedelta(minutes=5)
 MAX_AHEAD = timedelta(days=60)
 CODE_ATTEMPTS = 10
-OPEN_CODE_INDEX = "ux_outings_open_invite_code"  # migration 0005
+OPEN_CODE_INDEX = "ux_outings_invite_code"  # migration 0012
+# A code stays with its outing until a day after it starts (a retry reuses the link); after that a
+# finished outing gives it up, so the code can serve a new outing.
+RELEASE_CODE = text("""
+    UPDATE outings SET code_released_at = now()
+    WHERE invite_code = :code AND code_released_at IS NULL AND status = 'result'
+      AND starts_at + interval '1 day' < now()
+""")
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["outings"])
@@ -72,6 +79,7 @@ def create_session(body: SessionIn, user: User = Depends(current_user), db: Sess
             try:
                 # Savepoint: a taken code undoes this attempt only, and the loop tries another code.
                 with db.begin_nested():
+                    db.execute(RELEASE_CODE, {"code": outing.invite_code})
                     db.add(outing)
                     db.flush()
                 break

@@ -2,7 +2,8 @@
 
 Each test copies the real restaurants table (with its search column and indexes) into a scratch
 schema, inside a transaction that is rolled back. Districts, outings and participants are the
-migrated public tables; plan_items is not migrated yet, so it is created here like in BE-17's tests.
+migrated public tables; plan_items is a scratch copy next to the scratch restaurants, in the shape
+migration 0012 gives it (one plan per round).
 """
 import json
 import uuid
@@ -15,6 +16,7 @@ from app.main import app
 from app.services.auth.tokens import create_guest_token
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from tests.migration_ddl import PLAN_ITEMS
 from tests.test_outings_join_integration import OLAYA, _add_outing, _add_user, _bearer, secret  # noqa: F401
 
 pytestmark = pytest.mark.integration
@@ -32,10 +34,7 @@ def api(secret):  # noqa: F811
         conn.execute(sa.text(f"CREATE SCHEMA {schema}"))
         conn.execute(sa.text(f"SET LOCAL search_path TO {schema}, public"))
         conn.execute(sa.text("CREATE TABLE restaurants (LIKE public.restaurants INCLUDING ALL)"))
-        conn.execute(sa.text(
-            "CREATE TABLE plan_items (id uuid PRIMARY KEY, outing_id uuid NOT NULL REFERENCES public.outings(id), "
-            "restaurant_id integer NOT NULL REFERENCES restaurants(id), rank integer NOT NULL, "
-            "match_score integer NOT NULL, reason text NOT NULL, is_winner boolean NOT NULL)"))
+        conn.execute(sa.text(PLAN_ITEMS))
         names = dict(conn.execute(sa.text("SELECT id, name_ar FROM districts WHERE id IN (:a, :b)"),
                                   {"a": OLAYA, "b": OTHER_DISTRICT}).all())
 
@@ -71,8 +70,9 @@ def _code(r):
 
 
 def _plan(conn, outing_id, restaurant_id, reason="يناسب ذوقكم وضمن ميزانيتكم"):
-    conn.execute(sa.text("INSERT INTO plan_items (id, outing_id, restaurant_id, rank, match_score, reason, is_winner) "
-                         "VALUES (:id, :o, :r, 1, 90, :why, false)"),
+    """One suggestion in the outing's current round."""
+    conn.execute(sa.text("INSERT INTO plan_items (id, outing_id, round_id, restaurant_id, rank, match_score, reason, "
+                         "is_winner) SELECT :id, id, current_round_id, :r, 1, 90, :why, false FROM outings WHERE id = :o"),
                  {"id": uuid.uuid4(), "o": outing_id, "r": restaurant_id, "why": reason})
 
 
@@ -211,3 +211,19 @@ def test_public_results_carry_nothing_from_outings(api):
     detail = client.get(f"{URL}/2")
     assert "سبب خاص بالقروب" not in listed + detail.text and str(oid) not in listed + detail.text
     assert detail.json()["reason"] is None
+
+
+def test_only_the_current_rounds_reason_is_shown(api):
+    """BE-31: after a new round, the reason a place had in an earlier round is not shown as current."""
+    client, conn = api
+    organizer = _add_user(conn)
+    oid, _ = _add_outing(conn, organizer, status="result")
+    _plan(conn, oid, 2, reason="سبب الجولة الأولى")
+    second = uuid.uuid4()
+    conn.execute(sa.text("INSERT INTO outing_rounds (id, outing_id, number) VALUES (:r, :o, 2)"), {"r": second, "o": oid})
+    conn.execute(sa.text("UPDATE outings SET current_round_id = :r, status = 'voting' WHERE id = :o"),
+                 {"r": second, "o": oid})
+    asked = {"outing_id": str(oid)}
+    assert client.get(f"{URL}/2", params=asked, headers=_bearer(organizer)).json()["reason"] is None
+    _plan(conn, oid, 2, reason="سبب الجولة الثانية")
+    assert client.get(f"{URL}/2", params=asked, headers=_bearer(organizer)).json()["reason"] == "سبب الجولة الثانية"

@@ -93,11 +93,12 @@ def _not_found() -> ApiError:
 
 
 def _find(db: Session, raw_code: str, lock: bool = False) -> Outing:
-    """The open outing with this code. Codes are unique among open outings (0005)."""
+    """The open outing with this code. A code belongs to one outing until it is freed (0012)."""
     code = normalize_code(raw_code)
     if not CODE_FORMAT.match(code):
         raise _not_found()
-    query = select(Outing).where(Outing.invite_code == code, Outing.status != RESULT)
+    query = select(Outing).where(Outing.invite_code == code, Outing.code_released_at.is_(None),
+                                 Outing.status != RESULT)
     if lock:
         query = query.with_for_update()
     outing = db.execute(query).scalar_one_or_none()
