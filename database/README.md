@@ -111,9 +111,12 @@ alembic -c database/alembic.ini upgrade head
 alembic -c database/alembic.ini current
 ```
 
-Expected revision: `0009_otp_codes (head)`. The migrations create
-`alembic_version`, accounts/preferences, outing/district tables, restaurants, and
-`saved_restaurants`, plus `otp_codes` for local login verification. `upgrade head` can be rerun without recreating the database. Migration files live in `database/migrations/versions/`.
+Expected revision at `92412ee`: `0012_outing_rounds (head)`. The migrations create
+`alembic_version`, accounts/preferences, outing/district tables, restaurants,
+`saved_restaurants`, `otp_codes`, notification events and round-owned plans/votes.
+Migration 0010 adds participant removal state; 0011 adds notification events;
+0012 adds `outing_rounds`, `round_members` and current-round ownership.
+PR #171 and migration 0013 are not part of this baseline. `upgrade head` can be rerun without recreating the database. Migration files live in `database/migrations/versions/`.
 
 DB-03 starts from DB-02's empty baseline; it does not convert a database manually
 populated from the draft SQL. Its downgrade drops `users` and its account data,
@@ -143,7 +146,7 @@ python database/reset_test_db.py
 Expected output:
 
 ```text
-Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0009_otp_codes
+Ready: thouq_test on 127.0.0.1:5432; user thouq_test; revision 0012_outing_rounds
 ```
 
 This command always selects test mode, verifies the URL and local role attributes,

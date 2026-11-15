@@ -2,7 +2,11 @@
 
 [Arabic architecture and learning guide](../Docs/Frontend-Architecture.ar.md)
 
-## Current implementation — 10 November 2026
+## Current implementation — 15 November 2026
+
+Baseline: `deployment` at `92412ee`. See the [documentation index](../Docs/README.md)
+for current contracts and historical evidence. The removed starter `reset-project`
+command pointed to a script that is not in this repository; use the setup below.
 
 Home is public and includes the approved hero, greeting/location, search,
 Today's suggestion, and restaurant cards. Create session opens the selected watercolor/paper design and the backend-supported invitation → per-person preferences/readiness → suggestions flow.
@@ -76,7 +80,9 @@ npm run check
 cd frontend
 npm start
 ```
-The example file points to the shared API server.
+The example file points to the shared API server with search and round-aware
+requests enabled. PR #170 requires `round_id` on outing requests; a rounds-disabled
+build is incompatible with the current API. See the [round contract](../Docs/Session-Retry-Contract.md).
 
 If `frontend/.env.local` already exists, `cp -n` keeps it unchanged.
 Open that file and make sure it contains:
@@ -84,7 +90,8 @@ Open that file and make sure it contains:
 ```dotenv
 EXPO_PUBLIC_API_URL=https://thouq-api.onrender.com/api/v1
 EXPO_PUBLIC_USE_MOCK=false
-EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false
+EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=true
+EXPO_PUBLIC_SESSION_ROUNDS_ENABLED=true
 ```
 
 Restart Expo after changing these settings.
@@ -259,7 +266,8 @@ only on shell environment overrides: Expo may still read the file values.
 ```dotenv
 EXPO_PUBLIC_USE_MOCK=true
 EXPO_PUBLIC_API_URL=http://127.0.0.1:1/api/v1
-EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=false
+EXPO_PUBLIC_RESTAURANT_SEARCH_ENABLED=true
+EXPO_PUBLIC_SESSION_ROUNDS_ENABLED=true
 ```
 
 The unreachable local API URL prevents accidental production requests from
