@@ -36,7 +36,7 @@ export function RestaurantCard(props: Props) {
   const price = restaurantSpendRange(props.spendLow, props.spendHigh);
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, variant !== "featured" && styles.framed]}>
       {/* The save button is a sibling, not a nested press inside the details link. */}
       <View style={styles.main}>
         <Pressable accessibilityRole="button" accessibilityLabel={`عرض تفاصيل ${name}`}
@@ -59,7 +59,7 @@ export function RestaurantCard(props: Props) {
         </View>
         <Pressable accessible accessibilityRole="button"
           accessibilityLabel={hasRating ? `التقييم ${ratingText} من ٥، تفاصيل ${name}` : `التقييم غير متوفر، تفاصيل ${name}`}
-          onPress={() => setDetailsOpen(true)} style={styles.rating}>
+          onPress={() => setDetailsOpen(true)} style={({ pressed }) => [styles.rating, pressed && styles.pressed]}>
           <SymbolView name={{ ios: hasRating ? "star.fill" : "star", android: "star", web: "star" }}
             size={14} tintColor={hasRating ? "#B88225" : theme.colors.placeholder} accessible={false} />
           <AppText style={styles.ratingText}>{ratingText ?? "—"}</AppText>
@@ -70,7 +70,7 @@ export function RestaurantCard(props: Props) {
           accessibilityLabel={`ليش اخترنا ${name} لك؟ ${reason.trim()}`}
           accessibilityHint="يفتح نافذة تفاصيل المطعم"
           accessibilityState={{expanded: detailsOpen}}
-          onPress={() => setDetailsOpen(true)} style={styles.reason}>
+          onPress={() => setDetailsOpen(true)} style={({ pressed }) => [styles.reason, pressed && styles.pressed]}>
           <AppText variant="label" style={styles.reasonTitle}>ليش اخترناه لك؟</AppText>
           <AppText numberOfLines={2} style={styles.reasonText}>
             {reason.trim()}
@@ -104,4 +104,12 @@ const styles = StyleSheet.create({
   reasonTitle: { width: "100%", fontSize: 13, lineHeight: 22, textAlign: "right", writingDirection: "rtl" },
   reasonText: { width: "100%", fontSize: 13, lineHeight: 22, textAlign: "right", writingDirection: "rtl" },
   pressed: { opacity: 0.8 },
+  // A framed card reads as one tappable item, not loose text.
+  framed: {
+  backgroundColor: theme.colors.surface,
+  borderWidth: 1,
+  borderColor: theme.colors.border,
+  borderRadius: 16,
+  padding: 8,
+ },
 });
