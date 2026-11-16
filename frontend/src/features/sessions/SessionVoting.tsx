@@ -167,7 +167,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error, re
           <AppButton title="يعجبني" accessibilityLabel={`يعجبني ${itemName(current)}`} disabled={!canVote}
             style={{ flex: 1 }} onPress={() => voting.answer(current.plan_item_id, true)} />
           <Pressable accessibilityRole="button" accessibilityLabel={`نتخطّى ${itemName(current)}`} accessibilityState={{ disabled: !canVote }}
-            disabled={!canVote} onPress={() => voting.answer(current.plan_item_id, false)} style={[styles.pass, !canVote && { opacity: 0.43 }]}><AppText style={styles.passText}>نتخطّاه</AppText></Pressable>
+            disabled={!canVote} onPress={() => voting.answer(current.plan_item_id, false)} style={({ pressed }) => [styles.pass, !canVote && { opacity: 0.43 }, pressed && { opacity: 0.85 }]}><AppText style={styles.passText}>نتخطّاه</AppText></Pressable>
         </View><AppText style={room.center}>اختياراتك خاصة بك</AppText>
       </> : <AppText accessibilityLiveRegion="polite" style={room.center}>{voting.unsaved ? "انتظر اكتمال الحفظ قبل مغادرة الشاشة." : "النتيجة بتظهر هنا عند إقفال التصويت."}</AppText>}
     </SessionFooter>

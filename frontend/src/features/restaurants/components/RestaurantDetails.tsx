@@ -96,7 +96,6 @@ export function RestaurantDetails({
               size={19} tintColor="#FFFDF1" accessible={false} />
             <AppText style={styles.pillText}>رجوع</AppText>
           </Pressable>
-          <View style={styles.pill}><AppText style={styles.pillText}>تفاصيل المطعم</AppText></View>
         </View>
       </SafeAreaView>
     </Modal>

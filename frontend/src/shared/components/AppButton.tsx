@@ -63,3 +63,4 @@ const styles = StyleSheet.create({
     // Fade slightly while pressed, so the tap feels registered.
     opacity: 0.85,
   },
+});

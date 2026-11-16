@@ -30,7 +30,7 @@ export function SessionHeader({ title }: { title: string }) {
   return <View style={styles.header}>
     <AppText style={styles.brand}>ذوق</AppText>
     <AppText style={styles.heading}>{title}</AppText>
-    <Pressable accessibilityRole="button" accessibilityLabel="رجوع" style={styles.back}
+    <Pressable accessibilityRole="button" accessibilityLabel="رجوع" style={({ pressed }) => [styles.back, pressed && { opacity: 0.7 }]}
       onPress={() => router.canGoBack() ? router.back() : router.replace("/")}>
       <SessionIcon name="back" size={25} />
     </Pressable>
@@ -44,7 +44,7 @@ export function SessionSheet({ visible, title, onClose, children }: {
     <SafeAreaView style={styles.sheet} accessibilityViewIsModal onAccessibilityEscape={onClose}>
       <View style={styles.sheetHeading}>
         <AppText variant="title" style={styles.sheetTitle}>{title}</AppText>
-        <Pressable accessibilityRole="button" accessibilityLabel={`إغلاق ${title}`} onPress={onClose} style={styles.back}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`إغلاق ${title}`} onPress={onClose} style={({ pressed }) => [styles.back, pressed && { opacity: 0.7 }]}>
           <AppText>إغلاق</AppText>
         </Pressable>
       </View>

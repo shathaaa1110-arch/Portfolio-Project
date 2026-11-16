@@ -6,7 +6,7 @@ export const theme = {
     surface: "#FFFDF8",
     text: "#193A30",
     border: "#D7DDCE",
-    placeholder: "#7A826F",
+    placeholder: "#626D5E",
     primary: "#194D3C",
     onPrimary: "#FFFEF9",
 
