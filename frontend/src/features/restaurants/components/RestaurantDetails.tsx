@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     flexGrow: 1, marginTop: -28, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingTop: 22, paddingHorizontal: 24, paddingBottom: 20, backgroundColor: theme.colors.background,
   },
-  eyebrow: { fontSize: 12, lineHeight: 20, color: theme.colors.primary, textAlign: "right", writingDirection: "rtl" },
+  eyebrow: { fontSize: 14, lineHeight: 23, color: theme.colors.primary, textAlign: "right", writingDirection: "rtl" },
   name: { marginTop: 9, fontSize: 38, lineHeight: 52, textAlign: "right", writingDirection: "rtl" },
   location: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 6, marginTop: 9 },
   locationText: { flexShrink: 1, fontSize: 13, lineHeight: 22, color: "#65735E", textAlign: "right", writingDirection: "rtl" },
@@ -120,8 +120,8 @@ const styles = StyleSheet.create({
     ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 12,
     paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#DCE1D5",
   },
-  label: { flex: 1, fontSize: 12, lineHeight: 20, color: "#65735E", textAlign: "right", writingDirection: "rtl" },
-  value: { flex: 1, fontSize: 12, lineHeight: 20, textAlign: "left", writingDirection: "rtl" },
+  label: { flex: 1, fontSize: 14, lineHeight: 23, color: "#65735E", textAlign: "right", writingDirection: "rtl" },
+  value: { flex: 1, fontSize: 14, lineHeight: 23, textAlign: "left", writingDirection: "rtl" },
   reason: {
     marginBottom: 22, padding: 16, gap: 6, borderRadius: 16,
     backgroundColor: "#EDF0E1", borderWidth: 1, borderColor: "#D9DFC9",
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   reasonTitle: { fontSize: 15, lineHeight: 24, textAlign: "right", writingDirection: "rtl" },
   reasonText: { fontSize: 14, lineHeight: 25, color: "#4E5E4B", textAlign: "right", writingDirection: "rtl" },
   actions: { gap: 14 },
-  caption: { marginTop: 12, fontSize: 10, lineHeight: 18, color: "#707968", textAlign: "center", writingDirection: "rtl" },
+  caption: { marginTop: 12, fontSize: 13, lineHeight: 21, color: "#707968", textAlign: "center", writingDirection: "rtl" },
   photoHeader: {
     position: "absolute", left: 24, right: 24, ...layoutDirection("ltr"), flexDirection: "row-reverse",
     alignItems: "center", justifyContent: "space-between", gap: 12,

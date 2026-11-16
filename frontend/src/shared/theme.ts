@@ -36,14 +36,14 @@ export const theme = {
     titleSize: 31,
     // Use a smaller title inside a page.
     sectionTitleSize: 18,
-        // Heading size inside the session card.
+    // Heading size inside the session card.
     sessionTitleSize: 21,
-    bodySize: 14,
-    labelSize: 13,
+    bodySize: 16,
+    labelSize: 14,
     inputSize: 16,
     buttonSize: 15,
-        // Text size inside a chip.
-    chipSize: 12,
+    // Text size inside a chip.
+    chipSize: 13,
   },
 
   spacing: {
