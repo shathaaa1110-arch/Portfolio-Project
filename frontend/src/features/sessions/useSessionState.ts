@@ -9,6 +9,7 @@ import { outingToken } from "./identity";
 // How often the waiting room asks for news while it is on screen.
 export const POLL_MS = 4000;
 
+// After these, asking again cannot help: this device has no access to the outing anymore.
 // Leaving the outing or being removed from it (BE-29) ends access the same way.
 const FINAL_ERRORS = [
   "NO_ACCESS", "INVALID_TOKEN", "TOKEN_EXPIRED", "NOT_A_PARTICIPANT", "OUTING_NOT_FOUND",
