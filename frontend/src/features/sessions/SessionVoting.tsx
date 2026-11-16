@@ -127,7 +127,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error, re
           <View style={room.card}><AppText style={room.label}>كيف كانت أصواتنا؟</AppText>
             {result.items.map(item => <View key={item.plan_item_id} style={room.row}>
               <AppText style={[room.text, { flex: 1 }]}>{item.name_ar || plan.plan_items.find(i => i.plan_item_id === item.plan_item_id)?.restaurant.name_en || "مطعم"}</AppText>
-              <AppText style={room.small}>{arabic(item.likes)} إعجاب · {arabic(item.support_percentage)}٪</AppText>
+              <AppText style={room.small}>{arabic(item.likes)} إعجاب، {arabic(item.support_percentage)}٪</AppText>
             </View>)}
             <AppText style={room.small}>التأييد من كل المشاركين، ويشمل من لم يكمل التصويت.</AppText>
             {tied && <AppText style={room.small}>تعادلت الإعجابات؛ اختير الأعلى ترتيبًا في الاقتراحات.</AppText>}
@@ -195,7 +195,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error, re
   </SafeAreaView>;
 }
 const styles = StyleSheet.create({
-  pill: { color: "#72603B", fontSize: 12, lineHeight: 22, textAlign: "right" },
+  pill: { color: "#72603B", fontSize: 14, lineHeight: 23, textAlign: "right" },
   pass: { flex: 1, minHeight: 54, padding: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 28 },
   passText: { textAlign: "center", fontFamily: theme.typography.fontFamilyBold, fontSize: 15, lineHeight: 25 },
   option: { flex: 1, minHeight: 48, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.border, borderRadius: 16 },

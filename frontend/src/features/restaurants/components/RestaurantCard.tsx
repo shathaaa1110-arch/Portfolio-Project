@@ -46,7 +46,7 @@ export function RestaurantCard(props: Props) {
             style={[styles.image, variant === "featured" && styles.featuredImage]} />
           <AppText variant="title" numberOfLines={compact ? 1 : 2} style={styles.name}>{name}</AppText>
           <AppText numberOfLines={1} style={styles.subtitle}>
-            {[cuisine, distance].filter(Boolean).join(" · ")}
+            {[cuisine, distance].filter(Boolean).join("، ")}
           </AppText>
           {variant === "featured" && <AppText style={styles.subtitle}>{price ? `للشخص تقريبًا: ${price}` : "السعر غير متوفر"}</AppText>}
         </Pressable>
@@ -106,10 +106,10 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.8 },
   // A framed card reads as one tappable item, not loose text.
   framed: {
-  backgroundColor: theme.colors.surface,
-  borderWidth: 1,
-  borderColor: theme.colors.border,
-  borderRadius: 16,
-  padding: 8,
- },
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 16,
+    padding: 8,
+  },
 });

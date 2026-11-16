@@ -60,7 +60,6 @@ const styles = StyleSheet.create({
     opacity: theme.opacity.disabled,
   },
   pressed: {
-  // Fade slightly while pressed, so the tap feels registered.
-  opacity: 0.85,
-},
-});
+    // Fade slightly while pressed, so the tap feels registered.
+    opacity: 0.85,
+  },

@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   step: { flex: 1, alignItems: "center", gap: 7 },
   stepNumber: { width: 27, height: 27, borderRadius: 14, overflow: "hidden", textAlign: "center", lineHeight: 27, backgroundColor: "#E9E9DC", color: "#6E7865", fontSize: 13 },
   stepActive: { backgroundColor: theme.colors.primary, color: theme.colors.onPrimary },
-  stepLabel: { fontSize: 11, color: "#6E7865", textAlign: "center" }, currentLabel: { color: theme.colors.primary, fontFamily: theme.typography.fontFamilyBold },
+  stepLabel: { fontSize: 13, color: "#6E7865", textAlign: "center" }, currentLabel: { color: theme.colors.primary, fontFamily: theme.typography.fontFamilyBold },
   tip: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 6, marginTop: 16, paddingHorizontal: 6 },
   haila: { width: 58, height: 64 }, tipCopy: { flex: 1, gap: 4 },
   tipName: { textAlign: "right", fontSize: 13, color: "#8C672D", fontFamily: theme.typography.fontFamilyBold },

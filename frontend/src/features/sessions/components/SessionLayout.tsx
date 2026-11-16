@@ -29,7 +29,7 @@ export const room = StyleSheet.create({
   content: { width: "100%", maxWidth: 460, alignSelf: "center", paddingHorizontal: 22, paddingBottom: 16, gap: 16 },
   title: { fontFamily: theme.typography.fontFamilyBold, fontSize: 28, lineHeight: 42, textAlign: "right", writingDirection: "rtl" },
   text: { fontSize: 14, lineHeight: 25, textAlign: "right", writingDirection: "rtl", color: "#536653" },
-  small: { fontSize: 12, lineHeight: 21, textAlign: "right", writingDirection: "rtl", color: "#536653" },
+  small: { fontSize: 14, lineHeight: 23, textAlign: "right", writingDirection: "rtl", color: "#536653" },
   center: { fontSize: 13, lineHeight: 23, textAlign: "center", writingDirection: "rtl", color: "#536653" },
   label: { fontFamily: theme.typography.fontFamilyBold, textAlign: "right", fontSize: 17, lineHeight: 28, writingDirection: "rtl" },
   card: { padding: 18, gap: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: "#E3E4D7", borderRadius: 22 },
@@ -42,6 +42,6 @@ export const room = StyleSheet.create({
   quiet: { minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 14 },
   quietLabel: { fontSize: 14, lineHeight: 24, textAlign: "center", textDecorationLine: "underline", fontFamily: theme.typography.fontFamilyBold },
   error: { fontSize: 13, lineHeight: 24, textAlign: "right", writingDirection: "rtl", color: theme.colors.error },
-  warning: { backgroundColor: "#F4E8CB", padding: 12, borderRadius: 14, fontSize: 12, lineHeight: 23, textAlign: "right", writingDirection: "rtl" },
+  warning: { backgroundColor: "#F4E8CB", padding: 12, borderRadius: 14, fontSize: 14, lineHeight: 24, textAlign: "right", writingDirection: "rtl" },
   mock: { fontSize: 10, textAlign: "center", color: "#536653", lineHeight: 16 },
 });

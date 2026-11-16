@@ -220,7 +220,7 @@ export function SessionScreen() {
           <AppText accessibilityRole="header" style={styles.title}>{state.name}</AppText>
           <AppText style={room.center}>{dateLabel} · الرياض</AppText>
           {(state.round_number ?? 1) > 1 && <View accessibilityLiveRegion="polite">
-            <AppText style={room.label}>جولة جديدة · {state.round_number!.toLocaleString("ar-SA")}</AppText>
+            <AppText style={room.label}>جولة جديدة: {state.round_number!.toLocaleString("ar-SA")}</AppText>
             <AppText style={room.text}>نفس جمعتكم وتفضيلاتكم. راجع ذوقك وأكّد جاهزيتك من جديد.</AppText>
           </View>}
           {state.status === "invite" ? <>
@@ -242,7 +242,7 @@ export function SessionScreen() {
           <View style={styles.rule} />
           <Pressable accessibilityRole="button" accessibilityLabel="عرض المشاركين وجاهزيتهم" onPress={() => setDetails(true)} style={styles.people}>
             <SessionIcon name="people" size={23} />
-            <AppText style={[room.label, { flex: 1 }]}>{state.status === "invite" ? `أهل الجلسة · ${state.participants.length.toLocaleString("ar-SA")} من ٨` : `جاهزين · ${state.readiness.ready_count.toLocaleString("ar-SA")} من ${state.readiness.total_count.toLocaleString("ar-SA")}`}</AppText>
+            <AppText style={[room.label, { flex: 1 }]}>{state.status === "invite" ? `أهل الجلسة: ${state.participants.length.toLocaleString("ar-SA")} من ٨` : `جاهزين: ${state.readiness.ready_count.toLocaleString("ar-SA")} من ${state.readiness.total_count.toLocaleString("ar-SA")}`}</AppText>
             <SessionIcon name="next" size={18} />
           </Pressable>
         </SessionPaper>
