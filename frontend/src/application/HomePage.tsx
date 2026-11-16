@@ -16,7 +16,6 @@ import { HomeTodayPick } from "./HomeTodayPick";
 import { useHomePreferences } from "./useHomePreferences";
 
 export function HomePage() {
-  const [selectedAction, setSelectedAction] = useState<"restaurants" | "outing">("restaurants");
   const [browseRequest, setBrowseRequest] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -39,9 +38,9 @@ export function HomePage() {
   }
 
   const header = <View style={styles.header}>
-    <HomeIntro selected={selectedAction}
-      onFindRestaurant={() => { setSelectedAction("restaurants"); setBrowseRequest(value => value + 1); }}
-      onCreateSession={() => { setSelectedAction("outing"); router.push("/sessions/new"); }} />
+    <HomeIntro
+      onFindRestaurant={() => setBrowseRequest(value => value + 1)}
+      onCreateSession={() => router.push("/sessions/new")} />
 
     {RESTAURANT_SEARCH_ENABLED && <View style={styles.searchGroup}>
       <View style={styles.searchField}>

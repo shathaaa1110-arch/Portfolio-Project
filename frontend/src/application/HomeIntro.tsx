@@ -7,12 +7,11 @@ import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 
 type HomeIntroProps = {
-  selected: "restaurants" | "outing";
   onFindRestaurant: () => void;
   onCreateSession: () => void;
 };
 
-export function HomeIntro({ selected, onFindRestaurant, onCreateSession }: HomeIntroProps) {
+export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps) {
   return (
     <View style={styles.container}>
      <View style={styles.hero}>
@@ -41,55 +40,33 @@ export function HomeIntro({ selected, onFindRestaurant, onCreateSession }: HomeI
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="ألقى مطعم، تصفّح قائمة المطاعم"
-          accessibilityState={{ selected: selected === "restaurants" }}
           onPress={onFindRestaurant}
-          style={({ pressed }) => [
-            styles.action,
-            selected === "restaurants" ? styles.activeAction : styles.outingAction,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
         >
-          <AppText variant="button" style={[styles.findText, { color: selected === "restaurants" ? theme.colors.onPrimary : theme.colors.primary }]}>
-            ألقى مطعم
-          </AppText>
-
           <SymbolView
-            name={{
-              ios: "fork.knife",
-              android: "restaurant",
-              web: "restaurant",
-            }}
-            tintColor={selected === "restaurants" ? theme.colors.onPrimary : theme.colors.primary}
+            name={{ ios: "fork.knife", android: "restaurant", web: "restaurant" }}
+            tintColor={theme.colors.primary}
             size={27}
             accessible={false}
           />
+          <AppText variant="button" style={styles.actionTitle}>ألقى مطعم</AppText>
+          <AppText style={styles.actionHint}>تصفّح المطاعم لك</AppText>
         </Pressable>
 
         <Pressable
-          accessible
           accessibilityRole="button"
           accessibilityLabel="أخطّط طلعة، إنشاء جلسة جديدة"
-          accessibilityState={{ selected: selected === "outing" }}
           onPress={onCreateSession}
-          style={({ pressed }) => [styles.action, selected === "outing" ? styles.activeAction : styles.outingAction, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
         >
-          <View style={styles.outingCopy}>
-            <AppText variant="label" style={[styles.outingText, { color: selected === "outing" ? theme.colors.onPrimary : theme.colors.primary }]}>
-              أخطّط طلعة
-            </AppText>
-
-          </View>
-
           <SymbolView
-            name={{
-              ios: "map",
-              android: "map",
-              web: "map",
-            }}
-            tintColor={selected === "outing" ? theme.colors.onPrimary : theme.colors.primary}
+            name={{ ios: "map", android: "map", web: "map" }}
+            tintColor={theme.colors.primary}
             size={27}
             accessible={false}
           />
+          <AppText variant="button" style={styles.actionTitle}>أخطّط طلعة</AppText>
+          <AppText style={styles.actionHint}>اجمع ربعك وصوّتوا</AppText>
         </Pressable>
       </View>
     </View>
@@ -131,46 +108,34 @@ description: {
   actions: {
     ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
-    gap: 0,
-    backgroundColor: theme.colors.searchBackground,
-    borderRadius: 20,
+    gap: 12,
   },
 
   action: {
     flex: 1,
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minHeight: 64,
+    gap: 4,
+    minHeight: 96,
     paddingHorizontal: 10,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
 
-  activeAction: {
-    backgroundColor: theme.colors.primary,
-  },
-
-  findText: {
+  actionTitle: {
     fontSize: 18,
-    flexShrink: 1,
+    color: theme.colors.primary,
     writingDirection: "rtl",
   },
 
-  outingAction: {
-    backgroundColor: theme.colors.searchBackground,
-  },
-
-  outingCopy: {
-    flexShrink: 1,
-    alignItems: "center",
-  },
-
-  outingText: {
+  actionHint: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: "#536653",
     textAlign: "center",
     writingDirection: "rtl",
-    fontSize: 17,
   },
 
   comingSoon: {
