@@ -5,9 +5,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppButton, AppText } from "@/shared/components";
 import { layoutDirection } from "@/shared/layout";
 import { theme } from "@/shared/theme";
-import { startPreferences } from "./api/state";
+import { startPreferences, type Participant } from "./api/state";
 import { InviteCard } from "./components/InviteCard";
 import { ParticipantRow } from "./components/ParticipantRow";
+import { LeaveButton, RemoveSheet } from "./components/SessionActions";
 import { StageIndicator } from "./components/StageIndicator";
 import { outingToken } from "./identity";
 import { useSessionState } from "./useSessionState";
@@ -42,6 +43,8 @@ function Lobby({ outingId, code }: { outingId: string; code: string }) {
   const { state, error, refresh } = useSessionState(outingId, code);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState("");
+  // Whom the organizer is about to remove; null while no one is picked.
+  const [removing, setRemoving] = useState<Participant | null>(null);
 
   const me = state?.participants.find((person) => person.participant_id === state.me.participant_id);
   const needsPreferences = state?.status === "preferences" && me !== undefined && !me.preferences_done;
@@ -76,6 +79,15 @@ function Lobby({ outingId, code }: { outingId: string; code: string }) {
   if (error?.code === "OUTING_NOT_FOUND") {
     return <Problem text="الجلسة غير موجودة أو انتهت." action="الرجوع للرئيسية" onPress={() => router.replace("/")} />;
   }
+  // Leaving or removal ends access: say why, without showing the outing again.
+  if (error?.code === "LEFT_OUTING") {
+    return (
+      <Problem text="غادرت هذه الجلسة. تقدر ترجع لها برمز الدعوة ما دامت مفتوحة." action="الرجوع للرئيسية" onPress={() => router.replace("/")} />
+    );
+  }
+  if (error?.code === "REMOVED_FROM_OUTING") {
+    return <Problem text="أزالك المنظّم، وانتهى وصولك لهذه الجلسة." action="الرجوع للرئيسية" onPress={() => router.replace("/")} />;
+  }
   if (state === null) {
     return error ? (
       <Problem text="تعذّر تحميل الجلسة." action="حاول مرة ثانية" onPress={refresh} />
@@ -85,6 +97,9 @@ function Lobby({ outingId, code }: { outingId: string; code: string }) {
   }
 
   const open = state.status === "invite" || state.status === "preferences";
+  // Only the organizer removes, only someone else, and only before generation.
+  const canRemove = (person: Participant) =>
+    open && state.me.is_organizer && person.participant_id !== state.me.participant_id;
   const when = formatWhen(state.starts_at);
   return (
     <>
@@ -109,6 +124,7 @@ function Lobby({ outingId, code }: { outingId: string; code: string }) {
           person={person}
           isMe={person.participant_id === state.me.participant_id}
           showReadiness={state.status !== "invite"}
+          onRemove={canRemove(person) ? () => setRemoving(person) : undefined}
         />
       ))}
 
@@ -128,6 +144,8 @@ function Lobby({ outingId, code }: { outingId: string; code: string }) {
       {state.status === "preferences" && (
         <AppButton title="تفضيلاتي لهذه الجلسة" style={styles.button} onPress={() => openPreferences(outingId, code)} />
       )}
+      {open && !state.me.is_organizer && <LeaveButton outingId={outingId} code={code} onDone={refresh} />}
+      <RemoveSheet outingId={outingId} code={code} person={removing} onClose={() => setRemoving(null)} onDone={refresh} />
     </>
   );
 }
