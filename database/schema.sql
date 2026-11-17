@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     phone_number TEXT UNIQUE NOT NULL,
     push_token TEXT,
+    token_version INTEGER NOT NULL DEFAULT 0 CHECK (token_version >= 0),  -- 0013: logout ends earlier tokens
     created_at TIMESTAMP NOT NULL
 );
 

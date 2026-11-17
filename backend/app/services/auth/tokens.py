@@ -2,6 +2,10 @@
 
 A login token names a user. A guest token names one participant and the one outing it
 belongs to, and carries "typ": "guest", so neither kind is accepted in place of the other.
+
+A login token also carries the account's token_version as "ver". Logout raises the version, so
+every older token of that account is refused from then on (checked against the database by
+current_user and participant_of). A token without "ver" was issued before 0013 and counts as 0.
 """
 import uuid
 from datetime import datetime, timedelta
@@ -22,10 +26,11 @@ def _secret() -> str:
     return secret
 
 
-def create_access_token(user_id: uuid.UUID) -> str:
+def create_access_token(user_id: uuid.UUID, version: int = 0) -> str:
     now = utcnow()
     payload = {
         "sub": str(user_id),
+        "ver": version,
         "iat": now,
         "exp": now + timedelta(seconds=TOKEN_TTL_SECONDS),
     }
@@ -51,8 +56,20 @@ class TokenError(Exception):
         self.expired = expired
 
 
+def _version(payload: dict) -> int:
+    ver = payload.get("ver", 0)
+    if not isinstance(ver, int) or isinstance(ver, bool) or ver < 0:
+        raise TokenError(expired=False)
+    return ver
+
+
 def decode_access_token(token: str) -> uuid.UUID:
     """Return the user id inside a valid login token, or raise TokenError."""
+    return decode_access_claims(token)[0]
+
+
+def decode_access_claims(token: str) -> tuple[uuid.UUID, int]:
+    """Return (user id, token version) inside a valid login token, or raise TokenError."""
     secret = _secret()
     try:
         payload = jwt.decode(
@@ -60,7 +77,7 @@ def decode_access_token(token: str) -> uuid.UUID:
         )
         if "typ" in payload:  # a guest token is never a login token
             raise TokenError(expired=False)
-        return uuid.UUID(payload["sub"])
+        return uuid.UUID(payload["sub"]), _version(payload)
     except jwt.ExpiredSignatureError:
         raise TokenError(expired=True)
     except (jwt.InvalidTokenError, ValueError):
@@ -87,10 +104,10 @@ def decode_guest_token(token: str) -> tuple[uuid.UUID, uuid.UUID]:
         raise TokenError(expired=False)
 
 
-def decode_any_token(token: str) -> tuple[str, uuid.UUID, uuid.UUID | None]:
+def decode_any_token(token: str) -> tuple[str, uuid.UUID, uuid.UUID | None, int]:
     """For endpoints that accept a login token or a guest token (BE-11).
 
-    Returns ("user", user_id, None) or (GUEST, participant_id, outing_id), or raises TokenError.
+    Returns ("user", user_id, None, version) or (GUEST, participant_id, outing_id, 0), or raises TokenError.
     """
     secret = _secret()
     try:
@@ -98,9 +115,9 @@ def decode_any_token(token: str) -> tuple[str, uuid.UUID, uuid.UUID | None]:
             token, secret, algorithms=[ALGORITHM], options={"require": ["sub", "exp"]}
         )
         if "typ" not in payload:
-            return "user", uuid.UUID(payload["sub"]), None
+            return "user", uuid.UUID(payload["sub"]), None, _version(payload)
         if payload["typ"] == GUEST and "oid" in payload:
-            return GUEST, uuid.UUID(payload["sub"]), uuid.UUID(payload["oid"])
+            return GUEST, uuid.UUID(payload["sub"]), uuid.UUID(payload["oid"]), 0
         raise TokenError(expired=False)
     except jwt.ExpiredSignatureError:
         raise TokenError(expired=True)

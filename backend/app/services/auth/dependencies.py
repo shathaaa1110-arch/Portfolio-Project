@@ -7,7 +7,7 @@ contract codes TOKEN_EXPIRED / INVALID_TOKEN (Docs/TechnicalDoc.md, 4.3).
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.services.auth.models import User
-from app.services.auth.tokens import TokenError, decode_access_token
+from app.services.auth.tokens import TokenError, decode_access_claims
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -27,13 +27,13 @@ def current_user(
     if creds is None or creds.scheme.lower() != "bearer" or not creds.credentials:
         raise _invalid()
     try:
-        user_id = decode_access_token(creds.credentials)
+        user_id, version = decode_access_claims(creds.credentials)
     except TokenError as exc:
         if exc.expired:
             raise ApiError(401, "TOKEN_EXPIRED", "Your session has expired. Please log in again.")
         raise _invalid()
 
     user = db.get(User, user_id)
-    if user is None:  # account was deleted after the token was issued
+    if user is None or user.token_version != version:  # deleted account, or logged out since
         raise _invalid()
     return user

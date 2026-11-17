@@ -191,7 +191,7 @@ def verify(body: VerifyIn, db: Session = Depends(get_db)) -> dict:
     db.commit()
 
     return {
-        "token": create_access_token(user.id),
+        "token": create_access_token(user.id, user.token_version),
         "expires_in_seconds": TOKEN_TTL_SECONDS,
         "user": {
             "id": str(user.id),
@@ -216,7 +216,12 @@ def save_push_token(
 
 @router.post("/logout", status_code=204)
 def logout(user: User = Depends(current_user), db: Session = Depends(get_db)) -> Response:
-    """Clear this user's push token. The app then deletes its token and opens sign-up."""
+    """End every login token of this account, on every device, and clear its push token.
+
+    Raising token_version makes all tokens issued so far invalid (tokens.py). The app then
+    deletes its own copy and opens sign-up; logging in again issues a token with the new version.
+    """
+    user.token_version = User.token_version + 1  # in SQL, so two logouts at once both count
     user.push_token = None
     db.commit()
     return Response(status_code=204)
