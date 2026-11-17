@@ -6,6 +6,7 @@ import { fromAccountPreferences, PreferencesForm, toPreferencesPayload, type Pre
 import { SessionGenerating } from "./SessionGenerating";
 import { SessionVoting } from "./SessionVoting";
 import { SessionRetry } from "./components/SessionRetry";
+import { RemoveSheet } from "./components/SessionActions";
 import { retryRound, ROUND_RETRY_ENABLED } from "./api/round";
 import { QuietButton, SessionFooter, room } from "./components/SessionLayout";
 import { AppButton, AppText } from "@/shared/components";
@@ -27,6 +28,8 @@ export function SessionScreen() {
   const code = typeof params.code === "string" ? params.code : "";
   const [generating, setGenerating] = useState(false);
   const [details, setDetails] = useState(false);
+  // Whom the organizer is about to remove; null while no one is picked.
+  const [removing, setRemoving] = useState<OutingState["participants"][number] | null>(null);
   const [state, setState] = useState<OutingState | null>(null);
   const [preferences, setPreferences] = useState<OutingPreferences | null>(null);
   const [plan, setPlan] = useState<OutingPlan | null>(null);
@@ -203,6 +206,10 @@ export function SessionScreen() {
     onClose={() => { if (!busyRef.current) setRetryOpen(false); }} onConfirm={restart} onRefresh={refresh} />;
   const dateLabel = state ? new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: RIYADH }).format(new Date(state.starts_at)) : "";
   if (state && generating) return <SessionGenerating name={state.name} />;
+  // Only the organizer removes, only someone else, and only before generation.
+  const canRemove = (personId: string) => !!state && state.me.is_organizer &&
+    (state.status === "invite" || state.status === "preferences") && personId !== state.me.participant_id;
+
   if (state && plan) return <SessionVoting key={`${id}:${state.round_id ?? "legacy"}`} state={state} plan={plan} getToken={votingToken} refresh={refresh} stale={stale || busy} error={error} retry={retry} />;
   return <SafeAreaView style={room.screen}>
     <View style={room.header}><SessionHeader title={state?.status === "preferences" ? "ذوق الجلسة" : "دعوة الجلسة"} />
@@ -266,8 +273,14 @@ export function SessionScreen() {
           <SessionIcon name={p.preferences_done ? "check" : "people"} size={22} />
           <AppText style={styles.personName}>{p.name || "مشارك"}{p.participant_id === state.me.participant_id ? " (أنت)" : ""}{p.is_organizer ? " · المنظّم" : ""}</AppText>
           <AppText style={room.small}>{p.attendance === "declined" ? "اعتذر" : state.status === "invite" ? "انضم" : p.preferences_done ? "جاهز" : "يختار ذوقه"}</AppText>
+          {canRemove(p.participant_id) && <Pressable accessibilityRole="button" accessibilityLabel={`إزالة ${p.name || "مشارك"}`}
+            onPress={() => setRemoving(p)} style={({ pressed }) => [styles.remove, pressed && { opacity: 0.7 }]}>
+            <AppText style={styles.removeIcon}>✕</AppText>
+          </Pressable>}
         </View>)}
         <AppText style={room.small}>تفضيلات كل شخص خاصة به.</AppText></>}
+      {/* Inside the list's sheet, so iOS can show it on top of the list. */}
+      <RemoveSheet outingId={id} code={code} person={removing} onClose={() => setRemoving(null)} onDone={refresh} />
     </SessionSheet>
     <Modal visible={editor !== null} animationType="slide" onRequestClose={() => { if (!busy) setEditor(null); }}>
       {editor && <View style={{ flex: 1 }} pointerEvents={busy ? "none" : "auto"}>
@@ -284,4 +297,6 @@ const styles = StyleSheet.create({
   people: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 8, minHeight: 48 },
   person: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   personName: { flex: 1, textAlign: "right", writingDirection: "rtl", fontSize: 14 },
+  remove: { width: theme.sizes.touchTargetMin, height: theme.sizes.touchTargetMin, alignItems: "center", justifyContent: "center" },
+  removeIcon: { color: theme.colors.primary },
 });

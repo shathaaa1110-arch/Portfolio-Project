@@ -66,7 +66,7 @@ export function LeaveButton({ outingId, code, onDone }: { outingId: string; code
 
 // The organizer confirms one person's removal; closing the sheet changes nothing.
 export function RemoveSheet({ outingId, code, person, onClose, onDone }: {
-  outingId: string; code: string; person: Participant | null; onClose: () => void; onDone: () => void;
+  outingId: string; code: string; person: Pick<Participant, "participant_id" | "name"> | null; onClose: () => void; onDone: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);

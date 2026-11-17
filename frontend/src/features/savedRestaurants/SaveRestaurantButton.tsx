@@ -2,12 +2,15 @@ import { layoutDirection } from "@/shared/layout";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet } from "react-native";
 
 import { isSessionEnded, loadSession } from "@/features/auth";
 import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { removeSavedRestaurant, saveRestaurant } from "./api";
+
+// The saved heart is red everywhere it sits on its own.
+const SAVED_HEART = "#C4473A";
 
 type SaveRestaurantButtonProps = {
   restaurantId: number;
@@ -52,7 +55,9 @@ export function SaveRestaurantButton({
       if (isSessionEnded(error)) {
         router.navigate("/login");
       } else {
-        Alert.alert("تعذّر الحفظ", "تحقق من اتصالك وحاول مرة أخرى.");
+        // Alert does nothing on the web, so the browser gets its own message.
+        if (Platform.OS === "web") globalThis.alert?.("تعذّر الحفظ. تحقق من اتصالك وحاول مرة أخرى.");
+        else Alert.alert("تعذّر الحفظ", "تحقق من اتصالك وحاول مرة أخرى.");
       }
     } finally {
       setBusy(false);
@@ -66,6 +71,7 @@ export function SaveRestaurantButton({
       accessibilityRole="button"
       accessibilityLabel={saved ? "إزالة من المحفوظة" : "حفظ المطعم"}
       accessibilityState={{ selected: saved, busy }}
+      hitSlop={iconOnly && onImage ? 4 : undefined}
       style={({ pressed }) => [
   styles.button,
   iconOnly && styles.iconButton,
@@ -81,8 +87,9 @@ export function SaveRestaurantButton({
             ? { ios: "heart.fill", android: "favorite", web: "favorite" }
             : { ios: "heart", android: "favorite_border", web: "favorite_border" }
         }
-        size={18}
-        tintColor={saved || (iconOnly && onImage) ? theme.colors.onPrimary : theme.colors.primary}
+        size={iconOnly ? 20 : 18}
+        // Red when saved, so the state shows even where the icon cannot fill in.
+        tintColor={saved ? (iconOnly ? SAVED_HEART : theme.colors.onPrimary) : theme.colors.primary}
         accessible={false}
       />
 
@@ -125,7 +132,15 @@ const styles = StyleSheet.create({
   borderWidth: 0,
   borderRadius: 22,
 },
-  onImage: { backgroundColor: "transparent" },
+  // A light chip, so the heart stays visible on any photo.
+  onImage: {
+    width: 36,
+    height: 36,
+    minHeight: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 253, 248, 0.92)",
+    boxShadow: "0 1px 4px rgba(0, 0, 0, 0.18)",
+  },
   savedButton: {
     backgroundColor: theme.colors.primary,
   },

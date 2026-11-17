@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
     // Fade the button when it is unavailable.
     opacity: theme.opacity.disabled,
   },
+
   pressed: {
     // Fade slightly while pressed, so the tap feels registered.
     opacity: 0.85,

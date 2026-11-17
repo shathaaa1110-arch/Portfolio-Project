@@ -99,7 +99,7 @@ async function roomHarness(t, { organizer = true, pref = preferences, generation
     "expo-router": { router: {}, useLocalSearchParams: () => ({ id: "o1", code: "ABCD" }), useFocusEffect: callback => React.useEffect(callback, [callback]) },
     "@/features/preferences": { ...preferenceModel, PreferencesForm: "PreferencesForm" }, "@/features/restaurants": { RestaurantCard: "RestaurantCard" },
     "@/shared/components": shared, "@/shared/api/errors": errors, "@/shared/api/config": { USE_MOCK: false }, "@/shared/theme": theme,
-    "./api/outing": api, "./api/round": roundApi(undefined, false), "./components/SessionRetry": { SessionRetry: "Retry" },
+    "./api/outing": api, "./api/round": roundApi(undefined, false), "./components/SessionRetry": { SessionRetry: "Retry" }, "./components/SessionActions": { RemoveSheet: "RemoveSheet" },
     "./identity": { outingToken: async () => currentToken }, "./model": model,
     "./guestPass": { loadGuestPass: async () => null, removeGuestPass: async () => {} },
     "./components/SessionVisuals": { SessionMasthead: "Masthead", SessionPaper: "Paper", SessionSteps: "Steps", HailaTip: "HailaTip" },
