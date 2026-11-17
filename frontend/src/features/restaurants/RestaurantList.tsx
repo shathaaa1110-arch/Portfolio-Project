@@ -31,6 +31,9 @@ type RestaurantListProps = {
   recommendedRestaurants?: ListRestaurant[];
   footer?: ReactElement;
   searchQuery?: string;
+  filtered?: boolean;
+  showResults?: boolean;
+  onClearSearch?: () => void;
   status?: "ready" | "loading" | "error";
   onRetry?: () => void;
   errorMessage?: string | null;
@@ -49,6 +52,9 @@ export function RestaurantList({
   recommendedRestaurants = [],
   footer,
   searchQuery = "",
+  filtered = false,
+  showResults = true,
+  onClearSearch,
   status = "ready",
   onRetry,
   errorMessage,
@@ -102,9 +108,11 @@ const columns = width < 360 || fontScale > 1.25 ? 1 : 2;
     rows.push({ key: "recommendation-title", heading: <AppText variant="title" accessibilityRole="header" style={styles.sectionTitle}>مطاعم أخرى على ذوقك</AppText> });
     addRestaurants(recommendedRestaurants, "recommended");
   }
-  if (resultsHeader) rows.push({ key: "public-title", heading: resultsHeader });
-  if (status === "ready" && restaurants.length) addRestaurants(restaurants, "public");
-  else rows.push({ key: "public-state", empty: true });
+  if (showResults) {
+    if (resultsHeader) rows.push({ key: "public-title", heading: resultsHeader });
+    if (status === "ready" && restaurants.length) addRestaurants(restaurants, "public");
+    else rows.push({ key: "public-state", empty: true });
+  }
 
     // Show the message that matches the current state.
 function renderEmptyState() {
@@ -148,10 +156,11 @@ function renderEmptyState() {
     <View style={styles.statePanel}>
       {/* Explain why the list is empty. */}
       <AppText style={styles.stateText}>
-        {normalizedQuery
-          ? "ما لقينا مطاعم تطابق بحثك. جرّب اسمًا أو مطبخًا آخر."
+        {normalizedQuery || filtered
+          ? "ما لقينا مطاعم بهذه الخيارات. جرّب اسمًا أو مطبخًا أو حيًا آخر."
           : "لا توجد مطاعم للعرض حاليًا."}
       </AppText>
+      {filtered && onClearSearch && <AppButton title="مسح البحث والفلاتر" onPress={onClearSearch} />}
     </View>
   );
 }
@@ -173,7 +182,7 @@ key={`restaurants-${columns}`}
       renderItem={({item: row}) => row.heading ? <View>{row.heading}</View> : row.empty ? renderEmptyState() : (
         <View style={styles.row}>
           {row.restaurants?.map(item => <View key={item.id} style={{width: columns === 1 ? "100%" : "48%"}}>
-            <RestaurantCard variant="tile" name={item.name_ar} cuisines={item.cuisines}
+            <RestaurantCard restaurantId={item.id} variant="tile" name={item.name_ar} cuisines={item.cuisines}
               district={item.district} rating={item.rating} mapsUrl={item.maps_url} imageUrl={item.image_url}
               spendLow={item.spend_low} spendHigh={item.spend_high}
               reason={item.reason} distanceKm={item.distance_km}

@@ -48,6 +48,7 @@ export function SavedRestaurantsScreen() {
         {status === "ready" &&
           restaurants.map((restaurant) => (
             <RestaurantCard
+              restaurantId={restaurant.id}
               key={restaurant.id}
               name={restaurant.name_ar}
               cuisines={restaurant.cuisines}

@@ -1,5 +1,13 @@
 # Thouq · Technical Documentation
 
+## Restaurant search, details and Arabic alignment — 17 November 2026
+
+Public browsing now has a separate `/search` conversation with Haila: food or restaurant name, then district, then results. It uses the existing `search`, `cuisine` and `district_id` parameters before pagination. Answers can be edited or cleared. Home keeps its header and Today pick.
+
+Opening a card fetches public `GET /restaurants/{id}`. Full-screen details show the current rating, review count, estimated price, description, hours and district, with a safe-area header and fixed maps action. Missing information, loading, errors, retry and 404 are explicit. Closing details preserves list state and filters. Arabic text defaults to right alignment; explicit centered text and Latin codes keep their styles.
+
+No backend, algorithm, database, ERD or module-dependency changes. The outing creation flow and navigation history are unchanged. Validation: TypeScript, architecture boundaries and 134 tests passed; browser checks used real public reads and simulated failures, with iPhone 17 Simulator visual checks. See [the Arabic guide and file map](Restaurant-Discovery.ar.md). A branch change does not mean deployment.
+
 Portfolio Project · Stage 3
 
 | | |

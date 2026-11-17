@@ -9,6 +9,7 @@ export { previewRestaurant, previewRestaurants, registerRestaurantMocks } from "
 export { useRestaurants } from "./useRestaurants";
 
 // Share the restaurant type with other features.
-export { type RestaurantSummary } from "./types";
+export { type RestaurantFilters, type RestaurantSummary } from "./types";
 
 export { RestaurantPagination } from "./components/RestaurantPagination";
+export { RestaurantSearch } from "./components/RestaurantSearch";

@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.labelGap,
   },
   // The shared title is centered; this screen follows the design and starts at the right
-  title: { textAlign: "auto", marginBottom: theme.spacing.labelGap },
+  title: { textAlign: "right", marginBottom: theme.spacing.labelGap },
   subtitle: { marginBottom: theme.spacing.titleGap },
   label: { marginBottom: theme.spacing.labelGap },
   input: { marginBottom: theme.spacing.labelGap },

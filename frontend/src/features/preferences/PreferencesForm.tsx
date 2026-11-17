@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
 
   arabicText: {
     writingDirection: "rtl",
-    textAlign: "auto",
+    textAlign: "right",
     width: "100%",
   },
 

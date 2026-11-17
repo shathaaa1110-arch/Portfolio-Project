@@ -11,6 +11,7 @@ import { RestaurantMapLink } from "./RestaurantMapLink";
 import { RestaurantDetails } from "./RestaurantDetails";
 
 type Props = {
+  restaurantId: number;
   name: string; cuisines: string[]; district: string; rating: number | null;
   imageUrl?: string | null;
   mapsUrl?: string | null; distanceKm?: number | null; reason?: string | null;
@@ -78,7 +79,7 @@ export function RestaurantCard(props: Props) {
         </Pressable>
       )}
       {!compact && action}
-      <RestaurantDetails visible={detailsOpen}
+      <RestaurantDetails restaurantId={props.restaurantId} visible={detailsOpen}
         name={name} cuisines={cuisines} district={district} rating={rating} imageUrl={props.imageUrl}
         distanceKm={distanceKm} mapsUrl={mapsUrl}
         spendLow={props.spendLow} spendHigh={props.spendHigh}
