@@ -111,7 +111,10 @@ test("backend and network errors keep their original error codes", async () => {
 test("first-page mock stays compatible with both URL forms", async () => {
   const handlers = new Map();
   const mocks = load("features/restaurants/mocks.ts", {
+    "@/shared/api/errors": errors,
+    "./filterOptions": load("features/restaurants/filterOptions.ts"),
     "@/shared/api/mockTransport": {
+      registerMockPattern() {},
       registerMock(method, route, handler) { handlers.set(method + " " + route, handler); },
     },
   });
@@ -153,4 +156,36 @@ test("spend range displays only valid SAR bounds using Eastern Arabic digits", (
     ["40","80"],[0,0],[-1,80],[80,40],[NaN,80],[40,Infinity],[40.5,80]]) {
     assert.equal(presentation.restaurantSpendRange(low, high), null);
   }
+});
+
+test("public cuisine, district and text filters are encoded together on the server query", async () => {
+  const calls = [];
+  const api = apiWith(async (...args) => { calls.push(args); return page(20); });
+  await api.getRestaurants(20, "بيتزا & شاي", { cuisine: "italian", districtId: "001&test" });
+  const query = new URL(calls[0][1], "https://example.invalid").searchParams;
+  assert.equal(query.get("search"), "بيتزا & شاي");
+  assert.equal(query.get("cuisine"), "italian");
+  assert.equal(query.get("district_id"), "001&test");
+  assert.equal(query.get("offset"), "20");
+  assert.equal(calls[0].length, 2);
+  await assert.rejects(() => apiWith(() => { throw Error("Must not request"); }, false)
+    .getRestaurants(0, "", { cuisine: "italian" }), { code: "SEARCH_UNAVAILABLE" });
+});
+
+const details = { ...row(1), name_en: null, district_id: null, price_tier: null, spend_low: null,
+  spend_high: null, rating_count: null, opening_hours: null, summary: null };
+test("restaurant details fetch the public endpoint and distinguish null data, malformed replies and missing IDs", async () => {
+  const calls = [];
+  const api = apiWith(async (...args) => { calls.push(args); return details; });
+  assert.equal((await api.getRestaurantDetails(1)).opening_hours, null);
+  assert.deepEqual(calls, [["GET", "/restaurants/1"]]);
+  for (const id of [0, -1, 1.5, Infinity, 2147483648]) await assert.rejects(() => api.getRestaurantDetails(id), { code: "RESTAURANT_NOT_FOUND" });
+  assert.equal(calls.length, 1);
+  for (const data of [null, { ...details, id: 2 }, { ...details, opening_hours: {} },
+    { ...details, opening_hours: { open_24h: false, opens: "25:00", closes: "01:00", days_open: 7 } },
+    { ...details, summary: {} }]) {
+    await assert.rejects(() => apiWith(async () => data).getRestaurantDetails(1), { code: "INVALID_RESPONSE" });
+  }
+  const notFound = new errors.ApiError(404, "RESTAURANT_NOT_FOUND", "Missing");
+  await assert.rejects(() => apiWith(async () => { throw notFound; }).getRestaurantDetails(1), e => e === notFound);
 });
