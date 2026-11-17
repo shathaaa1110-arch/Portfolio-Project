@@ -268,3 +268,73 @@ def test_a_person_who_joins_during_generation_is_never_left_out(secret):  # noqa
             conn.execute(sa.text("DELETE FROM participants WHERE outing_id = :o"), {"o": oid})
             conn.execute(sa.text("DELETE FROM outings WHERE id = :o"), {"o": oid})
             conn.execute(sa.text("DELETE FROM users WHERE id = :u"), {"u": organizer})
+
+
+def test_two_simultaneous_start_voting_requests_save_one_plan(secret):  # noqa: F811
+    """QA-06 (#72): the organizer presses «ابدأ التصويت» twice at once (double tap, two devices).
+    Exactly one plan is saved, and both requests answer with that same plan: same restaurants, same order,
+    same people counted. Committed data in a scratch schema, so two real connections race each other."""
+    schema = f"qa06_{uuid.uuid4().hex[:8]}"
+    route = lambda dbapi, record, proxy: dbapi.cursor().execute(f"SET search_path TO {schema}, public")  # noqa: E731
+    with engine.begin() as conn:
+        conn.execute(sa.text(f"CREATE SCHEMA {schema}"))
+        conn.execute(sa.text(f"SET LOCAL search_path TO {schema}, public"))
+        for statement in SCHEMA.split(";"):
+            if statement.strip():
+                conn.execute(sa.text(statement))
+        lat, lon = map(float, conn.execute(sa.text("SELECT latitude, longitude FROM districts WHERE id = '00100001141'")).one())
+        for rid, cuisine in enumerate(("shawarma", "italian", "saudi", "burgers", "indian", "chinese"), start=1):
+            conn.execute(sa.text(
+                "INSERT INTO restaurants (id, name_ar, brand_id, cuisine, district, latitude, longitude, spend_low, "
+                "spend_high, price_tier, rating, quality_score, opening_hours, maps_url) VALUES (:id, :n, :id, :c, "
+                "'العليا', :lat, :lon, 20, 60, 2, 4.5, :q, CAST(:h AS jsonb), 'https://maps')"),
+                {"id": rid, "n": f"مطعم {rid}", "c": cuisine, "lat": lat + 0.01 * rid, "lon": lon,
+                 "q": 5 - rid / 10, "h": json.dumps(ALWAYS)})
+        organizer = _add_user(conn)
+        oid, _ = _add_outing(conn, organizer, status="preferences")
+        conn.execute(sa.text("INSERT INTO participants (id, outing_id, guest_name, attendance, preferences_done) "
+                             "VALUES (:id, :o, 'نورة', 'confirmed', false)"), {"id": uuid.uuid4(), "o": oid})
+        conn.execute(sa.text("UPDATE participants SET preferences_done = true WHERE outing_id = :o"), {"o": oid})
+        round_id = str(conn.execute(sa.text("SELECT current_round_id FROM outings WHERE id = :o"), {"o": oid}).scalar())
+    sa.event.listen(engine, "checkout", route)
+    try:
+        holder = engine.connect()
+        tx = holder.begin()
+        holder.execute(sa.text("SELECT 1 FROM outings WHERE id = :o FOR UPDATE"), {"o": oid})
+        results = [None, None]
+
+        def press(i):
+            results[i] = TestClient(app).post(f"{BASE}/{oid}/start-voting", headers=_bearer(organizer),
+                                              json={"round_id": round_id})
+
+        threads = [threading.Thread(target=press, args=(i,)) for i in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=0.5)  # both requests are now waiting on the same outing
+        tx.commit()
+        holder.close()
+        for t in threads:
+            t.join(timeout=10)
+
+        assert [r.status_code for r in results] == [200, 200], [r.text for r in results]
+        plans = [[(i["restaurant"]["id"], i["rank"]) for i in r.json()["plan_items"]] for r in results]
+        assert plans[0] == plans[1] and len(plans[0]) >= 3
+        with engine.connect() as conn:
+            saved = conn.execute(sa.text("SELECT restaurant_id, rank FROM plan_items WHERE round_id = :r ORDER BY rank"),
+                                 {"r": round_id}).all()
+            members = conn.execute(sa.text("SELECT count(*) FROM round_members WHERE round_id = :r"), {"r": round_id}).scalar()
+            status = conn.execute(sa.text("SELECT status FROM outings WHERE id = :o"), {"o": oid}).scalar()
+        assert [tuple(row) for row in saved] == plans[0]  # one plan in the database, the one both saw
+        assert members == 2 and status == "voting"
+    finally:
+        sa.event.remove(engine, "checkout", route)
+        engine.dispose()  # no pooled connection keeps the scratch search_path
+        with engine.begin() as conn:
+            conn.execute(sa.text(f"DROP SCHEMA {schema} CASCADE"))
+            conn.execute(sa.text("DELETE FROM notification_events WHERE outing_id = :o"), {"o": oid})
+            conn.execute(sa.text("DELETE FROM round_members WHERE round_id IN "
+                                 "(SELECT id FROM outing_rounds WHERE outing_id = :o)"), {"o": oid})
+            conn.execute(sa.text("DELETE FROM participants WHERE outing_id = :o"), {"o": oid})
+            conn.execute(sa.text("DELETE FROM outings WHERE id = :o"), {"o": oid})
+            conn.execute(sa.text("DELETE FROM users WHERE id = :u"), {"u": organizer})
