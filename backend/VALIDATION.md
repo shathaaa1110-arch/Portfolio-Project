@@ -3,7 +3,7 @@
 Validated locally on **21 October 2026**, against application code at
 `a55fadb`, using Python 3.12.15 and PostgreSQL 18.6. This change adds the
 [health contract, flow diagram, and shared error examples](README.md#health-check-contract)
-and updates the [BE-01 task card](../%5BBE-01%5D%20Check%20the%20API%20skeleton%20and%20health%20check.md).
+and updates the [BE-01 task card](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/53).
 The existing application implementation passed without code changes.
 
 ## Real HTTP and database checks

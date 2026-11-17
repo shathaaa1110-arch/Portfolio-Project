@@ -15,27 +15,30 @@ Portfolio Project · Stage 3
 | Project | Thouq (ذوق), a group dining planner |
 | Team | Shatha Alanzi, Asim Alhubaishi, Hassan Alhuzali, Fahad Almidaj |
 
-## Frontend scope and current API verification — 10 November 2026
+## Current integration status — 15 November 2026
 
-The implemented Sprint 2–3 frontend map and acceptance gaps are tracked in
-[Sprint-2-3-Frontend.ar.md](Sprint-2-3-Frontend.ar.md). Home now shares one personal
-recommendation response between the featured choice and regular list rows under
-“مطاعم أخرى على ذوقك”. The selected Home action changes its green state.
-Account preferences return to the existing Home; an account-scoped in-memory
-location cache preserves the choice without re-requesting GPS.
+Baseline: `deployment` at `92412ee`. The [documentation index](README.md) identifies
+current guides and historical evidence. The frontend flow is documented in
+[Session-Flow.ar.md](Session-Flow.ar.md), with remaining acceptance in
+[Sprint-2-3-Frontend.ar.md](Sprint-2-3-Frontend.ar.md).
 
-Public GET checks confirmed server-side `search` with filtered totals; it is now
-on by default in the frontend. This does not add district filtering or a separate
-restaurant-detail endpoint. Missing hours/prices are not synthesized. The current
-single-round outing API does not implement #90 retry. The #91 frontend now supports
-confirmation, same-session reset and stale-round protection in explicit local mock
-mode. Real activation awaits the [provisional round contract](Session-Retry-Contract.md)
-and #90; it is hidden and disabled by default. The same shared flag gates every
-round-scoped request, including vote bodies, even if early server metadata includes
-a round ID. Vote reload waits for the pending save before restoring answers.
-Single-round result screens stop polling; round-enabled screens poll state and
-reuse the current plan until the round changes or the screen refocuses. No SQL, ERD or backend algorithm changes are
-part of this frontend work.
+Frontend #159/#157/#161 and backend/database #170 are merged. Same-outing retries
+use migration `0012_outing_rounds`, a current round ID, preserved membership and
+preferences, fresh readiness and separate votes. The current API requires
+`round_id`; builds must set `EXPO_PUBLIC_SESSION_ROUNDS_ENABLED=true`.
+See the [round contract](Session-Retry-Contract.md). Passing CI is separate from
+organizer/guest acceptance on real devices.
+
+Backend #168 supports restaurant details and district/cuisine filters; the frontend
+still needs to consume them. Backend #166 supports leaving/removal, and #167
+supports push delivery; the respective frontend controls and native registration
+are still pending. #169 returns `invite_url` in state, but consistent sharing from
+all frontend entry points is still pending. PR #171 is not in this baseline.
+
+The home action selection, personal recommendation list and account-scoped location
+memory are implemented. Editing preferences returns to the existing Home without
+requesting GPS again automatically. No architecture or ERD change is introduced by
+this documentation cleanup; existing round tables are described below.
 
 ## Implemented session frontend — 10 November 2026
 
@@ -55,7 +58,8 @@ no-winner reason. The UI never calculates a winner itself.
 
 The existing engine uses the selected district center, not a participant midpoint.
 Allergies remain a warning and seating requirements are stored, not used as a filter.
-No SQL/ERD changes: existing votes, plan_items.is_winner and outing status are reused.
+The initial frontend integration reused existing votes and outing state. The current
+backend additionally uses the round tables and ownership from migration 0012.
 Public feature imports are declared in architecture.json (sessions → voting).
 
 The cream/green identity and shared Arabic type remain. Large repeated hero panels
@@ -91,9 +95,13 @@ Broader product diagrams include future scope; they do not imply every story is 
 | Guest | A person without an account who joins one outing with a name only. |
 | Participant | An organizer, member, or guest taking part in an outing. |
 
-### Key decisions
+### Original design decisions — historical context
 
-The stories below are built on these decisions.
+The list and original stories below preserve the Stage 3 design. Saved groups,
+automatic generation and timed tie voting are not current implemented behavior.
+For the current direct-session flow use [Session-Flow.ar.md](Session-Flow.ar.md),
+the integration status above and the implemented API sections. Do not infer
+completion from these original design stories.
 
 - **Accounts:** Users sign up with their name and phone number and log in with a one-time verification code. There are no passwords.
 - **Two ways to decide:** A one-off session is created directly, shared by its code, and keeps no member list afterwards. A saved group keeps its members, and its organizer can start new outings in it. Both go through the same four stages.
