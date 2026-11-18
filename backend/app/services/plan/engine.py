@@ -40,10 +40,10 @@ class LocationRequired(Exception):
 class Restaurant:
     id: int
     cuisines: tuple[str, ...]          # raw dataset codes, e.g. ("saudi", "grill_bbq")
-    lat: float
-    lon: float
-    spend_low: int                     # SAR per person
-    spend_high: int
+    lat: float | None = None
+    lon: float | None = None
+    spend_low: int | None = None       # SAR per person
+    spend_high: int | None = None
     quality_score: float | None = None  # rating adjusted for review count, about 2 to 5
     brand_id: int | None = None
     venue_type: str | None = None
@@ -135,6 +135,8 @@ def filter_candidates(restaurants, people: list[Preferences], when: datetime,
             continue
         if not anyone_wants_cafes and _is_cafe_only(r):
             continue
+        if has_location and (r.lat is None or r.lon is None):
+            continue
         d = distance_km(lat, lon, r.lat, r.lon) if has_location else None
         if max_km is not None and d > max_km:
             continue
@@ -145,9 +147,9 @@ def filter_candidates(restaurants, people: list[Preferences], when: datetime,
 def _within_every_budget(r: Restaurant, people: list[Preferences]) -> bool:
     """The place's spend range must touch every person's budget range."""
     for p in people:
-        if p.budget_max is not None and r.spend_low > p.budget_max:
+        if p.budget_max is not None and (r.spend_low is None or r.spend_low > p.budget_max):
             return False
-        if p.budget_min is not None and r.spend_high < p.budget_min:
+        if p.budget_min is not None and (r.spend_high is None or r.spend_high < p.budget_min):
             return False
     return True
 
