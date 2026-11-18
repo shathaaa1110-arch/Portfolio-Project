@@ -231,13 +231,18 @@ test("Home exposes global search only when supported, forwards Arabic text and c
 });
 
 
-test("Home actions open session creation and browsing, and extra recommendations go to the main list", async () => {
+test("Home selects the pressed action and places extra recommendations in the main list", async () => {
   const personal = [{ id: 101, name_ar: "الأول" }, { id: 102, name_ar: "الثاني", reason: "على ذوقك", distance_km: 2 }, { id: 103, name_ar: "الثالث" }];
   const h = await homeSearchHarness(true, personal);
   const outing = () => h.screen.root.findByProps({ accessibilityLabel: "أخطّط طلعة، إنشاء جلسة جديدة" });
+  const find = () => h.screen.root.findByProps({ accessibilityLabel: "ألقى مطعم، تصفّح قائمة المطاعم" });
+  assert.equal(find().props.accessibilityState.selected, true);
   await act(async () => outing().props.onPress());
+  assert.equal(outing().props.accessibilityState.selected, true);
+  assert.equal(find().props.accessibilityState.selected, false);
   assert.deepEqual(h.routes, ["/sessions/new"]);
   await h.browse();
+  assert.equal(find().props.accessibilityState.selected, true);
   const rows = h.screen.root.findByType("FlatList").props.data;
   assert.equal(rows[0].heading.props.children, "مطاعم أخرى على ذوقك");
   assert.deepEqual(plain(rows.filter(row => row.key.startsWith("recommended-")).flatMap(row => row.restaurants.map(r => r.id))), [102, 103]);

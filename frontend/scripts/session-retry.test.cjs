@@ -126,7 +126,7 @@ async function screenHarness(t, { organizer = true, enabled = true, status = 're
     './identity': { outingToken: async () => 'T' }, './guestPass': { loadGuestPass: async () => null, removeGuestPass: async () => {} },
     './model': load('features/sessions/model.ts', { '@/shared/api/errors': errors }), './SessionGenerating': { SessionGenerating: 'Generating' }, './SessionVoting': { SessionVoting: 'Voting' },
     './components/SessionRetry': { SessionRetry: 'Retry' },
-    './components/SessionActions': { RemoveSheet: 'RemoveSheet' },
+    './components/SessionActions': { RemoveSheet: 'RemoveSheet', LeaveButton: 'LeaveButton' },
     './components/SessionChrome': { SessionHeader: 'Header', SessionIcon: 'Icon', SessionSheet: 'Sheet' },
     './components/SessionLayout': { QuietButton: 'QuietButton', SessionFooter: 'Footer', room: {} },
     './components/SessionVisuals': { SessionMasthead: 'Masthead', SessionPaper: 'Paper', SessionSteps: 'Steps' },

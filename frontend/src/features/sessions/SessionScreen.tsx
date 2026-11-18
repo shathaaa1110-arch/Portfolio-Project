@@ -6,7 +6,7 @@ import { fromAccountPreferences, PreferencesForm, toPreferencesPayload, type Pre
 import { SessionGenerating } from "./SessionGenerating";
 import { SessionVoting } from "./SessionVoting";
 import { SessionRetry } from "./components/SessionRetry";
-import { RemoveSheet } from "./components/SessionActions";
+import { LeaveButton, RemoveSheet } from "./components/SessionActions";
 import { retryRound, ROUND_RETRY_ENABLED } from "./api/round";
 import { QuietButton, SessionFooter, room } from "./components/SessionLayout";
 import { AppButton, AppText } from "@/shared/components";
@@ -21,6 +21,9 @@ import { loadGuestPass, removeGuestPass } from "./guestPass";
 import { RIYADH, sessionError } from "./model";
 import { SessionHeader, SessionIcon, SessionSheet } from "./components/SessionChrome";
 import { SessionMasthead, SessionPaper, SessionSteps } from "./components/SessionVisuals";
+
+// Leaving or removal ends access for good, so these stop the screen instead of retrying.
+const FINAL_ERRORS = ["LEFT_OUTING", "REMOVED_FROM_OUTING"];
 
 export function SessionScreen() {
   const params = useLocalSearchParams<{ id: string; code?: string; inviteUrl?: string }>();
@@ -42,6 +45,8 @@ export function SessionScreen() {
   const [retryOpen, setRetryOpen] = useState(false);
   const [retryError, setRetryError] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [ended, setEnded] = useState(false);
+  const endedRef = useRef(false);
   const busyRef = useRef(false);
   const active = useRef(false);
   const serial = useRef(0);
@@ -86,6 +91,11 @@ export function SessionScreen() {
     } catch (e) {
       if (!active.current || requestId !== serial.current) return;
       setError(sessionError(e)); setStale(true);
+      if (e instanceof ApiError && FINAL_ERRORS.includes(e.code)) {
+        // Stop asking, and drop the refused pass so the invite link starts fresh.
+        endedRef.current = true; setEnded(true);
+        if (code && (await loadGuestPass(code))?.guest_token === token) await removeGuestPass(code);
+      }
       if (e instanceof ApiError && [401, 403, 404].includes(e.status)) {
         if (e.status === 401 && code && (await loadGuestPass(code))?.guest_token === token) await removeGuestPass(code);
         if (!active.current || requestId !== serial.current) return;
@@ -103,12 +113,13 @@ export function SessionScreen() {
     cachedPlan.current = null; resultSettled.current = false;
     if (knownRound.current.outingId !== id) knownRound.current = { outingId: id, number: 0 };
     setRetryOpen(false); setRetryError(""); setEmptyPlan(false);
+    endedRef.current = false; setEnded(false);
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     async function tick() {
       if (!busyRef.current) await refresh();
       // A single-round result is final. Round-enabled guests keep observing the next round.
-      if (!stopped && !resultSettled.current) timer = setTimeout(tick, 5000);
+      if (!stopped && !resultSettled.current && !endedRef.current) timer = setTimeout(tick, 5000);
     }
     void tick();
     return () => { stopped = true; active.current = false; serial.current++; clearTimeout(timer); };
@@ -218,7 +229,8 @@ export function SessionScreen() {
       {!state ? <View style={room.card}>
         {!error && <ActivityIndicator color={theme.colors.primary} />}
         <AppText style={room.text}>{error || "نحمّل الجلسة..."}</AppText>
-        {!!error && <><AppButton title="إعادة المحاولة" onPress={refresh} />
+        {ended ? <AppButton title="العودة للرئيسية" onPress={() => router.replace("/")} />
+          : !!error && <><AppButton title="إعادة المحاولة" onPress={refresh} />
           <QuietButton title="العودة إلى الدعوة" onPress={() => router.replace({ pathname: "/join", params: { code } })} /></>}
       </View> : <>
         <SessionMasthead title={state.status === "invite" ? "جمعتكم صار لها موعد." : me?.preferences_done ? "ذوقك وصل للجمعة." : "كل واحد يضيف ذوقه."}
@@ -253,6 +265,9 @@ export function SessionScreen() {
             <SessionIcon name="next" size={18} />
           </Pressable>
         </SessionPaper>
+        {/* Participants may leave until suggestions are generated; the organizer stays. */}
+        {!state.me.is_organizer && (state.status === "invite" || state.status === "preferences") &&
+          <LeaveButton outingId={id} code={code} onDone={refresh} />}
         {!!error && <View><AppText accessibilityRole="alert" style={room.error}>{error}</AppText><QuietButton title="تحديث حالة الجلسة" onPress={refresh} disabled={busy} /></View>}
         {USE_MOCK && <AppText style={room.mock}>معاينة تجريبية</AppText>}
       </>}

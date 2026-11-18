@@ -7,11 +7,12 @@ import { AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 
 type HomeIntroProps = {
+  selected: "restaurants" | "outing";
   onFindRestaurant: () => void;
   onCreateSession: () => void;
 };
 
-export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps) {
+export function HomeIntro({ selected, onFindRestaurant, onCreateSession }: HomeIntroProps) {
   return (
     <View style={styles.container}>
      <View style={styles.hero}>
@@ -40,33 +41,35 @@ export function HomeIntro({ onFindRestaurant, onCreateSession }: HomeIntroProps)
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="ألقى مطعم، تصفّح قائمة المطاعم"
+          accessibilityState={{ selected: selected === "restaurants" }}
           onPress={onFindRestaurant}
-          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.action, selected === "restaurants" && styles.activeAction, pressed && styles.pressed]}
         >
           <SymbolView
             name={{ ios: "fork.knife", android: "restaurant", web: "restaurant" }}
-            tintColor={theme.colors.primary}
+            tintColor={selected === "restaurants" ? theme.colors.onPrimary : theme.colors.primary}
             size={27}
             accessible={false}
           />
-          <AppText variant="button" style={styles.actionTitle}>ألقى مطعم</AppText>
-          <AppText style={styles.actionHint}>تصفّح المطاعم لك</AppText>
+          <AppText variant="button" style={[styles.actionTitle, selected === "restaurants" && styles.activeTitle]}>ألقى مطعم</AppText>
+          <AppText style={[styles.actionHint, selected === "restaurants" && styles.activeHint]}>تصفّح المطاعم لك</AppText>
         </Pressable>
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="أخطّط طلعة، إنشاء جلسة جديدة"
+          accessibilityState={{ selected: selected === "outing" }}
           onPress={onCreateSession}
-          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.action, selected === "outing" && styles.activeAction, pressed && styles.pressed]}
         >
           <SymbolView
             name={{ ios: "map", android: "map", web: "map" }}
-            tintColor={theme.colors.primary}
+            tintColor={selected === "outing" ? theme.colors.onPrimary : theme.colors.primary}
             size={27}
             accessible={false}
           />
-          <AppText variant="button" style={styles.actionTitle}>أخطّط طلعة</AppText>
-          <AppText style={styles.actionHint}>اجمع ربعك وصوّتوا</AppText>
+          <AppText variant="button" style={[styles.actionTitle, selected === "outing" && styles.activeTitle]}>أخطّط طلعة</AppText>
+          <AppText style={[styles.actionHint, selected === "outing" && styles.activeHint]}>اجمع ربعك وصوّتوا</AppText>
         </Pressable>
       </View>
     </View>
@@ -122,6 +125,20 @@ description: {
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surface,
+  },
+
+  // The chosen option stays green, as in the design.
+  activeAction: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+
+  activeTitle: {
+    color: theme.colors.onPrimary,
+  },
+
+  activeHint: {
+    color: "#DCE8D6",
   },
 
   actionTitle: {
