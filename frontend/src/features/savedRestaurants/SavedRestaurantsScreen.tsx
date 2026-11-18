@@ -52,12 +52,8 @@ export function SavedRestaurantsScreen() {
           {restaurants.map((restaurant) => (
             <View key={restaurant.id} style={styles.cell}>
             <RestaurantCard
-<<<<<<< HEAD
               variant="tile"
-=======
               restaurantId={restaurant.id}
-              key={restaurant.id}
->>>>>>> origin/deployment
               name={restaurant.name_ar}
               cuisines={restaurant.cuisines}
               district={restaurant.district}
