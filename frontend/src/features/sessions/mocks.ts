@@ -57,6 +57,11 @@ export function registerSessionsMocks(): void {
     const outingId = `mock-outing-${code}`;
     registerMock("GET", `/outings/${outingId}`, (_body, token) => poll(code, token));
     registerMock("POST", `/outings/${outingId}/start-preferences`, (_body, token) => start(code, token));
+    registerMock("POST", `/outings/${outingId}/leave`, (_body, token) => leave(code, token));
+    // Exact paths only, so every mock person gets their own removal route.
+    for (const participantId of [`mock-me-${code}`, "mock-sara", "mock-reem", "mock-khalid", "mock-noura"]) {
+      registerMock("DELETE", `/outings/${outingId}/participants/${participantId}`, (_body, token) => remove(code, participantId, token));
+    }
   }
 }
 
@@ -70,7 +75,7 @@ function join(preview: InvitePreview) {
 
 // Each waiting room lives in memory until the app reloads, and every poll moves its story on:
 // someone new arrives on the 3rd poll, and in TEST the organizer starts preferences on the 6th.
-const lobbies = new Map<string, { state: OutingState; polls: number }>();
+const lobbies = new Map<string, { state: OutingState; polls: number; left: boolean }>();
 
 function poll(code: string, token?: string): OutingState {
   const lobby = lobbyFor(code, token);
@@ -103,6 +108,7 @@ function lobbyFor(code: string, token?: string) {
     const me = `mock-me-${code}`;
     lobby = {
       polls: 0,
+      left: false,
       state: {
         outing_id: `mock-outing-${code}`,
         name: testOutings[code].name,
@@ -121,7 +127,49 @@ function lobbyFor(code: string, token?: string) {
     };
     lobbies.set(code, lobby);
   }
+  // Like the server: once this person leaves, their token opens nothing in the outing.
+  if (lobby.left) {
+    throw new ApiError(403, "LEFT_OUTING", "You left this outing. Join again from the invite link if it is still open.");
+  }
   return lobby;
+}
+
+// Leaving and removal follow the server's rules (BE-29): the organizer stays, and only they remove others.
+function leave(code: string, token?: string) {
+  const lobby = lobbyFor(code, token);
+  if (lobby.state.me.is_organizer) {
+    throw new ApiError(409, "ORGANIZER_CANNOT_LEAVE", "The organizer cannot leave their own outing.");
+  }
+  lobby.left = true;
+  return drop(lobby.state, lobby.state.me.participant_id, "declined");
+}
+
+function remove(code: string, participantId: string, token?: string) {
+  const { state } = lobbyFor(code, token);
+  if (!state.me.is_organizer) {
+    throw new ApiError(403, "ORGANIZER_ONLY", "Only the organizer can remove someone.");
+  }
+  if (participantId === state.me.participant_id) {
+    throw new ApiError(409, "ORGANIZER_CANNOT_LEAVE", "The organizer cannot remove themselves.");
+  }
+  if (!state.participants.some((person) => person.participant_id === participantId)) {
+    throw new ApiError(404, "PARTICIPANT_NOT_FOUND", "This person is not part of this outing.");
+  }
+  return drop(state, participantId, "removed");
+}
+
+// The person leaves the list and the readiness count; the reply carries the new count, like the server's.
+function drop(state: OutingState, participantId: string, attendance: "declined" | "removed") {
+  state.participants = state.participants.filter((person) => person.participant_id !== participantId);
+  const { readiness } = snapshot(state);
+  return {
+    outing_id: state.outing_id,
+    participant_id: participantId,
+    attendance,
+    status: state.status,
+    ready_count: readiness.ready_count,
+    total_count: readiness.total_count,
+  };
 }
 
 // What the server would send now: actions and readiness follow the stage and the people.

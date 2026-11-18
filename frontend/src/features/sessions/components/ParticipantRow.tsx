@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { AppText } from "@/shared/components";
 import { layoutDirection } from "@/shared/layout";
 import { theme } from "@/shared/theme";
@@ -10,10 +10,12 @@ type Props = {
   isMe: boolean;
   // Readiness only means something once the preferences stage has started.
   showReadiness: boolean;
+  // Given only to the organizer, for someone else, before generation; no button without it.
+  onRemove?: () => void;
 };
 
 // One person in the waiting room: initial, name, organizer badge and readiness.
-export function ParticipantRow({ person, isMe, showReadiness }: Props) {
+export function ParticipantRow({ person, isMe, showReadiness, onRemove }: Props) {
   const realName = person.name ?? "مشارك";
   return (
     <View style={styles.row}>
@@ -28,6 +30,11 @@ export function ParticipantRow({ person, isMe, showReadiness }: Props) {
         <AppText style={[styles.status, person.preferences_done && styles.ready]}>
           {person.preferences_done ? "✓ جاهز" : "يجهّز تفضيلاته"}
         </AppText>
+      )}
+      {onRemove && (
+        <Pressable accessibilityRole="button" accessibilityLabel={`إزالة ${realName}`} onPress={onRemove} style={styles.remove}>
+          <AppText style={styles.removeIcon}>✕</AppText>
+        </Pressable>
       )}
     </View>
   );
@@ -58,4 +65,7 @@ const styles = StyleSheet.create({
   badge: { fontSize: theme.typography.chipSize, color: theme.colors.placeholder },
   status: { fontSize: theme.typography.chipSize, color: theme.colors.placeholder },
   ready: { color: theme.colors.primary },
+  // The design's small icon button: a full touch target around a green cross.
+  remove: { width: theme.sizes.touchTargetMin, height: theme.sizes.touchTargetMin, alignItems: "center", justifyContent: "center" },
+  removeIcon: { color: theme.colors.primary },
 });

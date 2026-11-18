@@ -76,9 +76,9 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, lineHeight: 26, textAlign: "center", writingDirection: "rtl", color: "#536653", maxWidth: 295 },
   considerations: { ...layoutDirection("ltr"), flexDirection: "row-reverse", borderTopWidth: 1, borderBottomWidth: 1, borderColor: "#DEDFCD", paddingVertical: 14, gap: 8 },
   consideration: { flex: 1, alignItems: "center", gap: 6 },
-  considerationLabel: { fontSize: 12, lineHeight: 21, textAlign: "center", color: "#536653" },
+  considerationLabel: { fontSize: 14, lineHeight: 23, textAlign: "center", color: "#536653" },
   status: { alignItems: "center", gap: 6 },
   loading: { ...layoutDirection("ltr"), gap: 9, flexDirection: "row-reverse", alignItems: "center" },
   loadingLabel: { fontSize: 14, lineHeight: 25, fontFamily: theme.typography.fontFamilyBold },
-  next: { fontSize: 12, lineHeight: 23, textAlign: "center", writingDirection: "rtl", color: "#63715B" },
+  next: { fontSize: 14, lineHeight: 24, textAlign: "center", writingDirection: "rtl", color: "#63715B" },
 });

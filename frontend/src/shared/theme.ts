@@ -6,7 +6,7 @@ export const theme = {
     surface: "#FFFDF8",
     text: "#193A30",
     border: "#D7DDCE",
-    placeholder: "#7A826F",
+    placeholder: "#626D5E",
     primary: "#194D3C",
     onPrimary: "#FFFEF9",
 
@@ -38,12 +38,12 @@ export const theme = {
     sectionTitleSize: 18,
         // Heading size inside the session card.
     sessionTitleSize: 21,
-    bodySize: 14,
-    labelSize: 13,
+    bodySize: 16,
+    labelSize: 14,
     inputSize: 16,
     buttonSize: 15,
         // Text size inside a chip.
-    chipSize: 12,
+    chipSize: 13,
   },
 
   spacing: {

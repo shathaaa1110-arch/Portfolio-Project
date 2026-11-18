@@ -6,6 +6,7 @@ import { fromAccountPreferences, PreferencesForm, toPreferencesPayload, type Pre
 import { SessionGenerating } from "./SessionGenerating";
 import { SessionVoting } from "./SessionVoting";
 import { SessionRetry } from "./components/SessionRetry";
+import { LeaveButton, RemoveSheet } from "./components/SessionActions";
 import { retryRound, ROUND_RETRY_ENABLED } from "./api/round";
 import { QuietButton, SessionFooter, room } from "./components/SessionLayout";
 import { AppButton, AppText } from "@/shared/components";
@@ -21,12 +22,17 @@ import { RIYADH, sessionError } from "./model";
 import { SessionHeader, SessionIcon, SessionSheet } from "./components/SessionChrome";
 import { SessionMasthead, SessionPaper, SessionSteps } from "./components/SessionVisuals";
 
+// Leaving or removal ends access for good, so these stop the screen instead of retrying.
+const FINAL_ERRORS = ["LEFT_OUTING", "REMOVED_FROM_OUTING"];
+
 export function SessionScreen() {
   const params = useLocalSearchParams<{ id: string; code?: string; inviteUrl?: string }>();
   const id = typeof params.id === "string" ? params.id : "";
   const code = typeof params.code === "string" ? params.code : "";
   const [generating, setGenerating] = useState(false);
   const [details, setDetails] = useState(false);
+  // Whom the organizer is about to remove; null while no one is picked.
+  const [removing, setRemoving] = useState<OutingState["participants"][number] | null>(null);
   const [state, setState] = useState<OutingState | null>(null);
   const [preferences, setPreferences] = useState<OutingPreferences | null>(null);
   const [plan, setPlan] = useState<OutingPlan | null>(null);
@@ -39,6 +45,8 @@ export function SessionScreen() {
   const [retryOpen, setRetryOpen] = useState(false);
   const [retryError, setRetryError] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [ended, setEnded] = useState(false);
+  const endedRef = useRef(false);
   const busyRef = useRef(false);
   const active = useRef(false);
   const serial = useRef(0);
@@ -83,6 +91,11 @@ export function SessionScreen() {
     } catch (e) {
       if (!active.current || requestId !== serial.current) return;
       setError(sessionError(e)); setStale(true);
+      if (e instanceof ApiError && FINAL_ERRORS.includes(e.code)) {
+        // Stop asking, and drop the refused pass so the invite link starts fresh.
+        endedRef.current = true; setEnded(true);
+        if (code && (await loadGuestPass(code))?.guest_token === token) await removeGuestPass(code);
+      }
       if (e instanceof ApiError && [401, 403, 404].includes(e.status)) {
         if (e.status === 401 && code && (await loadGuestPass(code))?.guest_token === token) await removeGuestPass(code);
         if (!active.current || requestId !== serial.current) return;
@@ -100,12 +113,13 @@ export function SessionScreen() {
     cachedPlan.current = null; resultSettled.current = false;
     if (knownRound.current.outingId !== id) knownRound.current = { outingId: id, number: 0 };
     setRetryOpen(false); setRetryError(""); setEmptyPlan(false);
+    endedRef.current = false; setEnded(false);
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     async function tick() {
       if (!busyRef.current) await refresh();
       // A single-round result is final. Round-enabled guests keep observing the next round.
-      if (!stopped && !resultSettled.current) timer = setTimeout(tick, 5000);
+      if (!stopped && !resultSettled.current && !endedRef.current) timer = setTimeout(tick, 5000);
     }
     void tick();
     return () => { stopped = true; active.current = false; serial.current++; clearTimeout(timer); };
@@ -203,6 +217,10 @@ export function SessionScreen() {
     onClose={() => { if (!busyRef.current) setRetryOpen(false); }} onConfirm={restart} onRefresh={refresh} />;
   const dateLabel = state ? new Intl.DateTimeFormat("ar-SA-u-ca-gregory", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: RIYADH }).format(new Date(state.starts_at)) : "";
   if (state && generating) return <SessionGenerating name={state.name} />;
+  // Only the organizer removes, only someone else, and only before generation.
+  const canRemove = (personId: string) => !!state && state.me.is_organizer &&
+    (state.status === "invite" || state.status === "preferences") && personId !== state.me.participant_id;
+
   if (state && plan) return <SessionVoting key={`${id}:${state.round_id ?? "legacy"}`} state={state} plan={plan} getToken={votingToken} refresh={refresh} stale={stale || busy} error={error} retry={retry} />;
   return <SafeAreaView style={room.screen}>
     <View style={room.header}><SessionHeader title={state?.status === "preferences" ? "ذوق الجلسة" : "دعوة الجلسة"} />
@@ -211,7 +229,8 @@ export function SessionScreen() {
       {!state ? <View style={room.card}>
         {!error && <ActivityIndicator color={theme.colors.primary} />}
         <AppText style={room.text}>{error || "نحمّل الجلسة..."}</AppText>
-        {!!error && <><AppButton title="إعادة المحاولة" onPress={refresh} />
+        {ended ? <AppButton title="العودة للرئيسية" onPress={() => router.replace("/")} />
+          : !!error && <><AppButton title="إعادة المحاولة" onPress={refresh} />
           <QuietButton title="العودة إلى الدعوة" onPress={() => router.replace({ pathname: "/join", params: { code } })} /></>}
       </View> : <>
         <SessionMasthead title={state.status === "invite" ? "جمعتكم صار لها موعد." : me?.preferences_done ? "ذوقك وصل للجمعة." : "كل واحد يضيف ذوقه."}
@@ -220,7 +239,7 @@ export function SessionScreen() {
           <AppText accessibilityRole="header" style={styles.title}>{state.name}</AppText>
           <AppText style={room.center}>{dateLabel} · الرياض</AppText>
           {(state.round_number ?? 1) > 1 && <View accessibilityLiveRegion="polite">
-            <AppText style={room.label}>جولة جديدة · {state.round_number!.toLocaleString("ar-SA")}</AppText>
+            <AppText style={room.label}>جولة جديدة: {state.round_number!.toLocaleString("ar-SA")}</AppText>
             <AppText style={room.text}>نفس جمعتكم وتفضيلاتكم. راجع ذوقك وأكّد جاهزيتك من جديد.</AppText>
           </View>}
           {state.status === "invite" ? <>
@@ -242,10 +261,13 @@ export function SessionScreen() {
           <View style={styles.rule} />
           <Pressable accessibilityRole="button" accessibilityLabel="عرض المشاركين وجاهزيتهم" onPress={() => setDetails(true)} style={styles.people}>
             <SessionIcon name="people" size={23} />
-            <AppText style={[room.label, { flex: 1 }]}>{state.status === "invite" ? `أهل الجلسة · ${state.participants.length.toLocaleString("ar-SA")} من ٨` : `جاهزين · ${state.readiness.ready_count.toLocaleString("ar-SA")} من ${state.readiness.total_count.toLocaleString("ar-SA")}`}</AppText>
+            <AppText style={[room.label, { flex: 1 }]}>{state.status === "invite" ? `أهل الجلسة: ${state.participants.length.toLocaleString("ar-SA")} من ٨` : `جاهزين: ${state.readiness.ready_count.toLocaleString("ar-SA")} من ${state.readiness.total_count.toLocaleString("ar-SA")}`}</AppText>
             <SessionIcon name="next" size={18} />
           </Pressable>
         </SessionPaper>
+        {/* Participants may leave until suggestions are generated; the organizer stays. */}
+        {!state.me.is_organizer && (state.status === "invite" || state.status === "preferences") &&
+          <LeaveButton outingId={id} code={code} onDone={refresh} />}
         {!!error && <View><AppText accessibilityRole="alert" style={room.error}>{error}</AppText><QuietButton title="تحديث حالة الجلسة" onPress={refresh} disabled={busy} /></View>}
         {USE_MOCK && <AppText style={room.mock}>معاينة تجريبية</AppText>}
       </>}
@@ -266,8 +288,14 @@ export function SessionScreen() {
           <SessionIcon name={p.preferences_done ? "check" : "people"} size={22} />
           <AppText style={styles.personName}>{p.name || "مشارك"}{p.participant_id === state.me.participant_id ? " (أنت)" : ""}{p.is_organizer ? " · المنظّم" : ""}</AppText>
           <AppText style={room.small}>{p.attendance === "declined" ? "اعتذر" : state.status === "invite" ? "انضم" : p.preferences_done ? "جاهز" : "يختار ذوقه"}</AppText>
+          {canRemove(p.participant_id) && <Pressable accessibilityRole="button" accessibilityLabel={`إزالة ${p.name || "مشارك"}`}
+            onPress={() => setRemoving(p)} style={({ pressed }) => [styles.remove, pressed && { opacity: 0.7 }]}>
+            <AppText style={styles.removeIcon}>✕</AppText>
+          </Pressable>}
         </View>)}
         <AppText style={room.small}>تفضيلات كل شخص خاصة به.</AppText></>}
+      {/* Inside the list's sheet, so iOS can show it on top of the list. */}
+      <RemoveSheet outingId={id} code={code} person={removing} onClose={() => setRemoving(null)} onDone={refresh} />
     </SessionSheet>
     <Modal visible={editor !== null} animationType="slide" onRequestClose={() => { if (!busy) setEditor(null); }}>
       {editor && <View style={{ flex: 1 }} pointerEvents={busy ? "none" : "auto"}>
@@ -284,4 +312,6 @@ const styles = StyleSheet.create({
   people: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 8, minHeight: 48 },
   person: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   personName: { flex: 1, textAlign: "right", writingDirection: "rtl", fontSize: 14 },
+  remove: { width: theme.sizes.touchTargetMin, height: theme.sizes.touchTargetMin, alignItems: "center", justifyContent: "center" },
+  removeIcon: { color: theme.colors.primary },
 });

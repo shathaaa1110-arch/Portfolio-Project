@@ -1,9 +1,10 @@
 import { router } from "expo-router";
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { RestaurantCard } from "@/features/restaurants";
 import { AppButton, AppText } from "@/shared/components";
+import { layoutDirection } from "@/shared/layout";
 import { theme } from "@/shared/theme";
 import { SaveRestaurantButton } from "./SaveRestaurantButton";
 import { useSavedRestaurants } from "./useSavedRestaurants";
@@ -14,7 +15,8 @@ export function SavedRestaurantsScreen() {
   
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      {/* Only short states sit in the middle; a list starts at the top. */}
+      <ScrollView contentContainerStyle={[styles.content, !(status === "ready" && restaurants.length > 0) && styles.centered]}>
         <AppText variant="title">المحفوظة</AppText>
 
         {status === "loading" && (
@@ -45,11 +47,13 @@ export function SavedRestaurantsScreen() {
         )}
 
         {/* Each saved card gets a remove button that reloads the list. */}
-        {status === "ready" &&
-          restaurants.map((restaurant) => (
+        {status === "ready" && restaurants.length > 0 && (
+          <View style={styles.grid}>
+          {restaurants.map((restaurant) => (
+            <View key={restaurant.id} style={styles.cell}>
             <RestaurantCard
+              variant="tile"
               restaurantId={restaurant.id}
-              key={restaurant.id}
               name={restaurant.name_ar}
               cuisines={restaurant.cuisines}
               district={restaurant.district}
@@ -60,13 +64,18 @@ export function SavedRestaurantsScreen() {
               spendHigh={restaurant.spend_high}
               action={
                 <SaveRestaurantButton
+                  iconOnly
+                  onImage
                   restaurantId={restaurant.id}
                   saved={true}
                   onChange={(isNowSaved) => setSaved(restaurant, isNowSaved)}
                 />
               }
             />
+            </View>
           ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -81,10 +90,15 @@ const styles = StyleSheet.create({
   content: {
     // Center short content and allow longer content to scroll.
     flexGrow: 1,
-    justifyContent: "center",
     padding: theme.spacing.pagePadding,
     gap: theme.spacing.fieldGap,
   },
+
+  centered: { justifyContent: "center" },
+
+  // Two cards per row, like the home list, so more fit on the screen.
+  grid: { ...layoutDirection("ltr"), flexDirection: "row-reverse", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
+  cell: { width: "48%" },
 
   message: {
     textAlign: "center",

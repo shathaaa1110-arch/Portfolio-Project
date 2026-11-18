@@ -135,9 +135,9 @@ const styles = StyleSheet.create({
   buttonLabel: { textDecorationLine: "none", fontSize: 15 },
   primaryButton: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   primaryLabel: { color: theme.colors.surface },
-  buttonHint: { marginTop: 6, fontSize: 11, textAlign: "center" },
+  buttonHint: { marginTop: 6, fontSize: 13, textAlign: "center" },
   disabled: { opacity: 0.43 },
-  compactLabel: { fontSize: 12, textDecorationLine: "none" },
+  compactLabel: { fontSize: 14, textDecorationLine: "none" },
   unavailable: {
     color: "#626D5E",
     textAlign: "right",

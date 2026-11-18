@@ -127,7 +127,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error, re
           <View style={room.card}><AppText style={room.label}>كيف كانت أصواتنا؟</AppText>
             {result.items.map(item => <View key={item.plan_item_id} style={room.row}>
               <AppText style={[room.text, { flex: 1 }]}>{item.name_ar || plan.plan_items.find(i => i.plan_item_id === item.plan_item_id)?.restaurant.name_en || "مطعم"}</AppText>
-              <AppText style={room.small}>{arabic(item.likes)} إعجاب · {arabic(item.support_percentage)}٪</AppText>
+              <AppText style={room.small}>{arabic(item.likes)} إعجاب، {arabic(item.support_percentage)}٪</AppText>
             </View>)}
             <AppText style={room.small}>التأييد من كل المشاركين، ويشمل من لم يكمل التصويت.</AppText>
             {tied && <AppText style={room.small}>تعادلت الإعجابات؛ اختير الأعلى ترتيبًا في الاقتراحات.</AppText>}
@@ -167,7 +167,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error, re
           <AppButton title="يعجبني" accessibilityLabel={`يعجبني ${itemName(current)}`} disabled={!canVote}
             style={{ flex: 1 }} onPress={() => voting.answer(current.plan_item_id, true)} />
           <Pressable accessibilityRole="button" accessibilityLabel={`نتخطّى ${itemName(current)}`} accessibilityState={{ disabled: !canVote }}
-            disabled={!canVote} onPress={() => voting.answer(current.plan_item_id, false)} style={[styles.pass, !canVote && { opacity: 0.43 }]}><AppText style={styles.passText}>نتخطّاه</AppText></Pressable>
+            disabled={!canVote} onPress={() => voting.answer(current.plan_item_id, false)} style={({ pressed }) => [styles.pass, !canVote && { opacity: 0.43 }, pressed && { opacity: 0.85 }]}><AppText style={styles.passText}>نتخطّاه</AppText></Pressable>
         </View><AppText style={room.center}>اختياراتك خاصة بك</AppText>
       </> : <AppText accessibilityLiveRegion="polite" style={room.center}>{voting.unsaved ? "انتظر اكتمال الحفظ قبل مغادرة الشاشة." : "النتيجة بتظهر هنا عند إقفال التصويت."}</AppText>}
     </SessionFooter>
@@ -195,7 +195,7 @@ export function SessionVoting({ state, plan, getToken, refresh, stale, error, re
   </SafeAreaView>;
 }
 const styles = StyleSheet.create({
-  pill: { color: "#72603B", fontSize: 12, lineHeight: 22, textAlign: "right" },
+  pill: { color: "#72603B", fontSize: 14, lineHeight: 23, textAlign: "right" },
   pass: { flex: 1, minHeight: 54, padding: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 28 },
   passText: { textAlign: "center", fontFamily: theme.typography.fontFamilyBold, fontSize: 15, lineHeight: 25 },
   option: { flex: 1, minHeight: 48, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.border, borderRadius: 16 },

@@ -2,7 +2,7 @@ import { layoutDirection } from "@/shared/layout";
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton, AppText } from "@/shared/components";
 import { theme } from "@/shared/theme";
 import { useRestaurantImage } from "../useRestaurantImage";
@@ -35,6 +35,9 @@ export function RestaurantDetails(props: Props) {
   const cuisines = data?.cuisines ?? props.cuisines;
   const photo = useRestaurantImage(data ? data.image_url : props.imageUrl, cuisines);
   const { width, fontScale } = useWindowDimensions();
+  // A full-screen modal can get a zero safe area on iPhone, so the header
+  // takes the app's top inset itself and stays below the status bar.
+  const insets = useSafeAreaInsets();
   const stacked = width < 360 || fontScale > 1.25;
   const rating = restaurantRating(data?.rating ?? null);
   const price = restaurantSpendRange(data?.spend_low, data?.spend_high);
@@ -46,8 +49,8 @@ export function RestaurantDetails(props: Props) {
 
   return <Modal visible={visible} animationType="fade" presentationStyle="fullScreen"
     allowSwipeDismissal={false} onRequestClose={onClose}>
-    <SafeAreaView style={styles.screen} accessibilityViewIsModal onAccessibilityEscape={onClose}>
-      <View style={styles.header}>
+    <SafeAreaView edges={["bottom", "left", "right"]} style={styles.screen} accessibilityViewIsModal onAccessibilityEscape={onClose}>
+      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel="رجوع للقائمة" onPress={onClose}
           style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
           <SymbolView name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" }}

@@ -43,53 +43,33 @@ export function HomeIntro({ selected, onFindRestaurant, onCreateSession }: HomeI
           accessibilityLabel="ألقى مطعم، تصفّح قائمة المطاعم"
           accessibilityState={{ selected: selected === "restaurants" }}
           onPress={onFindRestaurant}
-          style={({ pressed }) => [
-            styles.action,
-            selected === "restaurants" ? styles.activeAction : styles.outingAction,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.action, selected === "restaurants" && styles.activeAction, pressed && styles.pressed]}
         >
-          <AppText variant="button" style={[styles.findText, { color: selected === "restaurants" ? theme.colors.onPrimary : theme.colors.primary }]}>
-            ألقى مطعم
-          </AppText>
-
           <SymbolView
-            name={{
-              ios: "fork.knife",
-              android: "restaurant",
-              web: "restaurant",
-            }}
+            name={{ ios: "fork.knife", android: "restaurant", web: "restaurant" }}
             tintColor={selected === "restaurants" ? theme.colors.onPrimary : theme.colors.primary}
             size={27}
             accessible={false}
           />
+          <AppText variant="button" style={[styles.actionTitle, selected === "restaurants" && styles.activeTitle]}>ألقى مطعم</AppText>
+          <AppText style={[styles.actionHint, selected === "restaurants" && styles.activeHint]}>تصفّح المطاعم لك</AppText>
         </Pressable>
 
         <Pressable
-          accessible
           accessibilityRole="button"
           accessibilityLabel="أخطّط طلعة، إنشاء جلسة جديدة"
           accessibilityState={{ selected: selected === "outing" }}
           onPress={onCreateSession}
-          style={({ pressed }) => [styles.action, selected === "outing" ? styles.activeAction : styles.outingAction, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.action, selected === "outing" && styles.activeAction, pressed && styles.pressed]}
         >
-          <View style={styles.outingCopy}>
-            <AppText variant="label" style={[styles.outingText, { color: selected === "outing" ? theme.colors.onPrimary : theme.colors.primary }]}>
-              أخطّط طلعة
-            </AppText>
-
-          </View>
-
           <SymbolView
-            name={{
-              ios: "map",
-              android: "map",
-              web: "map",
-            }}
+            name={{ ios: "map", android: "map", web: "map" }}
             tintColor={selected === "outing" ? theme.colors.onPrimary : theme.colors.primary}
             size={27}
             accessible={false}
           />
+          <AppText variant="button" style={[styles.actionTitle, selected === "outing" && styles.activeTitle]}>أخطّط طلعة</AppText>
+          <AppText style={[styles.actionHint, selected === "outing" && styles.activeHint]}>اجمع ربعك وصوّتوا</AppText>
         </Pressable>
       </View>
     </View>
@@ -131,46 +111,48 @@ description: {
   actions: {
     ...layoutDirection("ltr"),
     flexDirection: "row-reverse",
-    gap: 0,
-    backgroundColor: theme.colors.searchBackground,
-    borderRadius: 20,
+    gap: 12,
   },
 
   action: {
     flex: 1,
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minHeight: 64,
+    gap: 4,
+    minHeight: 96,
     paddingHorizontal: 10,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
 
+  // The chosen option stays green, as in the design.
   activeAction: {
     backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
 
-  findText: {
+  activeTitle: {
+    color: theme.colors.onPrimary,
+  },
+
+  activeHint: {
+    color: "#DCE8D6",
+  },
+
+  actionTitle: {
     fontSize: 18,
-    flexShrink: 1,
+    color: theme.colors.primary,
     writingDirection: "rtl",
   },
 
-  outingAction: {
-    backgroundColor: theme.colors.searchBackground,
-  },
-
-  outingCopy: {
-    flexShrink: 1,
-    alignItems: "center",
-  },
-
-  outingText: {
+  actionHint: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: "#536653",
     textAlign: "center",
     writingDirection: "rtl",
-    fontSize: 17,
   },
 
   comingSoon: {

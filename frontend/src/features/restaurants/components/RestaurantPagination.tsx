@@ -16,6 +16,9 @@ type RestaurantPaginationProps = {
 };
 
 export function RestaurantPagination(props: RestaurantPaginationProps) {
+  // One page needs no paging buttons; keep the panel only to show an error.
+  if (props.pageCount <= 1 && !props.error) return null;
+
   const pageLabel =
     props.pageCount > 0
       ? `الصفحة ${props.pageNumber.toLocaleString("ar-SA")} من ${props.pageCount.toLocaleString("ar-SA")}`

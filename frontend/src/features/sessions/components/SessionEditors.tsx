@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, gap: 8 }, nav: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
   month: { flex: 1, textAlign: "center", fontFamily: theme.typography.fontFamilyBold, fontSize: 20 },
   calendar: { ...layoutDirection("ltr"), flexDirection: "row-reverse", flexWrap: "wrap" },
-  weekday: { width: "14.2857%", textAlign: "center", fontSize: 11, paddingVertical: 12 },
+  weekday: { width: "14.2857%", textAlign: "center", fontSize: 13, paddingVertical: 12 },
   day: { width: "14.2857%", minHeight: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   selected: { backgroundColor: theme.colors.primary }, selectedText: { color: theme.colors.onPrimary },
   disabled: { opacity: 0.3 },

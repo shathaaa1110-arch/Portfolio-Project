@@ -10,7 +10,11 @@ import { outingToken } from "./identity";
 export const POLL_MS = 4000;
 
 // After these, asking again cannot help: this device has no access to the outing anymore.
-const FINAL_ERRORS = ["NO_ACCESS", "INVALID_TOKEN", "TOKEN_EXPIRED", "NOT_A_PARTICIPANT", "OUTING_NOT_FOUND"];
+// Leaving the outing or being removed from it (BE-29) ends access the same way.
+const FINAL_ERRORS = [
+  "NO_ACCESS", "INVALID_TOKEN", "TOKEN_EXPIRED", "NOT_A_PARTICIPANT", "OUTING_NOT_FOUND",
+  "LEFT_OUTING", "REMOVED_FROM_OUTING",
+];
 
 // Keeps one outing's state fresh while its screen is focused and the app is in front.
 // There is never more than one timer or one request at a time, however often the screen opens.
