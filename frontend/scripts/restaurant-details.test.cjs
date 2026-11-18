@@ -58,7 +58,7 @@ test('details show fresh API data, keep directions visible, and never use stale 
     rating: 4.8, rating_count: 120, spend_low: 55, spend_high: 100, summary: 'وصف فعلي من الخادم',
     opening_hours: { open_24h: false, opens: '07:00', closes: '23:00', days_open: 7 }, maps_url: 'https://maps.google.com/?q=24,46' };
   const { RestaurantDetails } = load('features/restaurants/components/RestaurantDetails.tsx', {
-    'react-native': native, 'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
+    'react-native': native, 'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) },
     'expo-image': { Image: 'Image' }, 'expo-symbols': { SymbolView: 'SymbolView' },
     '@/shared/components': shared, '@/shared/theme': load('shared/theme.ts'),
     '../useRestaurantImage': { useRestaurantImage: () => ({ source: 1, illustrative: true, onError() {} }) },
