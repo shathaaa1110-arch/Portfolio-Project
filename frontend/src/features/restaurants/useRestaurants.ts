@@ -1,40 +1,46 @@
 import { useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/shared/api/errors";
 import { getRestaurants, type RestaurantsResponse } from "./api";
+import type { RestaurantFilters } from "./types";
 
-type PageRequest = { query: string; offset: number; attempt: number; refreshing: boolean };
+type PageRequest = { key: string; query: string; cuisine: string; districtId: string; offset: number; attempt: number; refreshing: boolean };
 type PageState = {
   request: PageRequest | null;
-  page: { query: string; response: RestaurantsResponse } | null;
+  page: { key: string; response: RestaurantsResponse } | null;
   loading: boolean;
   error: string | null;
 };
 
-export function useRestaurants(search = "") {
+export function useRestaurants(search = "", filters: RestaurantFilters = {}, enabled = true) {
   const query = search.trim();
-  const [paging, setPaging] = useState<PageRequest>({ query: "", offset: 0, attempt: 0, refreshing: false });
+  const cuisine = filters.cuisine?.trim() ?? "";
+  const districtId = filters.districtId?.trim() ?? "";
+  const key = JSON.stringify([query, cuisine, districtId]);
+  const [paging, setPaging] = useState<PageRequest>({ key, query, cuisine, districtId, offset: 0, attempt: 0, refreshing: false });
   useEffect(() => {
-    setPaging(current => current.query === query ? current : { query, offset: 0, attempt: 0, refreshing: false });
-  }, [query]);
-  const request = useMemo<PageRequest>(() => paging.query === query ? paging
-    : { query, offset: 0, attempt: 0, refreshing: false }, [paging, query]);
+    setPaging(current => current.key === key ? current : { key, query, cuisine, districtId, offset: 0, attempt: 0, refreshing: false });
+  }, [key, query, cuisine, districtId]);
+  const request = useMemo<PageRequest>(() => paging.key === key ? paging
+    : { key, query, cuisine, districtId, offset: 0, attempt: 0, refreshing: false }, [paging, key, query, cuisine, districtId]);
   const [state, setState] = useState<PageState>({ request: null, page: null, loading: true, error: null });
 
   useEffect(() => {
+    if (!enabled) return;
     let active = true;
     setState(previous => ({ ...previous, request, loading: true, error: null }));
     // Debounce typing; pagination and refreshing use the same bounded server query.
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          let response = await getRestaurants(request.offset, request.query);
+          const selected = { cuisine: request.cuisine, districtId: request.districtId };
+          let response = await getRestaurants(request.offset, request.query, selected);
           if (!active) return;
           const lastOffset = Math.max(0, (Math.ceil(response.total / response.limit) - 1) * response.limit);
           if (response.offset > lastOffset) {
-            response = await getRestaurants(lastOffset, request.query);
+            response = await getRestaurants(lastOffset, request.query, selected);
             if (!active) return;
           }
-          setState({ request, page: { query: request.query, response }, loading: false, error: null });
+          setState({ request, page: { key: request.key, response }, loading: false, error: null });
         } catch (error) {
           if (!active) return;
           const message = error instanceof ApiError && error.code === "SEARCH_UNAVAILABLE"
@@ -45,12 +51,12 @@ export function useRestaurants(search = "") {
       })();
     }, request.query && request.attempt === 0 ? 350 : 0);
     return () => { active = false; clearTimeout(timer); };
-  }, [request]);
+  }, [request, enabled]);
 
   // Never label the preceding search's data as the new search's result.
-  const page = state.page?.query === query ? state.page.response : null;
-  const isLoading = state.request !== request || state.loading;
-  const error = state.request === request ? state.error : null;
+  const page = enabled && state.page?.key === key ? state.page.response : null;
+  const isLoading = enabled && (state.request !== request || state.loading);
+  const error = enabled && state.request === request ? state.error : null;
   const restaurants = page?.restaurants ?? [];
   const pageCount = page ? Math.ceil(page.total / page.limit) : 0;
   const pageNumber = page && page.total > 0 ? Math.floor(page.offset / page.limit) + 1 : 0;
@@ -60,8 +66,8 @@ export function useRestaurants(search = "") {
   const canGoNext = !isLoading && !!page && page.offset + page.limit < page.total;
 
   function loadPage(offset: number, refreshing = false) {
-    if (isLoading) return;
-    setPaging(previous => ({ query, offset, refreshing, attempt: previous.attempt + 1 }));
+    if (!enabled || isLoading) return;
+    setPaging(previous => ({ key, query, cuisine, districtId, offset, refreshing, attempt: previous.attempt + 1 }));
   }
   return {
     restaurants, status, error, total: page?.total ?? 0, pageNumber, pageCount, isLoading,

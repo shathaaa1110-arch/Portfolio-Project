@@ -15,7 +15,7 @@ function load(relativePath, imports = {}, globals = {}) {
   }).outputText;
   const module = { exports: {} };
   vm.runInNewContext(code, {
-    module, exports: module.exports, setTimeout, clearTimeout, ...globals,
+    module, exports: module.exports, setTimeout, clearTimeout, URL, ...globals,
     require(name) {
       if (name === "react") return React;
       if (name === "react/jsx-runtime") return require("react/jsx-runtime");
@@ -33,7 +33,11 @@ const native = {
   ActivityIndicator: "ActivityIndicator", Keyboard: { dismiss() {} },
   StyleSheet: { create: value => value }, useWindowDimensions: () => ({ width: 402, height: 874, fontScale: 1 }),
 };
-const shared = { AppButton: "AppButton", AppInput: "AppInput", AppText: "AppText" };
+const shared = { AppButton: "AppButton", AppInput: "AppInput", AppText: "AppText", HailaMessage: "HailaMessage", ReplyMessage: "ReplyMessage", ConversationChoice: "ConversationChoice" };
+Object.assign(shared, load("shared/components/Conversation.tsx", {
+  "react-native": native, "expo-image": { Image: "Image" }, "./AppText": { AppText: "AppText" },
+  "@/shared/theme": load("shared/theme.ts"),
+}));
 function deferred() {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });

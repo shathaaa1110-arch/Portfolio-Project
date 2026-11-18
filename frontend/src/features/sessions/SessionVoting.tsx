@@ -23,7 +23,7 @@ const arabic = (n: number) => n.toLocaleString("ar-SA");
 const itemName = (item: PlanItem) => item.restaurant.name_ar || item.restaurant.name_en || "مطعم";
 function Suggestion({ item }: { item: PlanItem }) {
   const r = item.restaurant;
-  return <RestaurantCard name={itemName(item)} cuisines={r.cuisines} district={r.district ?? ""}
+  return <RestaurantCard restaurantId={r.id} name={itemName(item)} cuisines={r.cuisines} district={r.district ?? ""}
     rating={r.rating} mapsUrl={r.maps_url} distanceKm={r.distance_km} spendLow={r.spend_low}
     spendHigh={r.spend_high} reason={item.reason} variant="featured" />;
 }

@@ -8,3 +8,16 @@ venv/
 
 # Private restaurant dataset: its terms do not allow republishing
 database/private/
+
+# Local environment overrides; keep copyable examples
+.env.*
+!.env.example
+
+# Local tooling and generated output
+.DS_Store
+node_modules/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.tsbuildinfo

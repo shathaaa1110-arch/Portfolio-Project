@@ -1,5 +1,13 @@
 # Thouq · Technical Documentation
 
+## Restaurant search, details and Arabic alignment — 17 November 2026
+
+Public browsing now has a separate `/search` conversation with Haila: food or restaurant name, then district, then results. It uses the existing `search`, `cuisine` and `district_id` parameters before pagination. Answers can be edited or cleared. Home keeps its header and Today pick.
+
+Opening a card fetches public `GET /restaurants/{id}`. Full-screen details show the current rating, review count, estimated price, description, hours and district, with a safe-area header and fixed maps action. Missing information, loading, errors, retry and 404 are explicit. Closing details preserves list state and filters. Arabic text defaults to right alignment; explicit centered text and Latin codes keep their styles.
+
+No backend, algorithm, database, ERD or module-dependency changes. The outing creation flow and navigation history are unchanged. Validation: TypeScript, architecture boundaries and 134 tests passed; browser checks used real public reads and simulated failures, with iPhone 17 Simulator visual checks. See [the Arabic guide and file map](Restaurant-Discovery.ar.md). A branch change does not mean deployment.
+
 Portfolio Project · Stage 3
 
 | | |
@@ -7,27 +15,30 @@ Portfolio Project · Stage 3
 | Project | Thouq (ذوق), a group dining planner |
 | Team | Shatha Alanzi, Asim Alhubaishi, Hassan Alhuzali, Fahad Almidaj |
 
-## Frontend scope and current API verification — 10 November 2026
+## Current integration status — 15 November 2026
 
-The implemented Sprint 2–3 frontend map and acceptance gaps are tracked in
-[Sprint-2-3-Frontend.ar.md](Sprint-2-3-Frontend.ar.md). Home now shares one personal
-recommendation response between the featured choice and regular list rows under
-“مطاعم أخرى على ذوقك”. The selected Home action changes its green state.
-Account preferences return to the existing Home; an account-scoped in-memory
-location cache preserves the choice without re-requesting GPS.
+Baseline: `deployment` at `92412ee`. The [documentation index](README.md) identifies
+current guides and historical evidence. The frontend flow is documented in
+[Session-Flow.ar.md](Session-Flow.ar.md), with remaining acceptance in
+[Sprint-2-3-Frontend.ar.md](Sprint-2-3-Frontend.ar.md).
 
-Public GET checks confirmed server-side `search` with filtered totals; it is now
-on by default in the frontend. This does not add district filtering or a separate
-restaurant-detail endpoint. Missing hours/prices are not synthesized. The current
-single-round outing API does not implement #90 retry. The #91 frontend now supports
-confirmation, same-session reset and stale-round protection in explicit local mock
-mode. Real activation awaits the [provisional round contract](Session-Retry-Contract.md)
-and #90; it is hidden and disabled by default. The same shared flag gates every
-round-scoped request, including vote bodies, even if early server metadata includes
-a round ID. Vote reload waits for the pending save before restoring answers.
-Single-round result screens stop polling; round-enabled screens poll state and
-reuse the current plan until the round changes or the screen refocuses. No SQL, ERD or backend algorithm changes are
-part of this frontend work.
+Frontend #159/#157/#161 and backend/database #170 are merged. Same-outing retries
+use migration `0012_outing_rounds`, a current round ID, preserved membership and
+preferences, fresh readiness and separate votes. The current API requires
+`round_id`; builds must set `EXPO_PUBLIC_SESSION_ROUNDS_ENABLED=true`.
+See the [round contract](Session-Retry-Contract.md). Passing CI is separate from
+organizer/guest acceptance on real devices.
+
+Backend #168 supports restaurant details and district/cuisine filters; the frontend
+still needs to consume them. Backend #166 supports leaving/removal, and #167
+supports push delivery; the respective frontend controls and native registration
+are still pending. #169 returns `invite_url` in state, but consistent sharing from
+all frontend entry points is still pending. PR #171 is not in this baseline.
+
+The home action selection, personal recommendation list and account-scoped location
+memory are implemented. Editing preferences returns to the existing Home without
+requesting GPS again automatically. No architecture or ERD change is introduced by
+this documentation cleanup; existing round tables are described below.
 
 ## Implemented session frontend — 10 November 2026
 
@@ -47,7 +58,8 @@ no-winner reason. The UI never calculates a winner itself.
 
 The existing engine uses the selected district center, not a participant midpoint.
 Allergies remain a warning and seating requirements are stored, not used as a filter.
-No SQL/ERD changes: existing votes, plan_items.is_winner and outing status are reused.
+The initial frontend integration reused existing votes and outing state. The current
+backend additionally uses the round tables and ownership from migration 0012.
 Public feature imports are declared in architecture.json (sessions → voting).
 
 The cream/green identity and shared Arabic type remain. Large repeated hero panels
@@ -83,9 +95,13 @@ Broader product diagrams include future scope; they do not imply every story is 
 | Guest | A person without an account who joins one outing with a name only. |
 | Participant | An organizer, member, or guest taking part in an outing. |
 
-### Key decisions
+### Original design decisions — historical context
 
-The stories below are built on these decisions.
+The list and original stories below preserve the Stage 3 design. Saved groups,
+automatic generation and timed tie voting are not current implemented behavior.
+For the current direct-session flow use [Session-Flow.ar.md](Session-Flow.ar.md),
+the integration status above and the implemented API sections. Do not infer
+completion from these original design stories.
 
 - **Accounts:** Users sign up with their name and phone number and log in with a one-time verification code. There are no passwords.
 - **Two ways to decide:** A one-off session is created directly, shared by its code, and keeps no member list afterwards. A saved group keeps its members, and its organizer can start new outings in it. Both go through the same four stages.
@@ -527,6 +543,7 @@ other tables in this diagram remain draft designs, not tables created by DB-03.
 | name | text | yes | |
 | phone_number | text | yes | Unique. Used to log in; not part of the primary key |
 | push_token | text | no | Device token for push notifications |
+| token_version | integer | yes | Default 0, never negative. Raised by logout; a login token is accepted only while its `ver` equals it (migration `0013`) |
 | created_at | timestamp | yes | Without time zone, matching the existing SQL schema |
 
 #### `otp_codes`
@@ -1391,7 +1408,7 @@ POST /auth/logout
 ```
 Requires: Authorization (registered user)
 
-Clears the push token saved for this user, so the device stops receiving notifications. After a `204`, the app deletes the token from the device and opens the sign-up screen. Tokens are not stored on the server, so a copied token stays valid until it expires; this is a known MVP limitation.
+Ends **every** login token of this account, on every device, and clears its push token so no device receives notifications. Each login token carries the account's `token_version` (`ver`); logout raises the version, and every request compares the two (`current_user`, and `participant_of` for the outing endpoints), so a copied or stolen token stops working at once with `401 INVALID_TOKEN`. After a `204`, the app deletes the token from the device and opens the sign-up screen; the next login issues a token with the new version. Guest tokens are separate: they end a day after the outing starts, or when the organizer removes the guest (BE-29). Tokens issued before migration `0013` have no `ver` and count as version 0, so the deploy logs nobody out.
 
 Response `204` — logged out (no body)
 
@@ -2891,7 +2908,7 @@ Every endpoint in Section 4 is tested at least once. The table below maps each e
 | `POST /auth/verify` | Token returned (200), new account created | Wrong code (401), expired code (401), name required (422), too many attempts (429) |
 | `POST /auth/resend-code` | New code sent (200) | No pending code (404), rate limited (429), SMS failed (503) |
 | `POST /auth/push-token` | Token stored (200) | No auth (401) |
-| `POST /auth/logout` | Push token cleared (204) | No auth (401) |
+| `POST /auth/logout` | Push token cleared and every earlier token refused (204) | No auth, or a token from before a logout (401) |
 | `POST /groups` | Group and first outing created (201) | No auth (401) |
 | `GET /groups` | List returned (200) | No auth (401) |
 | `GET /groups/{id}` | Details returned (200) | Not a member (403), not found (404) |

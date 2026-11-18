@@ -1,4 +1,18 @@
 // Display labels only: keep the API codes unchanged.
+import type { RestaurantDetailsData } from "./types";
+
+export function restaurantHours(hours: RestaurantDetailsData["opening_hours"]): string {
+  if (!hours) return "غير متوفرة حاليًا";
+  const time = (value: string) => {
+    const [hour, minute] = value.split(":").map(Number);
+    const numbers = new Intl.NumberFormat("ar-SA-u-nu-arab", { useGrouping: false });
+    return `${numbers.format(hour % 12 || 12)}:${numbers.format(minute).padStart(2, "٠")} ${hour >= 12 ? "م" : "ص"}`;
+  };
+  const period = hours.open_24h ? "٢٤ ساعة" : `${time(hours.opens!)} – ${time(hours.closes!)}`;
+  const days = hours.days_open === 7 ? "يوميًا" : "أيام العمل غير محددة";
+  return `${period} · ${days}`;
+}
+
 const cuisineLabels: Record<string, string> = {
   healthy_salads: "صحي وسلطات", specialty_coffee: "قهوة مختصة", bakery_pastry: "مخبوزات ومعجنات",
   japanese_sushi: "ياباني وسوشي", filipino: "فلبيني", shawarma: "شاورما",

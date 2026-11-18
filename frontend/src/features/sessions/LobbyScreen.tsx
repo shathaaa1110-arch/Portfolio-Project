@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     marginBottom: -theme.spacing.actionGap,
   },
-  title: { textAlign: "auto" },
+  title: { textAlign: "right", writingDirection: "rtl" },
   subtitle: { color: theme.colors.placeholder, marginTop: -theme.spacing.actionGap },
   // Arabic order: the title sits on the right and the ready count on the left.
   listHeading: { flexDirection: "row", ...layoutDirection("rtl"), alignItems: "baseline", justifyContent: "space-between" },

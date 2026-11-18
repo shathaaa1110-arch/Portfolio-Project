@@ -268,3 +268,26 @@ def test_a_person_who_joins_during_generation_is_never_left_out(secret):  # noqa
             conn.execute(sa.text("DELETE FROM participants WHERE outing_id = :o"), {"o": oid})
             conn.execute(sa.text("DELETE FROM outings WHERE id = :o"), {"o": oid})
             conn.execute(sa.text("DELETE FROM users WHERE id = :u"), {"u": organizer})
+
+
+def test_generation_reads_only_the_box_of_the_tightest_distance(api, monkeypatch):
+    """Security/performance review (12 Nov 2026): the group plan passes the outing's centre and the
+    smallest distance limit to load_candidates, so only places inside that box are read."""
+    from app.services.plan import router as plan_router
+    client, conn = api
+    seen = {}
+    real = plan_router.load_candidates
+
+    def spy(db, budget_min, budget_max, lat=None, lon=None, max_km=None):
+        seen.update(lat=lat, lon=lon, max_km=max_km)
+        return real(db, budget_min, budget_max, lat, lon, max_km)
+
+    monkeypatch.setattr(plan_router, "load_candidates", spy)
+    oid, _, organizer, member, guest = _ready_session(client, conn, answers=None)
+    for headers, km in ((organizer, 8), (member, 3)):
+        client.put(f"{BASE}/{oid}/preferences", headers=headers,
+                   json=W(client, oid, headers, {"budget_max": 100, "max_distance_km": km}))
+        client.post(f"{BASE}/{oid}/preferences/ready", headers=headers, json=R(client, oid, headers))
+    r = client.post(f"{BASE}/{oid}/start-voting", headers=organizer, json=R(client, oid, organizer))
+    assert r.status_code == 200
+    assert seen["max_km"] == 3 and seen["lat"] is not None and seen["lon"] is not None
