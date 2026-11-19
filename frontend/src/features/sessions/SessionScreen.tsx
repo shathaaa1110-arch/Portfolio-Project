@@ -174,6 +174,9 @@ export function SessionScreen() {
     try {
       if (Platform.OS === "web" && globalThis.navigator?.clipboard) {
         await globalThis.navigator.clipboard.writeText(message); setShareNotice("تم نسخ الدعوة. أرسلها لأصحابك.");
+      } else if (Platform.OS === "ios" && supplied) {
+        // Share the link alone, so AirDrop opens it in Safari instead of Notes.
+        await Share.share({ url: supplied });
       } else { await Share.share({ message }); }
     } catch { setShareNotice("تعذّرت المشاركة. تقدر تنسخ رمز الجلسة الظاهر وترسله."); }
   }
