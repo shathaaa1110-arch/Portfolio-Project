@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   location: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", maxWidth: "50%", minHeight: 44, gap: 6 },
   place: { flexShrink: 1, fontSize: 13, lineHeight: 22, textAlign: "right", writingDirection: "rtl" },
   notice: { paddingHorizontal: 20, paddingBottom: 8 },
-  message: { fontSize: 12, lineHeight: 20, textAlign: "right", writingDirection: "rtl" },
+  message: { fontSize: 14, lineHeight: 23, textAlign: "right", writingDirection: "rtl" },
   settings: { alignSelf: "flex-end", minHeight: 44, justifyContent: "center" },
   settingsText: { textDecorationLine: "underline", textAlign: "right" },
   pressed: { opacity: 0.65 },

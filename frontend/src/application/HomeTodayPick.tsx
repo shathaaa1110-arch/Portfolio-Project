@@ -54,7 +54,7 @@ export function HomeTodayPick({ preferences, recommendations, renderAction, onCh
       <ActivityIndicator color={theme.colors.primary} />
       <AppText style={styles.copy}>نجهّز اقتراحك…</AppText>
     </View> : state.status === "ready" && recommendations.status === "ready" && restaurant ? <>
-      <RestaurantCard key={restaurant.id} variant="featured" name={restaurant.name_ar}
+      <RestaurantCard restaurantId={restaurant.id} key={restaurant.id} variant="featured" name={restaurant.name_ar}
         cuisines={restaurant.cuisines} district={restaurant.district} rating={restaurant.rating}
         mapsUrl={restaurant.maps_url} distanceKm={restaurant.distance_km} reason={restaurant.reason}
         spendLow={restaurant.spend_low} spendHigh={restaurant.spend_high}

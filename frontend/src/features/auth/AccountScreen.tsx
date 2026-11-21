@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
 
   // The shared title is centered; this page starts at the right like the design
   title: {
-    textAlign: "auto",
+    textAlign: "right",
   },
 
   profileCard: {
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: theme.typography.fontFamilyBold,
     fontSize: theme.typography.sectionTitleSize,
-    textAlign: "auto",
+    textAlign: "right",
   },
 
   phone: {

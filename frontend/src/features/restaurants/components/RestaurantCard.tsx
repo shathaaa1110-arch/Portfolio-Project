@@ -11,6 +11,7 @@ import { RestaurantMapLink } from "./RestaurantMapLink";
 import { RestaurantDetails } from "./RestaurantDetails";
 
 type Props = {
+  restaurantId: number;
   name: string; cuisines: string[]; district: string; rating: number | null;
   imageUrl?: string | null;
   mapsUrl?: string | null; distanceKm?: number | null; reason?: string | null;
@@ -36,7 +37,7 @@ export function RestaurantCard(props: Props) {
   const price = restaurantSpendRange(props.spendLow, props.spendHigh);
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, variant !== "featured" && styles.framed]}>
       {/* The save button is a sibling, not a nested press inside the details link. */}
       <View style={styles.main}>
         <Pressable accessibilityRole="button" accessibilityLabel={`عرض تفاصيل ${name}`}
@@ -46,7 +47,7 @@ export function RestaurantCard(props: Props) {
             style={[styles.image, variant === "featured" && styles.featuredImage]} />
           <AppText variant="title" numberOfLines={compact ? 1 : 2} style={styles.name}>{name}</AppText>
           <AppText numberOfLines={1} style={styles.subtitle}>
-            {[cuisine, distance].filter(Boolean).join(" · ")}
+            {[cuisine, distance].filter(Boolean).join("، ")}
           </AppText>
           {variant === "featured" && <AppText style={styles.subtitle}>{price ? `للشخص تقريبًا: ${price}` : "السعر غير متوفر"}</AppText>}
         </Pressable>
@@ -78,7 +79,7 @@ export function RestaurantCard(props: Props) {
         </Pressable>
       )}
       {!compact && action}
-      <RestaurantDetails visible={detailsOpen}
+      <RestaurantDetails restaurantId={props.restaurantId} visible={detailsOpen}
         name={name} cuisines={cuisines} district={district} rating={rating} imageUrl={props.imageUrl}
         distanceKm={distanceKm} mapsUrl={mapsUrl}
         spendLow={props.spendLow} spendHigh={props.spendHigh}
@@ -90,16 +91,17 @@ export function RestaurantCard(props: Props) {
 
 const styles = StyleSheet.create({
   card: { ...layoutDirection("ltr") },
+  framed: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 16, padding: 8 },
   main: { position: "relative" },
   image: { width: "100%", aspectRatio: 1.7, borderRadius: 12 },
   featuredImage: { aspectRatio: 2.4 },
   name: { marginTop: 8, fontSize: 17, lineHeight: 26, textAlign: "right", writingDirection: "rtl" },
-  subtitle: { marginTop: 2, fontSize: 12, lineHeight: 20, textAlign: "right", writingDirection: "rtl", color: "#626D5E" },
+  subtitle: { marginTop: 2, fontSize: 14, lineHeight: 23, textAlign: "right", writingDirection: "rtl", color: "#626D5E" },
   save: { position: "absolute", left: 6, top: 6 },
   meta: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 8 },
   location: { flex: 1, minWidth: 0 },
   rating: { ...layoutDirection("ltr"), flexDirection: "row", gap: 3, minHeight: 44, alignItems: "center", justifyContent: "flex-end" },
-  ratingText: { fontSize: 12, writingDirection: "ltr", textAlign: "left" },
+  ratingText: { fontSize: 14, writingDirection: "ltr", textAlign: "left" },
   reason: { ...layoutDirection("ltr"), alignItems: "stretch", gap: 4, paddingTop: 10, paddingBottom: 4, borderTopWidth: 1, borderTopColor: theme.colors.border },
   reasonTitle: { width: "100%", fontSize: 13, lineHeight: 22, textAlign: "right", writingDirection: "rtl" },
   reasonText: { width: "100%", fontSize: 13, lineHeight: 22, textAlign: "right", writingDirection: "rtl" },

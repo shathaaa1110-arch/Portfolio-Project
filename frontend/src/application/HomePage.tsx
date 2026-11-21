@@ -1,7 +1,7 @@
 import { layoutDirection } from "@/shared/layout";
 import { useState } from "react";
 import { router } from "expo-router";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
 import { RestaurantList, RestaurantPagination, useRestaurants, type RestaurantSummary } from "@/features/restaurants";
@@ -18,18 +18,17 @@ import { useHomePreferences } from "./useHomePreferences";
 export function HomePage() {
   const [selectedAction, setSelectedAction] = useState<"restaurants" | "outing">("restaurants");
   const [browseRequest, setBrowseRequest] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [pickerRequest, setPickerRequest] = useState(0);
   const [location, setLocation] = useState<RecommendationLocation>({ kind: "none" });
   const {
     restaurants, status, retry, pageNumber, pageCount, isLoading,
     isRefreshing, error, canGoNext, canGoPrevious, nextPage, previousPage, refresh,
-  } = useRestaurants(searchQuery);
+  } = useRestaurants();
   const savedList = useSavedRestaurants();
   const preferences = useHomePreferences(refreshKey);
   const recommendations = usePersonalRecommendations(preferences.state.status === "ready" ? preferences.state.token : null, location);
-  const otherRecommendations = !searchQuery.trim() && pageNumber === 1 && recommendations.status === "ready"
+  const otherRecommendations = pageNumber === 1 && recommendations.status === "ready"
     ? recommendations.restaurants.slice(1) : [];
 
   function renderSave(restaurant: RestaurantSummary) {
@@ -43,31 +42,24 @@ export function HomePage() {
       onFindRestaurant={() => { setSelectedAction("restaurants"); setBrowseRequest(value => value + 1); }}
       onCreateSession={() => { setSelectedAction("outing"); router.push("/sessions/new"); }} />
 
-    {RESTAURANT_SEARCH_ENABLED && <View style={styles.searchGroup}>
-      <View style={styles.searchField}>
-        <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }}
-          size={23} tintColor={theme.colors.primary} accessible={false} />
-        <TextInput value={searchQuery} onChangeText={setSearchQuery}
-          placeholder="مطعم أو مطبخ على بالك؟" placeholderTextColor={theme.colors.searchText}
-          accessibilityLabel="ابحث في كل المطاعم" returnKeyType="search"
-          autoCorrect={false} autoCapitalize="none"
-          style={styles.searchInput} />
-        {!!searchQuery && <Pressable accessibilityRole="button" accessibilityLabel="مسح البحث"
-          onPress={() => setSearchQuery("")} style={styles.clearSearch}>
-          <AppText>مسح</AppText>
-        </Pressable>}
-      </View>
-    </View>}
+    {RESTAURANT_SEARCH_ENABLED && <Pressable accessibilityRole="button"
+      accessibilityLabel="افتح البحث مع هيلة" onPress={() => router.push("/search")}
+      style={({ pressed }) => [styles.searchEntry, pressed && { opacity: 0.75 }]}>
+      <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }}
+        size={22} tintColor={theme.colors.primary} accessible={false} />
+      <AppText style={styles.searchLabel}>ابحث مع هيلة عن مطعم</AppText>
+      <SymbolView name={{ ios: "chevron.left", android: "chevron_left", web: "chevron_left" }}
+        size={16} tintColor={theme.colors.primary} accessible={false} />
+    </Pressable>}
 
-    {!searchQuery.trim() && <HomeTodayPick preferences={preferences} recommendations={recommendations} renderAction={renderSave}
+    <HomeTodayPick preferences={preferences} recommendations={recommendations} renderAction={renderSave}
       onChooseLocation={() => setPickerRequest(value => value + 1)} />
-    }
   </View>;
 
   const listHeading = (
     <View style={styles.section}>
       <View style={styles.sectionHeading}>
-        <AppText variant="title" accessibilityRole="header" style={styles.sectionTitle}>{searchQuery.trim() ? "نتائج البحث" : "اكتشف المطاعم"}</AppText>
+        <AppText variant="title" accessibilityRole="header" style={styles.sectionTitle}>اكتشف المطاعم</AppText>
         <Pressable accessibilityRole="button" onPress={() => router.push("/preferences")} style={styles.preferences}>
           <AppText style={styles.preferencesText}>تفضيلاتي</AppText>
           <SymbolView name={{ ios: "slider.horizontal.3", android: "tune", web: "tune" }}
@@ -113,7 +105,6 @@ export function HomePage() {
         recommendedRestaurants={otherRecommendations}
         resultsHeader={listHeading}
         restaurants={restaurants}
-        searchQuery={searchQuery}
         status={status}
         errorMessage={error}
         onRetry={retry}
@@ -174,10 +165,9 @@ listRetryText: {
 
   screen: { flex: 1, backgroundColor: theme.colors.background },
   header: { ...layoutDirection("ltr"), gap: 20 },
-  searchGroup: { gap: 4 },
-  searchField: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 10, backgroundColor: theme.colors.searchBackground, borderRadius: 22, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8 },
-  searchInput: { flex: 1, minHeight: 38, fontFamily: theme.typography.fontFamily, fontSize: 16, color: theme.colors.text, writingDirection: "rtl", textAlign: "right", padding: 0 },
-  clearSearch: { minHeight: 44, justifyContent: "center", paddingHorizontal: 6 },
+  searchEntry: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", gap: 10,
+    minHeight: 52, paddingHorizontal: 16, borderRadius: 26, backgroundColor: theme.colors.searchBackground },
+  searchLabel: { flex: 1, fontSize: 15, color: theme.colors.searchText, textAlign: "right", writingDirection: "rtl" },
   section: { gap: 2 },
   sectionHeading: { ...layoutDirection("ltr"), flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 },
   sectionTitle: { fontSize: 23, lineHeight: 34, textAlign: "right", writingDirection: "rtl" },

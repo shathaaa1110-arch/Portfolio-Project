@@ -81,13 +81,13 @@ test("creation without an account preserves the draft and starts sign-in instead
   assert.deepEqual(plain(h.routes), [{ pathname: "/login", params: { returnTo: "/sessions/new" } }]);
 });
 
-async function roomHarness(t, { organizer = true, pref = preferences, generation } = {}) {
+async function roomHarness(t, { organizer = true, pref = preferences, generation, getOuting, guestPass } = {}) {
   const calls = []; let currentToken = "T";
   let state = { outing_id: "o1", name: "عشاء", starts_at: "2026-11-11T20:30:00+03:00", status: "preferences", district: "001", invite_code: "ABCD",
     me: { participant_id: "p1", is_organizer: organizer }, actions: [], readiness: { ready_count: 0, total_count: 1 },
     participants: [{ participant_id: "p1", name: "شذى", attendance: "confirmed", preferences_done: false, is_organizer: organizer }] };
   const api = {
-    getOuting: async () => structuredClone(state), getOutingPreferences: async () => pref,
+    getOuting: getOuting ?? (async () => structuredClone(state)), getOutingPreferences: async () => pref,
     getPlan: async () => { throw Error("No plan should be read"); },
     startPreferences: async () => { calls.push("start"); },
     saveOutingPreferences: async (id, token, body) => { calls.push({ method: "save", id, token, body }); },
@@ -99,9 +99,9 @@ async function roomHarness(t, { organizer = true, pref = preferences, generation
     "expo-router": { router: {}, useLocalSearchParams: () => ({ id: "o1", code: "ABCD" }), useFocusEffect: callback => React.useEffect(callback, [callback]) },
     "@/features/preferences": { ...preferenceModel, PreferencesForm: "PreferencesForm" }, "@/features/restaurants": { RestaurantCard: "RestaurantCard" },
     "@/shared/components": shared, "@/shared/api/errors": errors, "@/shared/api/config": { USE_MOCK: false }, "@/shared/theme": theme,
-    "./api/outing": api, "./api/round": roundApi(undefined, false), "./components/SessionRetry": { SessionRetry: "Retry" },
+    "./api/outing": api, "./api/round": roundApi(undefined, false), "./components/SessionRetry": { SessionRetry: "Retry" }, "./components/SessionActions": { RemoveSheet: "RemoveSheet", LeaveButton: "LeaveButton" },
     "./identity": { outingToken: async () => currentToken }, "./model": model,
-    "./guestPass": { loadGuestPass: async () => null, removeGuestPass: async () => {} },
+    "./guestPass": guestPass ?? { loadGuestPass: async () => null, removeGuestPass: async () => {} },
     "./components/SessionVisuals": { SessionMasthead: "Masthead", SessionPaper: "Paper", SessionSteps: "Steps", HailaTip: "HailaTip" },
     "./components/SessionChrome": { SessionHeader: "Header", SessionIcon: "Icon", SessionSheet: "Sheet" },
     "./components/SessionLayout": { SessionFooter: "Footer", QuietButton: "QuietButton", SessionSummary: "Summary", room: {} },
@@ -128,6 +128,25 @@ test("a member cannot see organizer generation controls", async t => {
   assert.equal(h.button("نبدأ التصويت"), undefined);
   await act(async () => h.button("اعتماد تفضيلاتي · أنا جاهز").props.onPress());
   assert.equal(h.button("نبدأ التصويت"), undefined);
+});
+
+test("members can leave before generation; a removed member stops polling, loses the guest pass and gets a way home", async t => {
+  const member = await roomHarness(t, { organizer: false });
+  assert.equal(member.screen.root.findAll(x => x.type === "LeaveButton").length, 1);
+  const owner = await roomHarness(t);
+  assert.equal(owner.screen.root.findAll(x => x.type === "LeaveButton").length, 0);
+
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let reads = 0; const dropped = [];
+  const h = await roomHarness(t, { organizer: false,
+    getOuting: async () => { reads++; throw new errors.ApiError(403, "REMOVED_FROM_OUTING", "Removed"); },
+    guestPass: { loadGuestPass: async () => ({ guest_token: "T" }), removeGuestPass: async code => { dropped.push(code); } } });
+  assert.deepEqual(dropped, ["ABCD"]);
+  assert(h.button("العودة للرئيسية"));
+  assert.equal(h.button("إعادة المحاولة"), undefined);
+  const before = reads;
+  await act(async () => { t.mock.timers.tick(15000); });
+  assert.equal(reads, before);
 });
 
 test("editing the plate sends the entire outing preference copy, preserves limits/allergies and confirms readiness after saving", async t => {

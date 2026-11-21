@@ -94,7 +94,10 @@ def _generate(db: Session, outing: Outing) -> list:
     lat, lon = _centre(db, outing)
     budget_max = min((p.budget_max for p in people if p.budget_max is not None), default=None)
     budget_min = max((p.budget_min for p in people if p.budget_min is not None), default=None)
-    restaurants = load_candidates(db, budget_min, budget_max)
+    # The tightest distance limit in the group, as the engine applies it (engine.filter_candidates):
+    # read only the places inside its box instead of every candidate in Riyadh.
+    max_km = min((p.max_distance_km for p in people if p.max_distance_km), default=None)
+    restaurants = load_candidates(db, budget_min, budget_max, lat, lon, max_km)
     when = outing.starts_at.astimezone(RIYADH).replace(tzinfo=None)  # opening hours are local times
     return recommend(restaurants, people, when, lat, lon, limit=PLAN_SIZE)
 

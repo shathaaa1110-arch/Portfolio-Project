@@ -18,7 +18,7 @@ export function SignOutButton() {
   }
 
   return (
-    <Pressable style={styles.link} disabled={loading} onPress={handlePress} accessibilityRole="button">
+    <Pressable style={({ pressed }) => [styles.link, (pressed || loading) && styles.pressed]} disabled={loading} onPress={handlePress} accessibilityRole="button">
       <AppText style={styles.text}>{loading ? "جاري الخروج..." : "تسجيل الخروج"}</AppText>
     </Pressable>
   );
@@ -27,14 +27,19 @@ export function SignOutButton() {
 const styles = StyleSheet.create({
   // Tall enough to tap easily
   link: {
-    minHeight: theme.sizes.touchTargetMin,
+    minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    backgroundColor: "#F6E7E3",
   },
+
+  pressed: { opacity: 0.7 },
 
   text: {
     color: theme.colors.error,
     fontFamily: theme.typography.fontFamilyBold,
-    fontSize: theme.typography.labelSize,
+    fontSize: 15,
   },
 });

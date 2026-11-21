@@ -8,18 +8,18 @@ const response = (offset = 0, total = 43, name = "مطعم") => ({
   restaurants: Array.from({ length: Math.max(0, Math.min(20, total - offset)) }, (_, i) => ({ id: offset + i + 1, name_ar: name })),
 });
 
-async function restaurantHarness(search = "") {
+async function restaurantHarness(search = "", filters = {}, enabled = true) {
   const calls = [], timers = new Map();
   let sequence = 0, state;
   const { useRestaurants } = load("features/restaurants/useRestaurants.ts", {
     "@/shared/api/errors": errors,
-    "./api": { getRestaurants(offset, query) { const result = deferred(); calls.push({ offset, query, ...result }); return result.promise; } },
+    "./api": { getRestaurants(offset, query, filters) { const result = deferred(); calls.push({ offset, query, filters: plain(filters), ...result }); return result.promise; } },
   }, {
     setTimeout(fn, ms) { const id = ++sequence; timers.set(id, { fn, ms }); return id; },
     clearTimeout(id) { timers.delete(id); },
   });
-  function Probe({ search }) { state = useRestaurants(search); return null; }
-  const screen = await render(Probe, { search });
+  function Probe({ search, filters, enabled }) { state = useRestaurants(search, filters, enabled); return null; }
+  const screen = await render(Probe, { search, filters, enabled });
   return {
     screen, calls, timers, get state() { return state; },
     async tick() { await act(async () => { const pending = [...timers.values()]; timers.clear(); pending.forEach(t => t.fn()); }); },
@@ -152,14 +152,20 @@ test("Today pick stays one card and retains the location recovery action", async
   await h.close();
 });
 
-async function homeSearchHarness(searchEnabled, personal = []) {
-  const queries = [], scrolls = [], routes = [];
+async function homeSearchHarness(searchEnabled, personal = [], searchPage = false) {
+  const queries = [], filtersSent = [], enabledRequests = [], scrolls = [], routes = [];
   const theme = load("shared/theme.ts");
   function FlatList({ ref, ...props }) {
     React.useImperativeHandle(ref, () => ({ scrollToOffset: options => scrolls.push(plain(options)) }), []);
     return React.createElement("FlatList", props, props.ListHeaderComponent);
   }
-  const views = { ...native, FlatList, TextInput: "TextInput" };
+  const views = { ...native, FlatList, KeyboardAvoidingView: "KeyboardAvoidingView", TextInput: "TextInput", Modal: ({ visible, children }) => visible ? children : null };
+  const { RestaurantSearch } = load("features/restaurants/components/RestaurantSearch.tsx", {
+    "react-native": views, "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
+    "expo-image": { Image: "Image" }, "expo-symbols": { SymbolView: "SymbolView" },
+    "@/shared/components": shared, "@/shared/theme": theme,
+    "../filterOptions": load("features/restaurants/filterOptions.ts"),
+  });
   const { RestaurantList } = load("features/restaurants/RestaurantList.tsx", {
     "react-native": views, "@/shared/components": shared, "@/shared/theme": theme,
     "./components/RestaurantCard": { RestaurantCard: "RestaurantCard" },
@@ -168,30 +174,30 @@ async function homeSearchHarness(searchEnabled, personal = []) {
     "react-native": views, "@/shared/components": shared, "@/shared/theme": theme,
     "expo-image": { Image: "Image" }, "expo-symbols": { SymbolView: "SymbolView" },
   });
-  const { HomePage } = load("application/HomePage.tsx", {
-    "react-native": views, "expo-router": { router: { push: path => routes.push(path) } },
+  const { HomePage, RestaurantSearchPage } = load(searchPage ? "application/RestaurantSearchPage.tsx" : "application/HomePage.tsx", {
+    "react-native": views, "expo-router": { router: { push: path => routes.push(path), canGoBack: () => true, back: () => routes.push("BACK") } },
     "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
     "expo-symbols": { SymbolView: "SymbolView" },
     "@/shared/components": shared, "@/shared/theme": theme,
     "@/shared/api/config": { RESTAURANT_SEARCH_ENABLED: searchEnabled },
     "@/features/restaurants": {
-      RestaurantList, RestaurantPagination: "RestaurantPagination",
-      useRestaurants(query) {
-        queries.push(query);
+      RestaurantList, RestaurantSearch, RestaurantPagination: "RestaurantPagination",
+      useRestaurants(query = "", filters = {}, enabled = true) {
+        queries.push(query); filtersSent.push(plain(filters)); enabledRequests.push(enabled);
         return { ...response(), status: "ready", pageNumber: 1, pageCount: 3, error: null };
       },
     },
     "@/features/savedRestaurants": { SaveRestaurantButton: "SaveRestaurantButton", useSavedRestaurants: () => ({}) },
-    "@/features/personalSuggestions": { usePersonalRecommendations: () => ({ status: "ready", restaurants: personal }) },
+    "@/features/personalSuggestions": { getDistricts: async () => [{ id: "d1", name_ar: "الملقا" }, { id: "d2", name_ar: "العليا" }], usePersonalRecommendations: () => ({ status: "ready", restaurants: personal }) },
     "./useHomePreferences": { useHomePreferences: () => ({ state: { status: "ready", token: "A" } }) },
     "./HomeIntro": { HomeIntro },
     "./HomeLocationBar": { HomeLocationBar: () => null },
-    "./HomeTodayPick": { HomeTodayPick: () => null },
+    "./HomeTodayPick": { HomeTodayPick: "HomeTodayPick" },
   });
-  const screen = await render(HomePage);
+  const screen = await render(searchPage ? RestaurantSearchPage : HomePage);
   scrolls.length = 0;
   return {
-    screen, queries, scrolls, routes,
+    screen, queries, filtersSent, enabledRequests, scrolls, routes,
     measureHeader(height) {
       screen.root.findByType("FlatList").props.ListHeaderComponent.props.onLayout({ nativeEvent: { layout: { height } } });
     },
@@ -215,19 +221,37 @@ test("Home hides unsupported search and its discovery button scrolls to the rest
   await h.screen.close();
 });
 
-test("Home exposes global search only when supported, forwards Arabic text and can clear it", async () => {
-  const h = await homeSearchHarness(true);
-  const input = h.screen.root.findByType("TextInput");
-  await act(async () => input.props.onChangeText("شذ"));
-  assert.equal(h.queries.at(-1), "شذ");
-  assert.equal(h.screen.root.findByType("TextInput").props.value, "شذ");
-  h.measureHeader(620);
-  await h.browse();
-  assert.deepEqual(h.scrolls.at(-1), { offset: 620, animated: true });
-  assert.equal(h.queries.at(-1), "شذ");
-  await act(async () => h.screen.root.findByProps({ accessibilityLabel: "مسح البحث" }).props.onPress());
-  assert.equal(h.queries.at(-1), "");
-  await h.screen.close();
+test("Home preserves its lettering and today's pick, and opens search as a separate page", async t => {
+  const h = await homeSearchHarness(true); t.after(() => h.screen.close());
+  assert.equal(h.screen.root.findAllByType("TextInput").length, 0);
+  assert.equal(h.screen.root.findAllByProps({ accessibilityLabel: "ذوق يدلّك" }).length, 1);
+  assert.equal(h.screen.root.findAllByType("HomeTodayPick").length, 1);
+  await act(async () => h.screen.root.findByProps({ accessibilityLabel: "افتح البحث مع هيلة" }).props.onPress());
+  assert.deepEqual(h.routes, ["/search"]);
+  assert.equal(h.screen.root.findAllByType("HomeTodayPick").length, 1);
+  assert(h.queries.every(query => query === ""));
+});
+
+test("search conversation waits for both answers, supports editing, then returns Home", async t => {
+  const h = await homeSearchHarness(true, [], true); t.after(() => h.screen.close());
+  const press = label => act(async () => h.screen.root.findByProps({ accessibilityLabel: label }).props.onPress());
+  assert.equal(h.enabledRequests.at(-1), false);
+  assert.equal(h.screen.root.findByType("FlatList").props.data.length, 0);
+  assert.equal(h.screen.root.findAllByType("HomeTodayPick").length, 0);
+  await act(async () => h.screen.root.findByType("TextInput").props.onChangeText("شذ"));
+  await press("إرسال لهيلة");
+  assert.equal(h.enabledRequests.at(-1), false); // No premature results before the area answer.
+  assert.equal(h.screen.root.findByType("FlatList").props.data.length, 0);
+  await press("كل الأحياء");
+  assert.equal(h.queries.at(-1), "شذ"); assert.equal(h.enabledRequests.at(-1), true);
+  assert(h.screen.root.findByType("FlatList").props.data.length > 0);
+  await press("تعديل حي البحث");
+  assert.equal(h.enabledRequests.at(-1), false);
+  await press("كل الأحياء"); assert.equal(h.queries.at(-1), "شذ");
+  await press("نبدأ بحثًا جديدًا");
+  assert.equal(h.queries.at(-1), ""); assert.equal(h.enabledRequests.at(-1), false);
+  assert.equal(h.screen.root.findByType("FlatList").props.data.length, 0);
+  await press("رجوع للرئيسية"); assert.deepEqual(h.routes, ["BACK"]);
 });
 
 
@@ -247,8 +271,9 @@ test("Home selects the pressed action and places extra recommendations in the ma
   assert.equal(rows[0].heading.props.children, "مطاعم أخرى على ذوقك");
   assert.deepEqual(plain(rows.filter(row => row.key.startsWith("recommended-")).flatMap(row => row.restaurants.map(r => r.id))), [102, 103]);
   assert.equal(rows.find(row => row.key.startsWith("recommended-")).restaurants[0].reason, "على ذوقك");
-  await act(async () => h.screen.root.findByType("TextInput").props.onChangeText("مطعم"));
-  assert.equal(h.screen.root.findByType("FlatList").props.data.some(row => row.key.startsWith("recommended-")), false);
+  await act(async () => h.screen.root.findByProps({ accessibilityLabel: "افتح البحث مع هيلة" }).props.onPress());
+  assert.equal(h.screen.root.findByType("FlatList").props.data.some(row => row.key.startsWith("recommended-")), true);
+  assert.equal(h.screen.root.findAllByType("HomeTodayPick").length, 1);
   await h.screen.close();
 });
 
@@ -273,4 +298,62 @@ test("a restaurant appearing in personal and public results opens only the selec
   await h.update({ ...props, searchQuery: "مطعم" });
   assert(cards().every(card => !card.props.expanded));
   await h.close();
+});
+
+test("combined filters reset pagination, preserve the query, and discard the old filter response", async t => {
+  const h = await restaurantHarness("مطعم"); t.after(() => h.screen.close());
+  await h.tick(); await h.answer(0, response());
+  await act(async () => h.state.nextPage()); await h.tick(); await h.answer(1, response(20));
+  await h.screen.update({ search: "مطعم", filters: { cuisine: "grill", districtId: "d1" } });
+  assert.equal(h.state.restaurants.length, 0);
+  await h.tick();
+  assert.deepEqual(h.calls[2].filters, { cuisine: "grill", districtId: "d1" });
+  assert.equal(h.calls[2].query, "مطعم"); assert.equal(h.calls[2].offset, 0);
+  await h.screen.update({ search: "مطعم", filters: { cuisine: "italian", districtId: "d1" } });
+  await h.tick(); await h.answer(3, response(0, 25, "إيطالي"));
+  await h.answer(2, response(0, 10, "مشويات"));
+  assert.equal(h.state.restaurants[0].name_ar, "إيطالي");
+  await act(async () => h.state.nextPage()); await h.tick();
+  assert.deepEqual(h.calls[4].filters, { cuisine: "italian", districtId: "d1" });
+  assert.equal(h.calls[4].offset, 20);
+  await h.fail(4); assert(h.state.error);
+  await act(async () => h.state.retry()); await h.tick();
+  assert.deepEqual(h.calls[5].filters, h.calls[4].filters);
+  await h.answer(5, response(20, 25));
+  await h.screen.update({ search: "مطعم", filters: {} }); await h.tick();
+  assert.equal(h.calls[6].offset, 0);
+  assert.deepEqual(h.calls[6].filters, { cuisine: "", districtId: "" });
+});
+
+test("search conversation combines text, cuisine and district, and can restart without stale filters", async t => {
+  const h = await homeSearchHarness(true, [], true); t.after(() => h.screen.close());
+  const press = label => act(async () => h.screen.root.findByProps({ accessibilityLabel: label }).props.onPress());
+  await act(async () => h.screen.root.findByType("TextInput").props.onChangeText("شذا"));
+  await press("إيطالي");
+  assert.equal(h.enabledRequests.at(-1), false);
+  await press("أختار الحي"); await press("الملقا");
+  assert.deepEqual(h.filtersSent.at(-1), { cuisine: "italian", districtId: "d1" });
+  assert.equal(h.queries.at(-1), "شذا");
+  assert.equal(h.screen.root.findByType("FlatList").props.data.some(row => row.key.startsWith("recommended-")), false);
+  await press("تعديل طلب المطعم");
+  assert.equal(h.screen.root.findByType("TextInput").props.value, "شذا");
+  await press("مطابخ أخرى"); await press("كل المطابخ"); await press("كل الأحياء");
+  assert.deepEqual(h.filtersSent.at(-1), { cuisine: "", districtId: "" });
+  assert.equal(h.queries.at(-1), "شذا");
+  await press("نبدأ بحثًا جديدًا"); await press("خلّيني أكتشف"); await press("كل الأحياء");
+  assert.equal(h.enabledRequests.at(-1), true); assert.equal(h.queries.at(-1), "");
+});
+
+
+test("inactive search makes no request and ignores results arriving after it is cleared", async t => {
+  const h = await restaurantHarness("", {}, false); t.after(() => h.screen.close());
+  await h.tick(); assert.equal(h.calls.length, 0); assert.equal(h.state.isLoading, false);
+  await h.screen.update({ search: "بيتزا", filters: {}, enabled: true }); await h.tick();
+  assert.equal(h.calls.length, 1);
+  await h.screen.update({ search: "", filters: {}, enabled: false });
+  await h.answer(0, response()); await h.tick();
+  assert.equal(h.calls.length, 1); assert.equal(h.state.restaurants.length, 0);
+  assert.equal(h.state.isLoading, false); assert.equal(h.state.error, null);
+  await h.screen.update({ search: "", filters: { cuisine: "italian" }, enabled: true }); await h.tick();
+  assert.equal(h.calls.length, 2); assert.equal(h.calls[1].filters.cuisine, "italian");
 });
