@@ -28,7 +28,9 @@ ALL_DAY = {d: [(0, 1440)] for d in range(7)}
 
 def place(id, cuisines=("italian",), km=1.0, low=40, high=80, quality=4.0, brand=None,
           hours=ALL_DAY, venue=None, flags=()):
-    return Restaurant(id=id, cuisines=tuple(cuisines), lat=LAT + km * KM, lon=LON,
+    lat = LAT + km * KM if km is not None else None
+    lon = LON if km is not None else None
+    return Restaurant(id=id, cuisines=tuple(cuisines), lat=lat, lon=lon,
                       spend_low=low, spend_high=high, quality_score=quality, brand_id=brand,
                       venue_type=venue, flags=tuple(flags), hours=hours)
 
@@ -116,6 +118,70 @@ def test_never_suggested_venues_and_flags():
               place(4, flags=("virtual_brand_or_cloud_kitchen",)), place(5, flags=("possibly_not_food",))]
     kept = filter_candidates(places, [Preferences()], MONDAY_8PM, LAT, LON)
     assert [r.id for r, _ in kept] == [1]
+
+
+def test_missing_price_data_is_excluded_when_budget_is_specified():
+    # Candidate with missing spend is excluded when anyone in the group has a budget limit (D04).
+    places = [place(1, low=40, high=80), place(2, low=None, high=None)]
+    kept = filter_candidates(places, [Preferences(budget_max=100)], MONDAY_8PM, LAT, LON)
+    assert [r.id for r, _ in kept] == [1]
+
+
+def test_missing_coordinates_are_excluded_when_location_is_specified():
+    # Candidate with missing coordinates cannot be measured against meeting point/distance (D04).
+    places = [place(1, km=2.0), place(2, km=None)]
+    kept = filter_candidates(places, [Preferences(max_distance_km=5)], MONDAY_8PM, LAT, LON)
+    assert [r.id for r, _ in kept] == [1]
+
+
+def test_budget_boundary_exact_lower_touch_and_just_below():
+    # budget_min = 50. Place 1 high is exactly 50 (touches -> kept). Place 2 high is 49 (below -> excluded).
+    people = [Preferences(budget_min=50)]
+    places = [place(1, low=20, high=50), place(2, low=20, high=49)]
+    kept = filter_candidates(places, people, MONDAY_8PM, LAT, LON)
+    assert [r.id for r, _ in kept] == [1]
+
+
+def test_budget_boundary_exact_upper_touch_and_just_above():
+    # budget_max = 100. Place 1 low is exactly 100 (touches -> kept). Place 2 low is 101 (above -> excluded).
+    people = [Preferences(budget_max=100)]
+    places = [place(1, low=100, high=150), place(2, low=101, high=150)]
+    kept = filter_candidates(places, people, MONDAY_8PM, LAT, LON)
+    assert [r.id for r, _ in kept] == [1]
+
+
+def test_distance_boundary_exact_limit_and_exceeded():
+    p1 = place(1, km=3.0)
+    actual_d = distance_km(LAT, LON, p1.lat, p1.lon)
+    # Exactly at the limit: kept (d <= max_km)
+    kept_exact = filter_candidates([p1], [Preferences(max_distance_km=actual_d)], MONDAY_8PM, LAT, LON)
+    assert [r.id for r, _ in kept_exact] == [1]
+    # Marginally exceeded: excluded (d > max_km)
+    kept_exceeded = filter_candidates([p1], [Preferences(max_distance_km=actual_d - 0.01)], MONDAY_8PM, LAT, LON)
+    assert [r.id for r, _ in kept_exceeded] == []
+
+
+def test_incompatible_group_budgets_yield_no_matches():
+    # Person 1 cannot spend more than 50; Person 2 insists on spending at least 80.
+    # No single restaurant can satisfy both hard constraints.
+    people = [Preferences(budget_max=50), Preferences(budget_min=80)]
+    places = [place(1, low=20, high=50), place(2, low=80, high=120)]
+    assert recommend(places, people, MONDAY_8PM, LAT, LON) == []
+
+
+def test_all_candidates_exceed_distance_limit_returns_empty():
+    # Everyone has max_distance_km=2, all candidates are 5km away.
+    people = [Preferences(max_distance_km=2)]
+    places = [place(1, km=5.0), place(2, km=6.0)]
+    assert recommend(places, people, MONDAY_8PM, LAT, LON) == []
+
+
+def test_allergies_and_seating_do_not_hard_filter_candidates():
+    # In the current contract, allergies are returned as advisory warnings on the plan,
+    # and seating is not filtered by the engine. All valid restaurants remain candidates.
+    places = [place(1, cuisines=("italian",)), place(2, cuisines=("saudi",))]
+    kept = filter_candidates(places, [Preferences()], MONDAY_8PM, LAT, LON)
+    assert [r.id for r, _ in kept] == [1, 2]
 
 
 # ---------- stage 2 and 3: ranking ----------

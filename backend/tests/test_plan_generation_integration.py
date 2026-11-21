@@ -119,6 +119,18 @@ def test_a_place_without_coordinates_is_never_suggested(api):
     assert 11 not in [i["restaurant"]["id"] for i in r.json()["plan_items"]]
 
 
+def test_a_place_without_spend_is_never_suggested(api):
+    client, conn = api
+    # Missing spend data means price constraints cannot be verified; the place is excluded (D04).
+    conn.execute(sa.text(
+        "INSERT INTO restaurants (id, name_ar, cuisine, latitude, longitude, quality_score, opening_hours) "
+        "VALUES (12, 'بلا سعر', 'saudi', 24.7136, 46.6753, 5.0, CAST(:h AS jsonb))"), {"h": json.dumps(ALWAYS)})
+    oid, _, organizer, _, _ = _ready_session(client, conn)
+    r = client.post(f"{BASE}/{oid}/start-voting", headers=organizer, json=R(client, oid, organizer))
+    assert r.status_code == 200
+    assert 12 not in [i["restaurant"]["id"] for i in r.json()["plan_items"]]
+
+
 def test_asking_again_returns_the_stored_plan(api):
     client, conn = api
     oid, _, organizer, _, _ = _ready_session(client, conn)
