@@ -147,6 +147,16 @@ def test_a_place_without_coordinates_is_left_out(api):
     assert r.status_code == 200 and 11 not in _ids(r)
 
 
+def test_a_place_without_spend_is_left_out(api):
+    client, conn, _ = api
+    # Missing spend data means price constraints cannot be verified; the place is excluded (D04).
+    conn.execute(sa.text(
+        "INSERT INTO restaurants (id, name_ar, cuisine, latitude, longitude, quality_score, opening_hours) "
+        "VALUES (12, 'بلا سعر', 'italian', 24.7136, 46.6753, 5.0, CAST(:h AS jsonb))"), {"h": json.dumps(ALWAYS)})
+    r = client.get(URL, params={"district_id": DISTRICT}, headers=_user(client, conn))
+    assert r.status_code == 200 and 12 not in _ids(r)
+
+
 # ---------- location errors ----------
 
 def test_a_distance_limit_without_a_location_asks_for_one(api):
