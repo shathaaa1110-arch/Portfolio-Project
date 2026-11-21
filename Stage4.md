@@ -4,9 +4,8 @@ Thouq is an Arabic app that helps people find restaurants and choose one togethe
 This document shows how the team built the MVP: the sprint plan, the work done, how we tracked progress,
 the sprint reviews and retrospectives, and the final testing.
 
-**Team:** Shatha Alanazi, Asem Alhubaishi, Hassan Alhuzali, Fahad Almidaj
-**Status date:** 21 November 2026 · **Source reviewed:** branch `deployment` at commit [`9a574c7`](https://github.com/shathaaa1110-arch/Portfolio-Project/tree/9a574c7c166ee556a66f59bcd38ebdfc23697170)
-**Arabic version:** [README.ar.md](README.ar.md)
+**Team:** Shatha Alanazi, Asim Alhubaishi, Hassan Alhuzali, Fahad Almidaj
+
 
 ## Deliverables (Task 5)
 
