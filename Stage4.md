@@ -146,8 +146,7 @@ Stage 3 planned two branches, `main` and `develop`. We use one integration branc
 | Decision | Suggestions engine, voting, automatic result, new round | [#141](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/141), [#152](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/152), [#158](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/158), [#159](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/159), [#170](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/170) |
 | Setup | CI, deployment, Expo SDK 58, repeatable database | [#115](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/115), [#123](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/123), [#124](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/124), [#112](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/112) |
 
-On 21 November the repository has 68 closed pull requests and 1 open one
-([#178](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/178), a fix in the plan engine). It has 13 database migrations.
+On 21 November the repository has 70 pull requests: 63 merged (61 into `deployment`), 5 closed without merging, and 2 open ([#178](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/178), a fix in the plan engine, and [#180](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/180), this document). It has 13 database migrations.
 The API journey tests were merged on 21 November in [#177](https://github.com/shathaaa1110-arch/Portfolio-Project/pull/177).
 
 Setup guides: [front-end](https://github.com/shathaaa1110-arch/Portfolio-Project/blob/deployment/frontend/README.md) ·
@@ -175,7 +174,7 @@ Task numbers are the state of the board on 21 November. A few tasks were closed 
 | Core tasks completed (velocity) | 14 | 26 | 24 | 13 | 77 |
 | Completed vs. planned | 93% | 93% | 89% | 57% | 83% |
 | Sprint time used on 21 Nov | 100% | 100% | 100% | 43% (day 6 of 14) | |
-| Pull requests merged (merge commits) | 11 | 16 | 29 | 5 | 61 |
+| Pull requests merged into `deployment`| 11 | 16 | 29 | 5 | 61 |
 | Bug-fix pull requests merged | 0 | 2 | 3 | 3 | 8 |
 
 Sprint 3 is ahead of schedule: 57% of its tasks are done at 43% of its time. 11 of its 12 development tasks are done; the other one is deferred push (FE-20). The rest of its open tasks are testing, release and documentation, which are the work of the second week.
