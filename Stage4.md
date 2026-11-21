@@ -51,7 +51,7 @@ the sprint reviews and retrospectives, and the final testing.
 | Member | Role | Main responsibilities |
 |---|---|---|
 | **Shatha Alanazi** | Project Manager · UI/UX · Front-end | Sprint planning, the board, progress tracking, screen design, session and restaurant screens, release coordination |
-| **Asem Alhubaishi** | Back-end and API | Endpoints, session logic, recommendation engine, API journey tests |
+| **Asim Alhubaishi** | Back-end and API | Endpoints, session logic, recommendation engine, API journey tests |
 | **Hassan Alhuzali** | Database · QA | Schema and migrations, restaurant data, integration tests, defect register and retests |
 | **Fahad Almidaj** | Front-end | Auth, join and voting screens, guest invitation, device testing |
 
