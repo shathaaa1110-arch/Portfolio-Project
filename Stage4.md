@@ -100,10 +100,10 @@ flowchart LR
 
 | Sprint | Dates (2026) | Length | Goal | Core tasks | Tasks per owner |
 |---|---|---|---|---:|---|
-| **Sprint 0** — Auth, preferences and Home | 18 – 20 Oct | 3 days | The project runs on every laptop. Sign-in works. CI is active. | 15 | Shatha 5 · Fahad 5 · Asem 3 · Hassan 2 |
-| **Sprint 1** — Personal discovery and account | 21 Oct – 1 Nov | 12 days | A user gets personal suggestions, saves restaurants and sees a real account page. | 28 | Asem 9 · Hassan 8 · Fahad 6 · Shatha 5 |
-| **Sprint 2** — Outings and group decisions | 2 – 15 Nov | 14 days | An organizer creates an outing, people join, answer and vote. | 27 | Asem 10 · Fahad 7 · Shatha 6 · Hassan 4 |
-| **Sprint 3** — Results and delivery | 16 – 29 Nov | 14 days | Result, new round, search and details, final QA and a stable build. | 23 | Shatha 9 · Asem 5 · Fahad 5 · Hassan 4 |
+| **Sprint 0** — Auth, preferences and Home | 18 – 20 Oct | 3 days | The project runs on every laptop. Sign-in works. CI is active. | 15 | Shatha 5 · Fahad 5 · Asim 3 · Hassan 2 |
+| **Sprint 1** — Personal discovery and account | 21 Oct – 1 Nov | 12 days | A user gets personal suggestions, saves restaurants and sees a real account page. | 28 | Asim 9 · Hassan 8 · Fahad 6 · Shatha 5 |
+| **Sprint 2** — Outings and group decisions | 2 – 15 Nov | 14 days | An organizer creates an outing, people join, answer and vote. | 27 | Asim 10 · Fahad 7 · Shatha 6 · Hassan 4 |
+| **Sprint 3** — Results and delivery | 16 – 29 Nov | 14 days | Result, new round, search and details, final QA and a stable build. | 23 | Shatha 9 · Asim 5 · Fahad 5 · Hassan 4 |
 
 Main tasks in each sprint:
 
@@ -279,7 +279,7 @@ Test plan: [Technical documentation, section 6](https://github.com/shathaaa1110-
 | Public restaurant API, checked for [QA-21 #133](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/133#issuecomment-7064954138) (21 Nov) | 20 records with 20 unique IDs; a page size of 51 is rejected with 422; required fields present |
 | Front-end with the live API (17 Nov) | Search and restaurant details checked in the browser against the live API, and on the iPhone simulator |
 
-Manual device test in November 2026 (exact days not recorded) by Shatha, Fahad and Asem (iPhones with Expo and the installed app, Safari and Chrome):
+Manual device test in November 2026 (exact days not recorded) by Shatha, Fahad and Asim (iPhones with Expo and the installed app, Safari and Chrome):
 
 | Case | Result |
 |---|---|
