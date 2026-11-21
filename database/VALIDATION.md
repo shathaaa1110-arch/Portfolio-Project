@@ -361,3 +361,28 @@ starting the updated workers: all writers must participate in the same lock.
 Local code and TechnicalDoc establish Authentica delivery with API-owned verification.
 
 [DB-08 issue](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/15#issue-5894351265).
+
+## DB-09 — restaurant dataset documentation and repeat-import verification (22 November 2026)
+
+Implementation evidence for [#13](https://github.com/shathaaa1110-arch/Portfolio-Project/issues/13#issue-5894350639).
+
+- Data source documented: `riyadh-restaurants-v1` build 2026-09-29, 50,019 total places. Detailed documentation is recorded in [RESTAURANT_DATA_REPORT.md](RESTAURANT_DATA_REPORT.md).
+- Filter criteria applied: status open, food business, valid Riyadh bounding box coordinates, required name/cuisine/district.
+- Exact breakdown: 33,783 accepted open food places; 16,235 rejected records (9,290 unknown, 4,181 permanently closed, 1,123 temporarily closed, 1,527 non-food, 78 missing district, 36 missing cuisine).
+- 1 exact coordinate/name collision in dataset (`Al Dar Al Baida`, 2 rows) safely deduplicated; 1,112 `duplicate_listing` flags recorded.
+- District location usability: 170 of 171 districts have open restaurants; 1 district (`00100001051`, King Abdullah City for Atomic and Renewable Energy) has 0 open restaurants due to being a specialized research facility.
+- Meeting centres: 1 meeting centre per district loaded in `districts` table (`0005_outings_and_districts.py`).
+- Deduplication & Repeat-import evidence:
+  - `seed_general_restaurants.py --apply`: run 1 inserted 8 rows; run 2 inserted 0 rows, 8 unchanged. Total rows remain 8.
+  - `database/import_restaurants.py`: repeatable import with transaction locking (`LOCK TABLE restaurants IN SHARE ROW EXCLUSIVE MODE`) and ID/coordinate deduplication.
+  - Integration suite: `backend/tests/test_import_restaurants_integration.py` (3 passed), `backend/tests/test_load_place_details_integration.py` (5 passed), `backend/tests/test_general_restaurants_integration.py` (6 passed).
+- Data privacy: Private dataset remains strictly local in `database/private/` (git-ignored); synthetic demo records used in Git.
+
+| Check | Result |
+| --- | --- |
+| Repeat seed general restaurants | Run 1: 8 inserted; Run 2: 0 inserted, 8 unchanged (0 duplicates) |
+| Integration tests (`import_restaurants`, `load_place_details`, `general_restaurants`) | **14 passed** |
+| Full backend non-integration suite | **139 passed** |
+| Dataset validation & dry run on 50,019 records | Processed 50,019; accepted 33,783; rejected 16,235; duplicates skipped 1 |
+| Data report created | [RESTAURANT_DATA_REPORT.md](RESTAURANT_DATA_REPORT.md) |
+| Whitespace validation | `git diff --check` passed |
