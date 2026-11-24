@@ -1,0 +1,983 @@
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  src: url("assets/IBMPlexSansArabic-Regular.ttf");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  src: url("assets/IBMPlexSansArabic-Bold.ttf");
+  font-weight: 600 700;
+  font-display: swap;
+}
+body {
+  margin: 0;
+  background: #f8f6ef;
+  color: #193a30;
+  font-family: "IBM Plex Sans Arabic", sans-serif;
+  color-scheme: light;
+}
+button:focus-visible {
+  outline: 3px solid #a97326;
+  outline-offset: 3px;
+}
+
+#heila-onboarding {
+  --t-ink: #193a30;
+  --t-green: #194d3c;
+  --t-sage: #dfe8cf;
+  --t-gold: #be8528;
+  --t-paper: #f8f6ef;
+  --t-line: #d9dfd1;
+  color: var(--t-ink);
+  font-family: "IBM Plex Sans Arabic", sans-serif;
+  width: 100%;
+}
+#heila-onboarding * {
+  box-sizing: border-box;
+}
+#heila-onboarding [hidden] {
+  display: none !important;
+}
+#heila-onboarding button {
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#heila-onboarding .t-app {
+  width: 100%;
+  max-width: 390px;
+  margin: 0 auto;
+  padding: 20px 22px 24px;
+  background: var(--t-paper);
+  border: 1px solid var(--t-line);
+  border-radius: 26px;
+  overflow: hidden;
+  color-scheme: light;
+}
+#heila-onboarding .t-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+}
+#heila-onboarding .t-count {
+  font-size: 13px;
+  color: #64705c;
+}
+#heila-onboarding .t-skip {
+  background: none;
+  border: 0;
+  padding: 10px 0 10px 10px;
+  color: var(--t-green);
+  font-size: 14px;
+  min-height: 44px;
+}
+#heila-onboarding .t-art {
+  position: relative;
+  height: 400px;
+  width: 100%;
+  isolation: isolate;
+  margin: 6px 0 18px;
+}
+#heila-onboarding .t-wash {
+  position: absolute;
+  width: 120%;
+  height: 360px;
+  object-fit: contain;
+  left: -10%;
+  top: 15px;
+  opacity: 0.9;
+  z-index: -1;
+  pointer-events: none;
+}
+#heila-onboarding .t-art [data-move] {
+  transition:
+    transform 0.8s cubic-bezier(0.2, 0.75, 0.2, 1),
+    opacity 0.5s ease,
+    background 0.4s ease,
+    box-shadow 0.6s ease;
+}
+#heila-onboarding .t-eyebrow {
+  margin: 0 0 9px;
+  text-align: center;
+  color: #717b61;
+  font-size: 13px;
+  font-weight: 500;
+}
+#heila-onboarding .t-title {
+  margin: 0;
+  text-align: center;
+  font-size: 31px;
+  line-height: 1.5;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+}
+#heila-onboarding .t-title.t-title-logo {
+  width: 100%;
+  max-width: 310px;
+  margin: 0 auto;
+  line-height: 0;
+}
+#heila-onboarding .t-title-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+#heila-onboarding .t-copy {
+  text-align: center;
+  color: #53614e;
+  font-size: 15px;
+  line-height: 1.9;
+  margin: 10px auto 23px;
+  min-height: 57px;
+  max-width: 310px;
+}
+#heila-onboarding .t-dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  direction: rtl;
+}
+#heila-onboarding .t-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+#heila-onboarding .t-dot span {
+  width: 8px;
+  height: 8px;
+  background: #d1dcbc;
+  border-radius: 8px;
+  transition:
+    width 0.3s,
+    background 0.3s;
+}
+#heila-onboarding .t-dot[aria-current="step"] span {
+  width: 28px;
+  background: var(--t-green);
+}
+#heila-onboarding .t-next {
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--t-green);
+  color: #fffdf6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  font-size: 17px;
+  font-weight: 600;
+}
+#heila-onboarding .t-next svg {
+  width: 21px;
+  height: 21px;
+}
+#heila-onboarding .t-preview-label {
+  text-align: center;
+  font-size: 12px;
+  margin: 14px 0 0;
+  color: #727c67;
+}
+#heila-onboarding .t-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 12px auto 0;
+}
+#heila-onboarding .t-controls button {
+  background: transparent;
+  border: 1px solid light-dark(#d9dfd1, #66705e);
+  color: light-dark(#193a30, #dfe8cf);
+  border-radius: 22px;
+  padding: 8px 15px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+#heila-onboarding .t-controls svg {
+  width: 15px;
+  height: 15px;
+}
+#heila-onboarding .t-caption {
+  text-align: center;
+  font-size: 12px;
+  color: light-dark(#66725d, #c3ceb8);
+  min-height: 24px;
+  margin: 8px 0 0;
+}
+#heila-onboarding .t-search {
+  position: absolute;
+  right: 6%;
+  left: 6%;
+  top: 24px;
+  height: 52px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 14px;
+  background: #fffdf8;
+  border: 1px solid #d5ddca;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px #2847330b;
+  transform: translateY(22px);
+  opacity: 0.3;
+}
+#heila-onboarding .t-search svg {
+  width: 20px;
+  height: 20px;
+  color: var(--t-green);
+  flex-shrink: 0;
+}
+#heila-onboarding .t-query {
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+#heila-onboarding .t-caret {
+  display: inline-block;
+  height: 18px;
+  width: 2px;
+  background: var(--t-gold);
+  margin-right: 3px;
+  vertical-align: middle;
+}
+#heila-onboarding .t-main-result {
+  position: absolute;
+  top: 96px;
+  right: 10%;
+  width: 76%;
+  background: #fffdf8;
+  border-radius: 19px;
+  box-shadow: 0 15px 26px #183e3023;
+  overflow: hidden;
+  opacity: 0;
+  transform: translate(-48px, 62px) rotate(-9deg) scale(0.88);
+}
+#heila-onboarding .t-photo {
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+  display: block;
+}
+#heila-onboarding .t-result-body {
+  padding: 11px 13px;
+}
+#heila-onboarding .t-result-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+#heila-onboarding .t-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #69735e;
+}
+#heila-onboarding .t-result-meta svg {
+  width: 13px;
+  height: 13px;
+}
+#heila-onboarding .t-side-result {
+  position: absolute;
+  top: 113px;
+  right: 4%;
+  width: 70%;
+  height: 178px;
+  overflow: hidden;
+  border: 1px solid var(--t-line);
+  border-radius: 16px;
+  background: #fffdf8;
+  opacity: 0;
+  transform: translate(32px, 60px) rotate(8deg);
+}
+#heila-onboarding .t-side-result img {
+  width: 100%;
+  height: 124px;
+  object-fit: cover;
+}
+#heila-onboarding .t-heila {
+  position: absolute;
+  width: 156px;
+  height: 176px;
+  object-fit: contain;
+  bottom: -3px;
+  left: -12px;
+  z-index: 3;
+  transform: translate(-55px, 18px) rotate(-12deg);
+  opacity: 0;
+  transform-origin: 50% 90%;
+  filter: drop-shadow(0 6px 5px #5b643414);
+  pointer-events: none;
+}
+#heila-onboarding .t-speech {
+  position: absolute;
+  bottom: 23px;
+  right: 0;
+  width: 59%;
+  padding: 11px 12px;
+  border: 1px solid #d4ddc3;
+  border-radius: 17px 17px 17px 4px;
+  background: #fffdf6;
+  color: var(--t-ink);
+  box-shadow: 0 5px 12px #334a2410;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(17px) scale(0.9);
+}
+#heila-onboarding .t-speech small {
+  display: block;
+  color: #8a692a;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+#heila-onboarding .t-speech p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.65;
+}
+#heila-onboarding .p1 .t-speech {
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .p2 .t-heila {
+  transform: translateY(-8px) rotate(5deg);
+}
+#heila-onboarding .p3 .t-heila {
+  transform: translateY(-2px) rotate(-3deg);
+}
+#heila-onboarding .t-discovery .t-search {
+  top: 9px;
+  inset-inline: 2%;
+}
+#heila-onboarding .t-discovery .t-main-result {
+  top: 87px;
+  right: 2%;
+  width: 78%;
+}
+#heila-onboarding .t-discovery .t-photo {
+  height: 127px;
+}
+#heila-onboarding .t-discovery .t-side-result {
+  top: 98px;
+  right: 10%;
+  width: 78%;
+}
+#heila-onboarding .t-found {
+  position: absolute;
+  bottom: 5px;
+  right: 4%;
+  background: var(--t-green);
+  color: #fffdf6;
+  border-radius: 14px;
+  padding: 9px 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  transform: translateY(18px) scale(0.6);
+  opacity: 0;
+}
+#heila-onboarding .t-found svg {
+  width: 16px;
+  height: 16px;
+}
+#heila-onboarding .p1 .t-search {
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .p1 .t-heila {
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .p2 .t-side-result {
+  opacity: 0.6;
+  transform: translate(9px, 0) rotate(6deg);
+}
+#heila-onboarding .p2 .t-main-result {
+  opacity: 1;
+  transform: translate(-7px, 0) rotate(-3deg);
+}
+#heila-onboarding .p3 .t-main-result {
+  transform: translate(-9px, -6px) rotate(0) scale(1.035);
+  box-shadow: 0 15px 30px #183e3030;
+}
+#heila-onboarding .p3 .t-side-result {
+  opacity: 0.2;
+  transform: translate(20px, 7px) rotate(10deg);
+}
+#heila-onboarding .p3 .t-found {
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .t-tastes {
+  position: absolute;
+  top: 8px;
+  inset-inline: 3%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+#heila-onboarding .t-taste {
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 17px;
+  background: #fffdf8;
+  color: var(--t-ink);
+  box-shadow: 0 3px 12px #253c2510;
+  transform: translateY(-12px);
+  opacity: 0.3;
+  position: relative;
+}
+#heila-onboarding .t-taste img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  display: block;
+}
+#heila-onboarding .t-taste span {
+  display: block;
+  padding: 7px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: right;
+}
+#heila-onboarding .t-selected-mark {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--t-green);
+  color: #fff;
+  padding: 4px;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.3);
+  transition: 0.35s;
+}
+#heila-onboarding .t-selected-mark svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+#heila-onboarding .t-taste[aria-pressed="true"] {
+  border-color: var(--t-green);
+  transform: translateY(-5px);
+  box-shadow: 0 7px 16px #23452e24;
+}
+#heila-onboarding .t-taste[aria-pressed="true"] .t-selected-mark {
+  opacity: 1;
+  transform: scale(1);
+}
+#heila-onboarding .t-filters {
+  position: absolute;
+  top: 145px;
+  right: 0;
+  left: 0;
+  display: flex;
+  gap: 9px;
+  justify-content: center;
+}
+#heila-onboarding .t-filter {
+  min-height: 44px;
+  background: #fffdf8;
+  border: 1px solid #d0d9c4;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 13px;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--t-ink);
+  opacity: 0.4;
+  transform: translateY(-15px);
+}
+#heila-onboarding .t-filter svg {
+  width: 16px;
+  height: 16px;
+}
+#heila-onboarding .p2 .t-filter {
+  background: var(--t-sage);
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .p1 .t-taste {
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .p1 .t-taste[aria-pressed="true"] {
+  transform: translateY(-5px);
+}
+#heila-onboarding .t-personal-result {
+  position: absolute;
+  top: 202px;
+  right: 2%;
+  left: 2%;
+  height: 98px;
+  display: flex;
+  overflow: hidden;
+  background: #fffdf8;
+  border: 1px solid #c6d4b9;
+  border-radius: 17px;
+  box-shadow: 0 11px 22px #193a3017;
+  opacity: 0;
+  transform: translateY(35px) scale(0.82);
+}
+#heila-onboarding .t-personal-result img {
+  width: 103px;
+  height: 100%;
+  object-fit: cover;
+}
+#heila-onboarding .t-personal-body {
+  padding: 13px 12px;
+  flex: 1;
+  min-width: 0;
+}
+#heila-onboarding .t-personal-body p {
+  margin: 0;
+}
+#heila-onboarding .t-personal-body .t-overline {
+  color: #6d775e;
+  font-size: 12px;
+}
+#heila-onboarding .t-personal-body strong {
+  display: block;
+  font-size: 16px;
+  margin-top: 3px;
+  font-weight: 600;
+}
+#heila-onboarding .t-reason {
+  font-size: 12px;
+  color: var(--t-green);
+  margin-top: 7px !important;
+}
+#heila-onboarding .p3 .t-personal-result {
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .t-preferences .t-heila {
+  width: 120px;
+  height: 134px;
+  right: -6px;
+  left: auto;
+  bottom: -12px;
+  transform: translate(30px, 14px) rotate(8deg);
+}
+#heila-onboarding .t-preferences.p1 .t-heila {
+  opacity: 1;
+  transform: rotate(5deg);
+}
+#heila-onboarding .t-preferences.p2 .t-heila {
+  transform: translateY(-7px) rotate(-4deg);
+}
+#heila-onboarding .t-preferences.p3 .t-heila {
+  transform: none;
+}
+#heila-onboarding .t-preferences .t-speech {
+  width: 64%;
+  left: 0;
+  right: auto;
+  bottom: 5px;
+  border-radius: 17px 17px 4px 17px;
+}
+#heila-onboarding .t-invite {
+  position: absolute;
+  top: 14px;
+  right: 11%;
+  width: 78%;
+  padding: 20px 18px;
+  border-radius: 20px;
+  color: #fffdf8;
+  background: var(--t-green);
+  box-shadow: 0 10px 24px #194d3c25;
+  opacity: 0;
+  transform: translateY(56px) rotate(-8deg) scale(0.9);
+}
+#heila-onboarding .t-invite-label {
+  font-size: 12px;
+  opacity: 0.8;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#heila-onboarding .t-invite-label svg {
+  width: 17px;
+  height: 17px;
+}
+#heila-onboarding .t-invite strong {
+  display: block;
+  font-size: 23px;
+  font-weight: 600;
+  margin: 10px 0 6px;
+}
+#heila-onboarding .t-invite-meta {
+  font-size: 12px;
+  opacity: 0.85;
+}
+#heila-onboarding .t-share {
+  position: absolute;
+  width: 49px;
+  height: 49px;
+  border-radius: 50%;
+  background: #e4c485;
+  color: var(--t-green);
+  display: grid;
+  place-items: center;
+  bottom: -17px;
+  left: 20px;
+  border: 4px solid var(--t-paper);
+}
+#heila-onboarding .t-share svg {
+  width: 21px;
+  height: 21px;
+}
+#heila-onboarding .t-people {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  position: absolute;
+  top: 196px;
+  right: 0;
+  left: 0;
+}
+#heila-onboarding .t-person {
+  width: 58px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(32px) scale(0.65);
+}
+#heila-onboarding .t-person:first-child {
+  transform: translate(45px, 20px) scale(0.5);
+}
+#heila-onboarding .t-person:last-child {
+  transform: translate(-45px, 20px) scale(0.5);
+}
+#heila-onboarding .t-avatar {
+  width: 49px;
+  height: 49px;
+  margin: 0 auto 7px;
+  border-radius: 50%;
+  background: #e4e9d9;
+  color: var(--t-green);
+  display: grid;
+  place-items: center;
+  position: relative;
+  border: 2px solid #fffdf8;
+  font-size: 21px;
+  font-weight: 600;
+}
+#heila-onboarding .t-person:nth-child(2) .t-avatar {
+  background: #eacfaa;
+}
+#heila-onboarding .t-person:nth-child(3) .t-avatar {
+  background: #ccdcd2;
+}
+#heila-onboarding .t-person-name {
+  font-size: 12px;
+  color: #4f614d;
+}
+#heila-onboarding .t-joined {
+  position: absolute;
+  bottom: -2px;
+  left: -5px;
+  background: var(--t-green);
+  color: #fff;
+  border: 2px solid var(--t-paper);
+  border-radius: 50%;
+  padding: 2px;
+  transform: scale(0);
+  transition: transform 0.4s;
+}
+#heila-onboarding .t-joined svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+}
+#heila-onboarding .t-group-result {
+  position: absolute;
+  top: 290px;
+  right: 2%;
+  left: 2%;
+  text-align: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: #e1e9d4;
+  color: var(--t-green);
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(25px);
+}
+#heila-onboarding .p1 .t-invite {
+  opacity: 1;
+  transform: rotate(0) translateY(0);
+}
+#heila-onboarding .p2 .t-invite {
+  transform: translateY(-6px) scale(0.97);
+}
+#heila-onboarding .p2 .t-person {
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .p2 .t-person:nth-child(2) {
+  transition-delay: 0.35s;
+}
+#heila-onboarding .p2 .t-person:nth-child(3) {
+  transition-delay: 0.7s;
+}
+#heila-onboarding .p3 .t-joined {
+  transform: scale(1);
+}
+#heila-onboarding .p3 .t-group-result {
+  opacity: 1;
+  transform: none;
+}
+#heila-onboarding .t-outing .t-invite {
+  left: 0;
+  right: auto;
+  top: 24px;
+  width: 71%;
+  padding: 18px 14px;
+}
+#heila-onboarding .t-outing .t-invite strong {
+  font-size: 22px;
+}
+#heila-onboarding .t-outing .t-heila {
+  right: -13px;
+  left: auto;
+  top: 48px;
+  bottom: auto;
+  width: 127px;
+  height: 144px;
+  transform: translate(35px, 15px) rotate(12deg);
+}
+#heila-onboarding .t-outing.p1 .t-heila {
+  opacity: 1;
+  transform: rotate(4deg);
+}
+#heila-onboarding .t-outing.p2 .t-heila {
+  transform: translate(-3px, -8px) rotate(-5deg);
+}
+#heila-onboarding .t-outing.p3 .t-heila {
+  transform: rotate(2deg);
+}
+#heila-onboarding .t-outing .t-speech {
+  top: 181px;
+  bottom: auto;
+  right: 6%;
+  left: 6%;
+  width: auto;
+  text-align: center;
+  border-radius: 15px;
+  padding: 8px 12px;
+}
+#heila-onboarding .t-outing .t-speech small {
+  display: none;
+}
+#heila-onboarding .t-outing .t-people {
+  top: 248px;
+}
+#heila-onboarding .t-outing .t-group-result {
+  top: 345px;
+  padding: 10px 8px;
+  font-size: 13px;
+}
+#heila-onboarding.reduced *,
+#heila-onboarding.paused * {
+  transition: none !important;
+  animation: none !important;
+}
+@media (max-width: 360px) {
+  #heila-onboarding .t-app {
+    padding: 15px 16px 20px;
+  }
+  #heila-onboarding .t-title {
+    font-size: 28px;
+  }
+  #heila-onboarding .t-filter {
+    padding: 9px;
+    font-size: 12px;
+  }
+  #heila-onboarding .t-personal-result img {
+    width: 86px;
+  }
+}
+
+#heila-onboarding .t-app {
+  max-width: 420px;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 22px 14px;
+}
+#heila-onboarding .t-art {
+  height: 340px;
+  margin-bottom: 14px;
+}
+#heila-onboarding .t-discovery .t-main-result {
+  top: 74px;
+}
+#heila-onboarding .t-discovery .t-photo {
+  height: 95px;
+}
+#heila-onboarding .t-heila {
+  width: 124px;
+  height: 140px;
+}
+#heila-onboarding .t-speech {
+  font-size: 13px;
+}
+#heila-onboarding .t-title-logo {
+  max-width: 280px;
+}
+#heila-onboarding .t-copy {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+#heila-onboarding .t-eyebrow {
+  margin-bottom: 5px;
+}
+#heila-onboarding .t-controls {
+  margin-top: 3px;
+}
+#heila-onboarding .t-preview-label {
+  margin-top: 9px;
+}
+#heila-onboarding .t-outing .t-invite {
+  background: #fff3da url("assets/invitation-paper.webp") center/100% 100%;
+  color: var(--t-ink);
+  border: 0;
+  top: 15px;
+  padding-top: 76px;
+  padding-bottom: 26px;
+  box-shadow: 0 5px 18px #193a3010;
+}
+#heila-onboarding .t-outing .t-invite:before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 0;
+  right: 0;
+  height: 76px;
+  background: url("assets/restaurant-hero.webp") center/cover;
+}
+#heila-onboarding .t-outing .t-invite-label {
+  position: relative;
+}
+#heila-onboarding .t-outing .t-people {
+  top: 225px;
+}
+#heila-onboarding .t-outing .t-heila {
+  bottom: 40px;
+  width: 104px;
+  height: 115px;
+}
+#heila-onboarding .t-outing .t-speech {
+  display: none;
+}
+#heila-onboarding .t-outing .t-group-result {
+  top: auto;
+  bottom: 0;
+  font-size: 12px;
+}
+#heila-onboarding .t-art.t-preferences {
+  display: grid;
+  gap: 14px;
+  height: auto;
+  padding-top: 8px;
+}
+#heila-onboarding .t-preferences .t-tastes {
+  position: relative;
+  inset: auto;
+  gap: 9px;
+}
+#heila-onboarding .t-preferences .t-taste img {
+  height: 65px;
+}
+#heila-onboarding .t-preferences .t-filters {
+  position: relative;
+  inset: auto;
+  flex-wrap: wrap;
+}
+#heila-onboarding .t-preferences .t-personal-result {
+  position: relative;
+  inset: auto;
+  height: auto;
+  min-height: 98px;
+  transform: translateY(8px) scale(0.96);
+}
+#heila-onboarding .t-preferences.p3 .t-personal-result {
+  transform: none;
+}
+#heila-onboarding .t-preferences .t-personal-result img {
+  height: auto;
+  width: 32%;
+  flex-shrink: 0;
+}
+#heila-onboarding .t-preferences .t-guide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#heila-onboarding .t-preferences .t-heila {
+  position: relative;
+  inset: auto;
+  width: 90px;
+  height: 100px;
+  flex-shrink: 0;
+}
+#heila-onboarding .t-preferences .t-speech {
+  position: relative;
+  inset: auto;
+  width: auto;
+  min-width: 0;
+  flex: 1;
+}
+#heila-onboarding .t-controls button {
+  color: #193a30;
+  border-color: #d9dfd1;
+}
+#heila-onboarding .t-caption {
+  color: #66725d;
+  padding: 0 16px 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  #heila-onboarding * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+/* Standalone pages share the approved compact phone layout. */
+body {
+  padding-block: 20px;
+}
+#heila-onboarding .t-skip {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+#heila-onboarding .t-skip:focus-visible {
+  outline: 3px solid var(--t-gold);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  body {
+    padding-block: 0;
+  }
+}

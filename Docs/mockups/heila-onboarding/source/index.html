@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>جولة مع هيلة — ذوق</title>
+
+    <meta
+      name="description"
+      content="ثلاث شاشات تعريفية مع هيلة: اكتشاف المطاعم، تفضيلاتك، والتخطيط مع الأصحاب."
+    />
+    <meta name="theme-color" content="#194d3c" />
+    <link rel="icon" href="assets/heila.webp" type="image/webp" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div
+      id="heila-onboarding"
+      dir="rtl"
+      role="main"
+      aria-label="تعرف على ذوق مع هيلة"
+    >
+      <section class="t-app" aria-label="جولة ذوق التعريفية">
+        <header class="t-top">
+          <span class="t-count" id="intro-count" aria-live="polite">١ من ٣</span
+          ><a class="t-skip" href="https://thouq.onrender.com">تخطّي</a>
+        </header>
+        <div id="intro-content"></div>
+        <noscript
+          ><p class="t-copy">
+            فعّلي JavaScript لمشاهدة الجولة، أو افتحي التطبيق من رابط «تخطّي».
+          </p></noscript
+        >
+        <nav class="t-dots" aria-label="شاشات التعريف">
+          <button
+            type="button"
+            class="t-dot"
+            data-step="0"
+            aria-label="اكتشاف المطاعم"
+            aria-current="step"
+          >
+            <span></span>
+          </button>
+          <button
+            type="button"
+            class="t-dot"
+            data-step="1"
+            aria-label="تفضيلاتك تغيّر الاقتراح"
+          >
+            <span></span>
+          </button>
+          <button
+            type="button"
+            class="t-dot"
+            data-step="2"
+            aria-label="التخطيط مع الأصحاب"
+          >
+            <span></span>
+          </button>
+        </nav>
+        <button type="button" class="t-next"><span>التالي</span></button>
+        <p class="t-preview-label">تصور للواجهات · بيانات توضيحية</p>
+      </section>
+      <div class="t-controls">
+        <button type="button" class="t-replay">
+          <i data-icon="rotate-ccw" aria-hidden="true"></i>إعادة المشهد</button
+        ><button type="button" class="t-pause">
+          <i data-icon="pause" aria-hidden="true"></i
+          ><span>إيقاف الحركة</span>
+        </button>
+      </div>
+      <p class="t-caption" aria-live="polite"></p>
+    </div>
+  </body>
+</html>
