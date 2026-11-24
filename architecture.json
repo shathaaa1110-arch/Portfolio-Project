@@ -3,6 +3,7 @@
     "sourceRoot": "frontend/src",
     "features": {
       "auth": [],
+      "onboarding": [],
       "restaurants": [],
       "voting": [],
       "preferences": ["auth"],

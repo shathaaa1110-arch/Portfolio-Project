@@ -24,6 +24,16 @@ Today's suggestion, and restaurant cards. Create session opens the selected wate
 Saved uses Fahad's `savedRestaurants` feature. The current Account composition
 shows the account, preferences, and sign-out.
 
+### First launch — local implementation, 24 November 2026
+
+The app now shows three native intro screens with Heila before public browsing
+on the first normal launch. Next moves through the screens; Skip and the final
+button open Home without login. A local completion flag prevents repeating the
+intro on the same device/browser. Account → “جولة مع هيلة” reopens it.
+Direct invitation links keep their destination. The login → account preferences
+flow is unchanged. No backend field, endpoint, or dependency was added.
+See the [Arabic file-by-file guide and validation](../Docs/Onboarding-Implementation.ar.md).
+
 Home requests one page of 20 restaurants with `limit/offset`, without a token.
 Next/Previous sit at the list footer; pull-to-refresh reloads the current page.
 Failures keep the last successful page with retry. Initial failures display an
@@ -138,7 +148,8 @@ Paths below are relative to `frontend`.
 |---|---|
 | `app.json` | Selects the app icons, Android layers, web favicon and launch screen |
 | `assets/images/branding` | Haila app icon, adaptive foreground and monochrome icon |
-| `src/app/(tabs)/_layout.tsx` | Opens the main tab layout |
+| `src/app/(tabs)/_layout.tsx` | Opens LaunchTabs, which checks intro completion before mounting tabs |
+| `src/app/welcome.tsx` | Opens the three intro screens outside the bottom tabs |
 | `src/app/(tabs)/index.tsx` | Opens Home at `/` |
 | `src/app/(tabs)/saved.tsx` | Opens the Saved screen |
 | `src/app/(tabs)/account.tsx` | Opens the My account screen |
@@ -150,6 +161,16 @@ Paths below are relative to `frontend`.
 | `src/features/sessions` | Session screens, editors, shared visuals, identity, API wrappers and explicit mocks |
 | `src/application/ApplicationRoot.tsx` | Loads fonts and composes the root navigation |
 | `src/application/MainTabs.tsx` | Defines the three bottom tabs |
+| `src/application/LaunchTabs.tsx` | Waits for the local intro flag, then shows intro or MainTabs |
+| `src/application/WelcomePage.tsx` | Saves intro completion and replaces the route with public Home |
+| `src/features/onboarding/OnboardingScreen.tsx` | Owns the three steps and scrollable scenes; Next and page dots stay in a separate bottom row inside the safe area |
+| `src/features/onboarding/components/IntroScenes.tsx` | Renders the three animated scenes using native views |
+| `src/features/onboarding/components/Reveal.tsx` | Animates opacity and position without changing layout |
+| `src/features/onboarding/content.ts` | Contains the three titles, descriptions and local image references |
+| `src/features/onboarding/useIntroMotion.ts` | Advances three visual phases, respects reduced motion and app backgrounding |
+| `src/features/onboarding/completion.ts` | Stores intro completion in SecureStore or browser localStorage |
+| `assets/images/onboarding` | Seven optimized WebP images from the approved design |
+| `scripts/onboarding.test.cjs` | Checks first launch, completion, storage failure, navigation and motion |
 | `src/application/HomePage.tsx` | Composes Home, search, location, recommendations, and paginated list |
 | `src/application/SavedPlaceholderPage.tsx` | Composes the Saved feature |
 | `src/features/auth/AccountScreen.tsx` | Shows the name and phone from the server, links to preferences and Saved, and signs out |

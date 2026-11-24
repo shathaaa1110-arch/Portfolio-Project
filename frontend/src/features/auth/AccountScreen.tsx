@@ -117,6 +117,7 @@ export function AccountScreen() {
 
         {/* Also shown when loading failed, so the user can still sign out without a connection */}
         {actions.canSignOut && <SignOutButton />}
+        <MenuRow title="جولة مع هيلة" onPress={() => router.push("/welcome")} />
       </ScrollView>
     </SafeAreaView>
   );
