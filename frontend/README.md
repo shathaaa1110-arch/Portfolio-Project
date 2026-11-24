@@ -151,7 +151,7 @@ Paths below are relative to `frontend`.
 | `src/application/LaunchTabs.tsx` | Waits for the local intro flag, then shows intro or MainTabs |
 | `src/application/WelcomePage.tsx` | Saves intro completion and replaces the route with public Home |
 | `src/features/onboarding/OnboardingScreen.tsx` | Owns the three steps and scrollable scenes; Next and page dots stay in a separate bottom row inside the safe area |
-| `src/features/onboarding/components/IntroScenes.tsx` | Renders the three animated scenes using native views |
+| `src/features/onboarding/components/IntroScenes.tsx` | Renders the three animated scenes using native views; the outing card shows the full 3:1 illustration above flexible text |
 | `src/features/onboarding/components/Reveal.tsx` | Animates opacity and position without changing layout |
 | `src/features/onboarding/content.ts` | Contains the three titles, descriptions and local image references |
 | `src/features/onboarding/useIntroMotion.ts` | Advances three visual phases, respects reduced motion and app backgrounding |
