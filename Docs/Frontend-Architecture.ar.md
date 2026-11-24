@@ -1,8 +1,16 @@
 # معمارية الفرونت ورحلة البيانات
 
-بدأ الدليل مع التقسيم في ١٨ أكتوبر ٢٠٢٦. آخر تحديث: ١٧ نوفمبر ٢٠٢٦.
+بدأ الدليل مع التقسيم في ١٨ أكتوبر ٢٠٢٦. آخر تحديث: ٢٤ نوفمبر ٢٠٢٦.
 يوصف هنا التنفيذ في المصدر؛ توفر التعديل في البرانش لا يعني دمجه أو نشره. دليل التحقق التفصيلي للبحث في [Restaurant-Discovery.ar.md](Restaurant-Discovery.ar.md).
 التصاميم المرجعية داخل `Docs/mockups/`، والتطبيق داخل `frontend/`.
+
+## هوية التطبيق عند البناء — ٢٤ نوفمبر ٢٠٢٦
+
+تقرأ أدوات Expo صور هيلة من `frontend/assets/images/branding/` عبر
+`frontend/app.json`: أيقونة أساسية لـ iOS والويب، وطبقتان لأيقونة أندرويد
+العادية والمتوافقة مع الثيم. تستخدم شاشة البداية هيلة والخلفية الكريمية.
+هذه الأصول تخص إعدادات البناء، وليست ميزة تستوردها الشاشات؛ لا يتغير تدفق
+البيانات أو API أو ERD أو اعتماد الميزات. [شرح الملفات وخطوات التحقق للمبتدئ](App-Icon.ar.md).
 
 ## الحساب والتفضيلات
 
@@ -216,6 +224,7 @@ Portfolio-Project/
 ├── package.json
 ├── Docs/
 │   ├── Frontend-Architecture.ar.md
+│   ├── App-Icon.ar.md
 │   ├── Frontend-API-Usage.ar.md
 │   ├── Preferences-Implementation.ar.md
 │   └── Frontend-Delivery-2026-11-02.ar.md
@@ -232,6 +241,7 @@ Portfolio-Project/
     │   │   ├── IBMPlexSansArabic-Bold.ttf
     │   │   └── OFL.txt
     │   └── images/
+    │       ├── branding/                 # app icons and launch artwork
     │       ├── auth/
     │       ├── food-illustration.png
     │       ├── preferences/
