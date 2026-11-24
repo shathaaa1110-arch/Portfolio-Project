@@ -46,6 +46,7 @@ export function ApplicationRoot() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="welcome" options={{ gestureEnabled: false, animation: "fade" }} />
       {/* Mid-flow screens: a stray swipe would drop people out of their outing. */}
       <Stack.Screen name="sessions/[id]" options={{ gestureEnabled: false }} />
       <Stack.Screen name="lobby" options={{ gestureEnabled: false }} />
