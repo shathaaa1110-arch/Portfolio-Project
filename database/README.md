@@ -239,6 +239,31 @@ The separately authored DB-13 synthetic sample below may be committed.
 
 Keep your local copy in `database/private/`, which Git ignores.
 
+## DB-09 restaurant data import and documentation (#13)
+
+The dataset source, acceptance/rejection statistics, and district coverage are documented in
+[RESTAURANT_DATA_REPORT.md](RESTAURANT_DATA_REPORT.md). Restricted source records remain
+private and are excluded from Git via `database/private/`.
+
+To run or dry-run the restaurant dataset import:
+
+```bash
+# Dry run: validates records and reports statistics without writing
+python database/import_restaurants.py path/to/places.csv
+
+# Apply: commits valid open restaurants with deduplication protection
+python database/import_restaurants.py path/to/places.csv --apply
+```
+
+Repeated execution with `--apply` is idempotent: existing records and coordinates are
+preserved without duplicate insertions.
+
+To enrich venue types, seating, and flags from place details:
+
+```bash
+python database/load_place_details.py path/to/places.csv --apply
+```
+
 
 ## DB-14 account preferences
 
