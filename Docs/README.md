@@ -16,6 +16,7 @@
 | معرف الجولة والإعادة والطلبات القديمة | [عقد الجولات](Session-Retry-Contract.md) |
 | الباك والعقود وERD | [التوثيق التقني](TechnicalDoc.md) |
 | التفضيلات وحفظ الموقع | [شرح تنفيذ التفضيلات](Preferences-Implementation.ar.md) |
+| أول فتح وشاشات هيلة الثلاث | [شرح الشاشات التعريفية](Onboarding-Implementation.ar.md) |
 | شرح قاعدة البيانات | [دليل التعلم](Database-Learning.ar.md) |
 
 ## حالة العقود
