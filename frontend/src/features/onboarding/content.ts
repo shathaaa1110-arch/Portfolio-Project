@@ -4,7 +4,6 @@ export const introImages = {
   italian: require("../../../assets/images/onboarding/italian.webp"),
   wash: require("../../../assets/images/onboarding/wash.webp"),
   restaurant: require("../../../assets/images/sessions/restaurant-hero.webp"),
-  invitation: require("../../../assets/images/sessions/invitation-paper.webp"),
 };
 
 export const introSteps = [

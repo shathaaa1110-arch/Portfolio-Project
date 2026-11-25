@@ -101,8 +101,8 @@ export function OutingScene({ phase, reduced }: SceneProps) {
         <Image source={introImages.heila} style={styles.host} contentFit="contain" accessible={false} />
       </Reveal>
       <Reveal visible={phase >= 1} reduced={reduced} style={styles.invitation}>
-        <Image source={introImages.invitation} style={StyleSheet.absoluteFill} contentFit="fill" accessible={false} />
-        <Image source={introImages.restaurant} style={styles.inviteHero} contentFit="cover" accessible={false} />
+        {/* Keep the whole illustration visible at its original 1080:360 ratio. */}
+        <Image source={introImages.restaurant} style={styles.inviteHero} contentFit="contain" accessible={false} />
         <View style={styles.inviteCopy}>
           <AppText style={styles.inviteEyebrow}>جمعتكم صار لها موعد.</AppText>
           <AppText style={styles.inviteTitle}>عشاء الأصحاب</AppText>
@@ -157,9 +157,11 @@ const styles = StyleSheet.create({
   personalResult: { ...row, borderRadius: 17, borderWidth: 1, borderColor: "#C6D4B9", backgroundColor: theme.colors.surface, overflow: "hidden", minHeight: 98 },
   personalPhoto: { width: "32%", alignSelf: "stretch" }, personalCopy: { flex: 1, minWidth: 0, paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
   reason: { fontSize: 12, lineHeight: 21, color: theme.colors.primary },
-  inviteRow: { ...row, alignItems: "center", gap: 0 }, inviteHeila: { width: 86 }, host: { width: 92, height: 126 },
-  invitation: { flex: 1, minWidth: 0 }, inviteHero: { width: "100%", height: 72 },
-  inviteCopy: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 22, gap: 5 },
+  inviteRow: { ...row, alignItems: "center", gap: 8 }, inviteHeila: { width: 64, flexShrink: 0 }, host: { width: "100%", aspectRatio: 92 / 126 },
+  // An opaque card keeps the watercolor behind it from showing through its edges.
+  invitation: { flex: 1, minWidth: 0, borderRadius: 18, borderWidth: 1, borderColor: "#E3DCC9", backgroundColor: theme.colors.background, overflow: "hidden" },
+  inviteHero: { width: "100%", aspectRatio: 3 },
+  inviteCopy: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 14, gap: 5 },
   inviteEyebrow: { fontSize: 12, lineHeight: 21 }, inviteTitle: { fontSize: 21, lineHeight: 32, fontFamily: theme.typography.fontFamilyBold },
   inviteMeta: { fontSize: 11, lineHeight: 19, color: theme.colors.placeholder },
   share: { alignSelf: "flex-start", backgroundColor: "#E4C485", borderRadius: 20, width: 38, height: 38, alignItems: "center", justifyContent: "center", marginTop: 3 },
