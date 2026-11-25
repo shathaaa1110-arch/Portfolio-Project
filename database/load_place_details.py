@@ -73,8 +73,12 @@ def read_source(path: Path) -> tuple[dict, int]:
 def load(conn: Connection, source: dict) -> dict:
     """Update the matched restaurants inside the caller's transaction and report the numbers."""
     conn.execute(text("""
-        CREATE TEMP TABLE place_details (
-            name_en text NOT NULL, lat numeric NOT NULL, lon numeric NOT NULL,
+        ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS venue_type text;
+        ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS seating text;
+        ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS flags text;
+    """))
+    conn.execute(text("""
+        CREATE TEMP TABLE place_details (\n            name_en text NOT NULL, lat numeric NOT NULL, lon numeric NOT NULL,
             venue_type text NOT NULL, seating text NOT NULL, flags text,
             PRIMARY KEY (name_en, lat, lon)
         ) ON COMMIT DROP
