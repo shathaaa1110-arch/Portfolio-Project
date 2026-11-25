@@ -4,6 +4,14 @@
 يوصف هنا التنفيذ في المصدر؛ توفر التعديل في البرانش لا يعني دمجه أو نشره. دليل التحقق التفصيلي للبحث في [Restaurant-Discovery.ar.md](Restaurant-Discovery.ar.md).
 التصاميم المرجعية داخل `Docs/mockups/`، والتطبيق داخل `frontend/`.
 
+## هوية التطبيق عند البناء — ٢٤ نوفمبر ٢٠٢٦
+
+تقرأ أدوات Expo صور هيلة من `frontend/assets/images/branding/` عبر
+`frontend/app.json`: أيقونة أساسية لـ iOS والويب، وطبقتان لأيقونة أندرويد
+العادية والمتوافقة مع الثيم. تستخدم شاشة البداية هيلة والخلفية الكريمية.
+هذه الأصول تخص إعدادات البناء، وليست ميزة تستوردها الشاشات؛ لا يتغير تدفق
+البيانات أو API أو ERD أو اعتماد الميزات. [شرح الملفات وخطوات التحقق للمبتدئ](App-Icon.ar.md).
+
 ## الحساب والتفضيلات
 
 قبل التصفح في أول فتح عادي، يقرأ `LaunchTabs` علامة الجولة المحلية. إذا لم توجد، يفتح `/welcome` خارج التبويبات. تعرض ميزة `onboarding` شاشات هيلة الثلاث، ثم يحفظ `WelcomePage` الإكمال ويفتح الرئيسية دون تسجيل دخول. التخطي يفعل الشيء نفسه. يمكن إعادة الجولة من «حسابي». روابط الدعوات المباشرة لا تمر بهذه البوابة، فلا تفقد وجهتها. هذه العلامة للجهاز/المتصفح وليست لحساب أو لتفضيلات محفوظة على الخادم. [تفصيل الملفات والاختبار](Onboarding-Implementation.ar.md).
@@ -218,6 +226,7 @@ Portfolio-Project/
 ├── package.json
 ├── Docs/
 │   ├── Frontend-Architecture.ar.md
+│   ├── App-Icon.ar.md
 │   ├── Frontend-API-Usage.ar.md
 │   ├── Preferences-Implementation.ar.md
 │   └── Frontend-Delivery-2026-11-02.ar.md
@@ -234,6 +243,7 @@ Portfolio-Project/
     │   │   ├── IBMPlexSansArabic-Bold.ttf
     │   │   └── OFL.txt
     │   └── images/
+    │       ├── branding/                 # app icons and launch artwork
     │       ├── auth/
     │       ├── food-illustration.png
     │       ├── preferences/

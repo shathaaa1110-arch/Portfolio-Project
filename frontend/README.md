@@ -2,6 +2,17 @@
 
 [Arabic architecture and learning guide](../Docs/Frontend-Architecture.ar.md)
 
+## App icon
+
+The approved Haila icon is stored in `assets/images/branding/` and configured
+in `app.json` for iOS, Android and the web favicon. Android has a transparent
+adaptive foreground and a themed monochrome version. The launch screen uses
+Haila on a cream background.
+
+Build and install a new native app to see the launcher icon and splash changes.
+Web users receive the new favicon after a new export is deployed; a cached
+favicon may need a refresh. See the [Arabic setup and validation guide](../Docs/App-Icon.ar.md).
+
 ## Current implementation — 15 November 2026
 
 Baseline: `deployment` at `92412ee`. See the [documentation index](../Docs/README.md)
@@ -135,6 +146,8 @@ Paths below are relative to `frontend`.
 
 | Path | Purpose |
 |---|---|
+| `app.json` | Selects the app icons, Android layers, web favicon and launch screen |
+| `assets/images/branding` | Haila app icon, adaptive foreground and monochrome icon |
 | `src/app/(tabs)/_layout.tsx` | Opens LaunchTabs, which checks intro completion before mounting tabs |
 | `src/app/welcome.tsx` | Opens the three intro screens outside the bottom tabs |
 | `src/app/(tabs)/index.tsx` | Opens Home at `/` |

@@ -4,48 +4,46 @@
     "slug": "thouq",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/branding/haila-icon.png",
     "scheme": "thouq",
     "userInterfaceStyle": "automatic",
     "ios": {
-  "icon": "./assets/expo.icon",
-  "infoPlist": {
-    "ExpoLocalization_supportsRTL": true,
-    "ExpoLocalization_forcesRTL": true
-  }
-},
-
+      "icon": "./assets/images/branding/haila-icon.png",
+      "infoPlist": {
+        "ExpoLocalization_supportsRTL": true,
+        "ExpoLocalization_forcesRTL": true
+      }
+    },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#FFF3DA",
+        "foregroundImage": "./assets/images/branding/haila-adaptive-foreground.png",
+        "monochromeImage": "./assets/images/branding/haila-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/branding/haila-icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#FFF3DA",
+          "image": "./assets/images/branding/haila-adaptive-foreground.png",
+          "imageWidth": 200
         }
       ],
-    "expo-localization",
-"expo-secure-store",
-[
-  "expo-location",
-  {
-    "locationWhenInUsePermission": "يستخدم ذوق موقعك لاقتراح المطاعم القريبة ضمن المسافة التي تختارها."
-  }
-]
+      "expo-localization",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "يستخدم ذوق موقعك لاقتراح المطاعم القريبة ضمن المسافة التي تختارها."
+        }
+      ]
     ],
     "extra": {
       "supportsRTL": true,
